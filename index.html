@@ -169,7 +169,7 @@ body{margin:0}
 </head>
 <body>
 <header class="top">
-  <div class="proto">Versión de pruebas</div>
+  <div class="proto">Versión de pruebas · <span id="ver"></span></div>
   <div class="top-in">
     <div class="brand">
       <span class="logo"><img src="data:image/jpeg;base64,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" alt="Quesos El Hidalgo"></span>
@@ -207,6 +207,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
+const VERSION = 'v7 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -243,7 +244,7 @@ function pref() {
   const p = S.sel.map(r => D().rutas[r] && D().rutas[r].pref).find(p => p && S.sel.includes(p));
   return String(+(p || S.sel[0]));
 }
-const compsDe = k => k.letras.map(x => ({ id: pref() + x.l, l: x.l, esp: x.esp, mezcla: x.mezcla || [] }));
+const compsDe = k => k.letras.map(x => ({ id: pref() + x.l, l: x.l, esp: x.esp, mezcla: x.mezcla || [], cap: Number(x.cap) || 0 }));
 const comps = () => compsDe(T());
 const comp = id => comps().find(c => c.id === id);
 const compLabel = c => c.esp.map(e => SP[e] || e).join(' + ');
@@ -261,7 +262,7 @@ function compat(esp, c) {
   return { ok: false };
 }
 const recsViaje = () => Object.values(S.rec);
-const mixed = c => recsViaje().some(x => !x.sin && x.dest === c.id && !compat(x.esp, c).ok);
+const mixed = c => recsViaje().some(x => !x.sin && (x.dest === c.id && !compat(x.esp, c).ok || x.arr && x.arr.dest === c.id && x.arr.tipo === 'reparto' && !compat(x.esp, c).ok));
 const grp = e => (e === 'O' || e === 'D') ? 'OV' : 'VC';
 const vcComps = () => comps().filter(c => !c.esp.includes('O') && !c.esp.includes('D'));
 function addTot(tot, x) { if (x.sin) return; const a = x.arr ? x.arr.l : 0; tot[x.dest] = (tot[x.dest] || 0) + x.litros - a; if (a) tot[x.arr.dest] = (tot[x.arr.dest] || 0) + a; }
@@ -273,7 +274,10 @@ async function api(accion, datos) {
   if (API.startsWith('PEGAR')) throw new Error('Falta configurar la dirección del servidor (API) en la app.');
   const r = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ accion, pin: S.pin }, datos)) });
   const j = await r.json();
-  if (!j.ok) throw new Error(j.error || 'Error del servidor');
+  if (!j.ok) {
+    if (j.error === 'PIN incorrecto' && accion !== 'login') { pinCaducado(); throw new Error('El PIN ha cambiado. Escribe el nuevo.'); }
+    throw new Error(j.error || 'Error del servidor');
+  }
   return j;
 }
 const esRed = e => !(e instanceof Error) || /fetch|network|Failed|Load failed|NetworkError/i.test(e.message);
@@ -328,6 +332,8 @@ function ocupado(btn, txt) { U.ocupado = true; btn.disabled = true; btn.dataset.
 function libre(btn) { U.ocupado = false; btn.disabled = false; if (btn.dataset.t) btn.textContent = btn.dataset.t; }
 
 /* 0. PIN */
+// La oficina ha cambiado el PIN: se pide el nuevo sin borrar el viaje ni lo pendiente de enviar
+function pinCaducado() { if (!S.pin) return; S.pin = null; persistir(); syncPill(); pinView('La oficina ha cambiado tu PIN. Escribe el nuevo. No se ha perdido nada de lo apuntado.'); }
 function pinView(msg) {
   const v = $('#vPin');
   v.innerHTML = `<div class="card stack">
@@ -337,12 +343,23 @@ function pinView(msg) {
     ${msg ? `<div class="msg bad">${esc(msg)}</div>` : ''}
     <button class="btn" id="entrar">Entrar</button>
   </div>
-  <p class="small muted">Si no tienes PIN o no ves tus ganaderos, llama a la oficina.</p>`;
+  <p class="small muted">Si no tienes PIN o no ves tus ganaderos, llama a la oficina.</p>
+  <p class="small muted" style="text-align:center">App ${esc(VERSION)}</p>`;
   const go = async () => {
     const pin = $('#pin').value.trim(); if (!pin) return;
     const b = $('#entrar'); ocupado(b, 'Entrando…');
-    try { S.pin = pin; const d = await api('login', {}); cargarDatos(d); rutas(); }
-    catch (e) { S.pin = null; libre(b); pinView(esRed(e) ? 'Sin cobertura. Para entrar la primera vez hace falta conexión.' : e.message); }
+    const antes = S.datos && S.datos.conductor ? S.datos.conductor.id : null;
+    try {
+      S.pin = pin; const d = await api('login', {});
+      if (antes && d.conductor.id !== antes && (pendientes() || S.viaje)) {
+        S.pin = null; libre(b);
+        pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
+      }
+      cargarDatos(d);
+      if (S.viaje) (S.viaje.empezado ? lista : deca)(); else rutas();
+      flush();
+    }
+    catch (e) { S.pin = null; libre(b); pinView(esRed(e) ? 'Sin cobertura. Para entrar hace falta conexión.' : e.message); }
   };
   $('#entrar').onclick = go; $('#pin').onkeydown = e => { if (e.key === 'Enter') go(); };
   show('vPin', 'Recogida de leche', 'Quesos El Hidalgo');
@@ -527,7 +544,7 @@ function lista() {
   <div class="card stack">
     <div class="route-head"><span class="lbl">${done} de ${L.length} ganaderos</span><b class="num" style="font-family:var(--display);font-size:24px">${fmt(sum)} l</b></div>
     <div class="progress"><i style="width:${L.length ? done / L.length * 100 : 0}%"></i></div>
-    <div class="tally">${comps().map(c => `<div><span class="tank ${spClass(c)}">${c.id}</span><b class="num">${fmt(tot[c.id])}</b>${mixed(c) ? '<small style="color:var(--bad);font-weight:700">mezcla</small>' : ''}</div>`).join('')}</div>
+    <div class="tally">${comps().map(c => `<div><span class="tank ${spClass(c)}">${c.id}</span><b class="num">${fmt(tot[c.id])}</b>${c.cap ? `<small class="muted">de ${fmt(c.cap)}</small>` : ''}${mixed(c) ? '<small style="color:var(--bad);font-weight:700">mezcla</small>' : ''}</div>`).join('')}</div>
   </div>
   <p class="small muted">Si hoy vas en otro orden, toca el ganadero que quieras.</p>
   <div class="stack">${L.map((x, i) => {
@@ -573,15 +590,16 @@ function ficha(i) {
     <div class="field"><span class="lbl">Destino</span>
       <div class="dests" id="dests"></div><div id="destMsg" hidden></div></div>
     <div class="field" id="arrBox" hidden>
-      <button class="btn sec" id="arrTog">Parte ha ido a otro compartimento (arrastre)</button>
+      <div id="capMsg" hidden></div>
+      <button class="btn sec" id="arrTog">Parte ha ido a otro compartimento</button>
       <div id="arrBody" class="stack" hidden>
         <div id="arrHint" class="msg warn" hidden></div>
-        <span class="lbl">Litros de arrastre</span>
+        <span class="lbl">Litros al otro compartimento</span>
         <input class="big" id="arrL" inputmode="numeric" autocomplete="off" placeholder="0" style="font-size:30px">
         <div class="row" id="arrQuick">${[10, 15, 20, 30].map(n => `<button class="btn sec" data-q="${n}" style="padding:8px;min-height:48px">${n}</button>`).join('')}</div>
         <span class="lbl">Al compartimento</span>
         <div class="dests" id="arrDests"></div>
-        <p class="small muted">Solo vaca o cabra: la oveja puede pasar a la vaca, nunca al revés.</p>
+        <p class="small muted">Arrastre de manguera: la oveja puede pasar a vaca/cabra, nunca al revés. Si no cabe, elige dónde va el resto.</p>
         <div id="arrMsg" hidden></div>
       </div>
     </div>
@@ -591,7 +609,7 @@ function ficha(i) {
   const drawDests = () => {
     $('#dests').innerHTML = comps().map(c => `<button class="dest" aria-pressed="${c.id === dest}" data-d="${c.id}">
       <b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small>${c.id === hab ? '<span class="hab">habitual</span>' : ''}</button>`).join('');
-    $('#dests').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dest = b.dataset.d; confirmMix = false; drawDests(); });
+    $('#dests').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dest = b.dataset.d; confirmMix = false; drawDests(); drawArr(); chkCap(); });
     const m = $('#destMsg'), k = compat(g.esp, comp(dest));
     if (!k.ok) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, comp(dest)) + ' Si no hay otro sitio, puedes guardarla igualmente y quedará como incidencia.'; }
     else if (k.warn) { m.hidden = false; m.className = 'msg ' + (k.bad ? 'bad' : 'warn'); m.textContent = k.warn; }
@@ -600,21 +618,51 @@ function ficha(i) {
   };
   let confirmMix = !!r.mezcla;
   drawDests();
-  let arrDest = r.arr ? r.arr.dest : (vcComps()[0] || {}).id, arrOn = !!r.arr;
-  if ((g.esp === 'O' || g.esp === 'D') && vcComps().length) {
+  // Otro compartimento: arrastre de manguera (oveja → vaca/cabra, pocos litros) o reparto porque no cabe
+  const otros = () => comps().filter(c => c.id !== dest);
+  // Lo que ya lleva cada compartimento sin contar esta recogida
+  const llevaYa = () => { const t = {}; comps().forEach(c => t[c.id] = 0); recsViaje().filter(y => y.recId !== r.recId).forEach(y => addTot(t, y)); return t; };
+  const mejorOtro = () => {   // compatible > compatible con aviso > otro que no sea D.O. > el resto; a igualdad, el que tenga más sitio
+    const t = llevaYa(), libre = c => c.cap ? c.cap - (t[c.id] || 0) : 1e9;
+    const nota = c => { const k = compat(g.esp, c); return k.ok && !k.warn ? 0 : k.ok ? 1 : !c.esp.includes('D') ? 2 : 3; };
+    return (otros().sort((a, b) => nota(a) - nota(b) || libre(b) - libre(a))[0] || {}).id; };
+  let arrDest = r.arr ? r.arr.dest : ((g.esp === 'O' || g.esp === 'D') && vcComps()[0] ? vcComps()[0].id : mejorOtro()), arrOn = !!r.arr;
+  let drawArr = () => {};
+  const chkCap = () => {
+    const m = $('#capMsg'), c = comp(dest), l = num($('#lit').value) || 0;
+    if (!c || !c.cap || !(l > 0)) { m.hidden = true; return; }
+    const lleva = llevaYa()[dest] || 0, libre = Math.max(c.cap - lleva, 0), va = l - (arrOn ? (num($('#arrL').value) || 0) : 0);
+    if (va <= libre) { m.hidden = true; return; }
+    const resto = Math.round(l - libre);
+    m.hidden = false; m.className = 'msg warn';
+    const lleno = libre <= 0 || resto >= l, alt = mejorOtro();
+    m.innerHTML = lleno
+      ? `<b>${esc(dest)}</b> está lleno (lleva ${fmt(lleva)} de ${fmt(c.cap)}).${alt ? ` <button class="btn sec" id="capAll" style="margin-top:8px">Llevar todo a ${esc(alt)}</button>` : ''}`
+      : `En <b>${esc(dest)}</b> quedan unos <b>${fmt(libre)} l</b> (lleva ${fmt(lleva)} de ${fmt(c.cap)}). Si no cabe todo, pasa el resto a otro compartimento.
+      ${otros().length ? `<button class="btn sec" id="capOk" style="margin-top:8px">Pasar ${fmt(resto)} l a otro compartimento</button>` : ''}`;
+    const ba = $('#capAll'); if (ba) ba.onclick = () => { dest = alt; confirmMix = false; arrOn = false; $('#arrL').value = ''; drawDests(); drawArr(); chkCap(); };
+    const b = $('#capOk'); if (b) b.onclick = () => { arrOn = true; $('#arrL').value = resto; if (arrDest === dest || !arrDest || grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest)) arrDest = mejorOtro(); drawArr(); $('#arrL').scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+  };
+  if (comps().length > 1) {
     $('#arrBox').hidden = false;
     const prev = i > 0 ? gan(S.list[i - 1].k) : null, next = i < S.list.length - 1 ? gan(S.list[i + 1].k) : null;
     const hint = prev && grp(prev.esp) === 'VC' ? `Vienes de ${labelEsp(prev.esp).toLowerCase()}: el arrastre del principio va a vaca/cabra.`
       : next && grp(next.esp) === 'VC' ? `El siguiente es ${labelEsp(next.esp).toLowerCase()}: si cambias la llave antes, anota aquí lo que pase.` : '';
-    if (hint) { $('#arrHint').hidden = false; $('#arrHint').textContent = hint; if (!r.litros) arrOn = true; }
+    if (hint && grp(g.esp) === 'OV') { $('#arrHint').hidden = false; $('#arrHint').textContent = hint; if (!r.litros) arrOn = true; }
     if (r.arr) $('#arrL').value = r.arr.l;
-    const drawArr = () => {
+    drawArr = () => {
+      if (arrDest === dest) arrDest = mejorOtro();
       $('#arrBody').hidden = !arrOn;
-      $('#arrTog').textContent = arrOn ? 'Quitar arrastre' : 'Parte ha ido a otro compartimento (arrastre)';
-      $('#arrDests').innerHTML = vcComps().map(c => `<button class="dest" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
+      $('#arrTog').textContent = arrOn ? 'Quitar: todo va a ' + dest : 'Parte ha ido a otro compartimento';
+      $('#arrDests').innerHTML = otros().map(c => `<button class="dest" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
       $('#arrDests').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { arrDest = b.dataset.a; drawArr(); });
-      const a = num($('#arrL').value), m = $('#arrMsg');
-      if (a > cf.arrastreAviso) { m.hidden = false; m.className = 'msg warn'; m.textContent = 'Arrastre alto. Lo normal son 10–30 l.'; } else m.hidden = true;
+      const a = num($('#arrL').value), m = $('#arrMsg'), c2 = comp(arrDest), k2 = c2 ? compat(g.esp, c2) : { ok: true };
+      const arrastre = grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest) && !(a > cf.arrastreAviso);
+      if (c2 && !k2.ok && !arrastre) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, c2) + ' Quedará anotado como mezcla.'; }
+      else if (c2 && k2.warn) { m.hidden = false; m.className = 'msg ' + (k2.bad ? 'bad' : 'warn'); m.textContent = k2.warn; }
+      else if (a > cf.arrastreAviso && grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest)) { m.hidden = false; m.className = 'msg bad'; m.textContent = `Más de ${cf.arrastreAviso} l de ${labelEsp(g.esp).toLowerCase()} en ${arrDest}: ya no es arrastre, se anota como mezcla.`; }
+      else m.hidden = true;
+      chkCap();
     };
     $('#arrTog').onclick = () => { arrOn = !arrOn; if (!arrOn) $('#arrL').value = ''; drawArr(); };
     $('#arrQuick').querySelectorAll('[data-q]').forEach(b => b.onclick = () => { $('#arrL').value = b.dataset.q; drawArr(); });
@@ -627,7 +675,7 @@ function ficha(i) {
     if (t > cf.tempAlerta) { m.className = 'msg bad'; m.textContent = `Por encima de ${cf.tempAlerta} °C. Avisa a fábrica antes de cargar.`; }
     else if (t > cf.tempAviso) { m.className = 'msg warn'; m.textContent = `Por encima de ${cf.tempAviso} °C (recogida en días alternos). Quedará anotado como incidencia.`; }
     else { m.className = 'msg ok'; m.textContent = 'Temperatura correcta.'; } };
-  $('#lit').oninput = chkLit; $('#tmp').oninput = chkTmp; chkLit(); chkTmp();
+  $('#lit').oninput = () => { chkLit(); chkCap(); }; chkCap(); $('#tmp').oninput = chkTmp; chkLit(); chkTmp();
   $('#scanBtn').onclick = () => escanear(code => { $('#mue').value = code; });
   const guardarFicha = (sin) => {
     const l = Math.round(num($('#lit').value)), t = num($('#tmp').value), mu = $('#mue').value.trim(), e = $('#err');
@@ -644,12 +692,17 @@ function ficha(i) {
     }
     let arr = null;
     if (!sin && arrOn) { const a = Math.round(num($('#arrL').value));
-      if (a > 0) { if (a >= l) { e.hidden = false; e.textContent = 'El arrastre no puede ser igual o mayor que los litros del ganadero.'; return; } arr = { l: a, dest: arrDest }; } }
+      if (a > 0) {
+        if (a >= l) { e.hidden = false; e.textContent = 'Lo que va al otro compartimento tiene que ser menos que el total del ganadero.'; return; }
+        if (!arrDest || arrDest === dest) { e.hidden = false; e.textContent = 'Elige a qué otro compartimento va esa parte.'; return; }
+        const esArr = grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest) && a <= cf.arrastreAviso;
+        arr = { l: a, dest: arrDest, tipo: esArr ? 'arrastre' : 'reparto' };
+      } }
     const viajeId = r.viajeId || S.viaje.id;
     const rec = {
       recId: viajeId + '-' + g.cod + '-' + g.esp, viajeId, fecha: hoyTxt(), hora: hhmm(), ruta: x.ruta, ord: x.ord, cod: g.cod, esp: g.esp,
       sin: !!sin, litros: sin ? 0 : l, temp: sin ? null : t, muestra: sin ? '' : mu, dest, letra: comp(dest).l, arr,
-      inc: !sin && t > cf.tempAviso, mezcla: !sin && !compat(g.esp, comp(dest)).ok,
+      inc: !sin && t > cf.tempAviso, mezcla: !sin && (!compat(g.esp, comp(dest)).ok || !!arr && arr.tipo === 'reparto' && !compat(g.esp, comp(arr.dest)).ok),
       lat: U.pos ? +U.pos.latitude.toFixed(6) : '', lon: U.pos ? +U.pos.longitude.toFixed(6) : ''
     };
     S.rec[kg(g)] = rec;
@@ -781,6 +834,7 @@ document.addEventListener('keydown', e => {
 
 /* ═══════════ ARRANQUE ═══════════ */
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+{ const v = $('#ver'); if (v) v.textContent = VERSION; }
 if (!S.pin || !S.datos) pinView();
 else if (S.viaje) (S.viaje.empezado ? lista : deca)();
 else rutas();

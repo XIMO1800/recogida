@@ -214,7 +214,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v8 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v9 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -269,10 +269,10 @@ function compat(esp, c) {
   return { ok: false };
 }
 const recsViaje = () => Object.values(S.rec);
-const mixed = c => recsViaje().some(x => !x.sin && (x.dest === c.id && !compat(x.esp, c).ok || x.arr && x.arr.dest === c.id && x.arr.tipo === 'reparto' && !compat(x.esp, c).ok));
+const mixed = c => recsViaje().some(x => !x.sin && (x.dest === c.id && !compat(x.esp, c).ok || x.arr && x.arr.dest === c.id && x.arr.tipo === 'reparto' && !compat(x.esp, c).ok || x.rep && x.rep.dest === c.id && !compat(x.esp, c).ok));
 const grp = e => (e === 'O' || e === 'D') ? 'OV' : 'VC';
 const vcComps = () => comps().filter(c => !c.esp.includes('O') && !c.esp.includes('D'));
-function addTot(tot, x) { if (x.sin) return; const a = x.arr ? x.arr.l : 0; tot[x.dest] = (tot[x.dest] || 0) + x.litros - a; if (a) tot[x.arr.dest] = (tot[x.arr.dest] || 0) + a; }
+function addTot(tot, x) { if (x.sin) return; const a = x.arr ? x.arr.l : 0, p = x.rep ? x.rep.l : 0; tot[x.dest] = (tot[x.dest] || 0) + x.litros - a - p; if (a) tot[x.arr.dest] = (tot[x.arr.dest] || 0) + a; if (p) tot[x.rep.dest] = (tot[x.rep.dest] || 0) + p; }
 function totales() { const t = {}; comps().forEach(c => t[c.id] = 0); recsViaje().forEach(x => addTot(t, x)); return t; }
 function habitual(g) { const c = comps().find(c => c.l === g.dl); return c ? c.id : (comps().find(c => compat(g.esp, c).ok) || comps()[0]).id; }
 
@@ -599,27 +599,38 @@ function ficha(i) {
       <div class="scan"><input id="mue" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="${esc(r.muestra || '')}" placeholder="7226500…"><button id="scanBtn">Escanear</button></div></div>
     <div class="field"><span class="lbl">Destino</span>
       <div class="dests" id="dests"></div><div id="destMsg" hidden></div></div>
+    <div id="capMsg" hidden></div>
     <div class="field" id="arrBox" hidden>
-      <div id="capMsg" hidden></div>
-      <button class="btn sec" id="arrTog">Parte ha ido a otro compartimento</button>
+      <button class="btn sec" id="arrTog">Arrastre de manguera</button>
       <div id="arrBody" class="stack" hidden>
         <div id="arrHint" class="msg warn" hidden></div>
-        <span class="lbl">Litros al otro compartimento</span>
+        <span class="lbl">Litros de arrastre</span>
         <input class="big" id="arrL" inputmode="numeric" autocomplete="off" placeholder="0" style="font-size:30px">
         <div class="row" id="arrQuick">${[10, 15, 20, 30].map(n => `<button class="btn sec" data-q="${n}" style="padding:8px;min-height:48px">${n}</button>`).join('')}</div>
         <span class="lbl">Al compartimento</span>
         <div class="dests" id="arrDests"></div>
-        <p class="small muted">Arrastre de manguera: la oveja puede pasar a vaca/cabra, nunca al revés. Si no cabe, elige dónde va el resto.</p>
+        <p class="small muted">La oveja puede pasar a vaca/cabra, nunca al revés.</p>
         <div id="arrMsg" hidden></div>
       </div>
     </div>
+    <div class="field" id="repBox" hidden>
+      <button class="btn sec" id="repTog">No cabe todo: parte a otro compartimento</button>
+      <div id="repBody" class="stack" hidden>
+        <span class="lbl">Litros que van a otro compartimento</span>
+        <input class="big" id="repL" inputmode="numeric" autocomplete="off" placeholder="0" style="font-size:30px">
+        <span class="lbl">Al compartimento</span>
+        <div class="dests" id="repDests"></div>
+        <div id="repMsg" hidden></div>
+      </div>
+    </div>
+    <div id="repRes" class="msg ok" hidden></div>
     <div id="err" class="msg bad" hidden></div>
     <button class="btn" id="save">Guardar y siguiente</button>
     <button class="btn ghost" id="sin">Hoy no se recoge</button>`;
   const drawDests = () => {
     $('#dests').innerHTML = comps().map(c => `<button class="dest" aria-pressed="${c.id === dest}" data-d="${c.id}">
       <b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small>${c.id === hab ? '<span class="hab">habitual</span>' : ''}</button>`).join('');
-    $('#dests').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dest = b.dataset.d; confirmMix = false; drawDests(); drawArr(); chkCap(); });
+    $('#dests').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dest = b.dataset.d; confirmMix = false; drawDests(); drawArr(); drawRep(); chkCap(); });
     const m = $('#destMsg'), k = compat(g.esp, comp(dest));
     if (!k.ok) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, comp(dest)) + ' Si no hay otro sitio, puedes guardarla igualmente y quedará como incidencia.'; }
     else if (k.warn) { m.hidden = false; m.className = 'msg ' + (k.bad ? 'bad' : 'warn'); m.textContent = k.warn; }
@@ -628,7 +639,7 @@ function ficha(i) {
   };
   let confirmMix = !!r.mezcla;
   drawDests();
-  // Otro compartimento: arrastre de manguera (oveja → vaca/cabra, pocos litros) o reparto porque no cabe
+  // Hasta tres destinos: el principal, el arrastre de manguera (oveja → vaca/cabra) y lo que no cabe (reparto)
   const otros = () => comps().filter(c => c.id !== dest);
   // Lo que ya lleva cada compartimento sin contar esta recogida
   const llevaYa = () => { const t = {}; comps().forEach(c => t[c.id] = 0); recsViaje().filter(y => y.recId !== r.recId).forEach(y => addTot(t, y)); return t; };
@@ -636,48 +647,77 @@ function ficha(i) {
     const t = llevaYa(), libre = c => c.cap ? c.cap - (t[c.id] || 0) : 1e9;
     const nota = c => { const k = compat(g.esp, c); return k.ok && !k.warn ? 0 : k.ok ? 1 : !c.esp.includes('D') ? 2 : 3; };
     return (otros().sort((a, b) => nota(a) - nota(b) || libre(b) - libre(a))[0] || {}).id; };
-  let arrDest = r.arr ? r.arr.dest : ((g.esp === 'O' || g.esp === 'D') && vcComps()[0] ? vcComps()[0].id : mejorOtro()), arrOn = !!r.arr;
-  let drawArr = () => {};
+  const esOV = grp(g.esp) === 'OV' && vcComps().length > 0;
+  // Recogidas guardadas con la v6–v8 (un solo "otro compartimento"): si era reparto, pasa al panel de reparto
+  let rArr = r.arr && r.arr.tipo !== 'reparto' ? r.arr : null, rRep = r.rep || (r.arr && r.arr.tipo === 'reparto' ? r.arr : null);
+  if (r.arr && r.arr.tipo === 'reparto' && r.rep) rArr = r.arr;
+  let arrOn = !!rArr, arrDest = rArr ? rArr.dest : (vcComps()[0] || {}).id;
+  let repOn = !!rRep, repDest = rRep ? rRep.dest : null;
+  const vArr = () => arrOn ? (num($('#arrL').value) || 0) : 0, vRep = () => repOn ? (num($('#repL').value) || 0) : 0;
+  let drawArr = () => {}, drawRep = () => {};
+  const resumen = () => {
+    const el = $('#repRes'), l = num($('#lit').value) || 0, a = vArr(), p = vRep();
+    if (!(l > 0) || !(a > 0 || p > 0)) { el.hidden = true; return; }
+    el.hidden = false; el.className = 'msg ' + (a + p >= l ? 'bad' : 'ok');
+    el.innerHTML = a + p >= l ? 'Lo que va a otros compartimentos no puede ser igual o mayor que el total.'
+      : `Reparto: <b>${esc(dest)} ${fmt(l - a - p)} l</b>${a > 0 ? ` · ${esc(arrDest)} ${fmt(a)} l (arrastre)` : ''}${p > 0 ? ` · ${esc(repDest)} ${fmt(p)} l (no cabía)` : ''}`;
+  };
   const chkCap = () => {
     const m = $('#capMsg'), c = comp(dest), l = num($('#lit').value) || 0;
     if (!c || !c.cap || !(l > 0)) { m.hidden = true; return; }
-    const lleva = llevaYa()[dest] || 0, libre = Math.max(c.cap - lleva, 0), va = l - (arrOn ? (num($('#arrL').value) || 0) : 0);
+    const lleva = llevaYa()[dest] || 0, libre = Math.max(c.cap - lleva, 0), va = l - vArr() - vRep();
     if (va <= libre) { m.hidden = true; return; }
-    const resto = Math.round(l - libre);
+    const resto = Math.round(va - libre), lleno = libre <= 0, alt = mejorOtro();
     m.hidden = false; m.className = 'msg warn';
-    const lleno = libre <= 0 || resto >= l, alt = mejorOtro();
     m.innerHTML = lleno
       ? `<b>${esc(dest)}</b> está lleno (lleva ${fmt(lleva)} de ${fmt(c.cap)}).${alt ? ` <button class="btn sec" id="capAll" style="margin-top:8px">Llevar todo a ${esc(alt)}</button>` : ''}`
       : `En <b>${esc(dest)}</b> quedan unos <b>${fmt(libre)} l</b> (lleva ${fmt(lleva)} de ${fmt(c.cap)}). Si no cabe todo, pasa el resto a otro compartimento.
       ${otros().length ? `<button class="btn sec" id="capOk" style="margin-top:8px">Pasar ${fmt(resto)} l a otro compartimento</button>` : ''}`;
-    const ba = $('#capAll'); if (ba) ba.onclick = () => { dest = alt; confirmMix = false; arrOn = false; $('#arrL').value = ''; drawDests(); drawArr(); chkCap(); };
-    const b = $('#capOk'); if (b) b.onclick = () => { arrOn = true; $('#arrL').value = resto; if (arrDest === dest || !arrDest || grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest)) arrDest = mejorOtro(); drawArr(); $('#arrL').scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+    const ba = $('#capAll'); if (ba) ba.onclick = () => { dest = alt; confirmMix = false; repOn = false; $('#repL').value = ''; drawDests(); drawArr(); drawRep(); };
+    const b = $('#capOk'); if (b) b.onclick = () => { repOn = true; $('#repL').value = Math.round(vRep() + resto); if (!repDest || repDest === dest) repDest = mejorOtro(); drawRep(); $('#repL').scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   };
-  if (comps().length > 1) {
+  if (esOV) {
     $('#arrBox').hidden = false;
     const prev = i > 0 ? gan(S.list[i - 1].k) : null, next = i < S.list.length - 1 ? gan(S.list[i + 1].k) : null;
     const hint = prev && grp(prev.esp) === 'VC' ? `Vienes de ${labelEsp(prev.esp).toLowerCase()}: el arrastre del principio va a vaca/cabra.`
       : next && grp(next.esp) === 'VC' ? `El siguiente es ${labelEsp(next.esp).toLowerCase()}: si cambias la llave antes, anota aquí lo que pase.` : '';
-    if (hint && grp(g.esp) === 'OV') { $('#arrHint').hidden = false; $('#arrHint').textContent = hint; if (!r.litros) arrOn = true; }
-    if (r.arr) $('#arrL').value = r.arr.l;
+    if (hint) { $('#arrHint').hidden = false; $('#arrHint').textContent = hint; if (!r.litros) arrOn = true; }
+    if (rArr) $('#arrL').value = rArr.l;
     drawArr = () => {
-      if (arrDest === dest) arrDest = mejorOtro();
+      const vc = vcComps().filter(c => c.id !== dest);
+      if (!vc.some(c => c.id === arrDest)) arrDest = (vc[0] || {}).id;
       $('#arrBody').hidden = !arrOn;
-      $('#arrTog').textContent = arrOn ? 'Quitar: todo va a ' + dest : 'Parte ha ido a otro compartimento';
-      $('#arrDests').innerHTML = otros().map(c => `<button class="dest" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
+      $('#arrTog').textContent = arrOn ? 'Quitar arrastre' : 'Arrastre de manguera (a vaca/cabra)';
+      $('#arrDests').innerHTML = vc.map(c => `<button class="dest" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
       $('#arrDests').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { arrDest = b.dataset.a; drawArr(); });
-      const a = num($('#arrL').value), m = $('#arrMsg'), c2 = comp(arrDest), k2 = c2 ? compat(g.esp, c2) : { ok: true };
-      const arrastre = grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest) && !(a > cf.arrastreAviso);
-      if (c2 && !k2.ok && !arrastre) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, c2) + ' Quedará anotado como mezcla.'; }
-      else if (c2 && k2.warn) { m.hidden = false; m.className = 'msg ' + (k2.bad ? 'bad' : 'warn'); m.textContent = k2.warn; }
-      else if (a > cf.arrastreAviso && grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest)) { m.hidden = false; m.className = 'msg bad'; m.textContent = `Más de ${cf.arrastreAviso} l de ${labelEsp(g.esp).toLowerCase()} en ${arrDest}: ya no es arrastre, se anota como mezcla.`; }
+      const a = num($('#arrL').value), m = $('#arrMsg');
+      if (a > cf.arrastreAviso) { m.hidden = false; m.className = 'msg bad'; m.textContent = `Más de ${cf.arrastreAviso} l de ${labelEsp(g.esp).toLowerCase()} en ${arrDest}: ya no es arrastre, se anota como mezcla.`; }
       else m.hidden = true;
-      chkCap();
+      resumen(); chkCap();
     };
     $('#arrTog').onclick = () => { arrOn = !arrOn; if (!arrOn) $('#arrL').value = ''; drawArr(); };
     $('#arrQuick').querySelectorAll('[data-q]').forEach(b => b.onclick = () => { $('#arrL').value = b.dataset.q; drawArr(); });
-    $('#arrL').oninput = drawArr; drawArr();
+    $('#arrL').oninput = drawArr;
   }
+  if (comps().length > 1) {
+    $('#repBox').hidden = false;
+    if (rRep) $('#repL').value = rRep.l;
+    drawRep = () => {
+      if (!repDest || repDest === dest) repDest = mejorOtro();
+      $('#repBody').hidden = !repOn;
+      $('#repTog').textContent = repOn ? 'Quitar: todo cabe en ' + dest : 'No cabe todo: parte a otro compartimento';
+      $('#repDests').innerHTML = otros().map(c => `<button class="dest" aria-pressed="${c.id === repDest}" data-p="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
+      $('#repDests').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { repDest = b.dataset.p; drawRep(); });
+      const m = $('#repMsg'), c2 = comp(repDest), k2 = c2 ? compat(g.esp, c2) : { ok: true };
+      if (c2 && !k2.ok) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, c2) + ' Quedará anotado como mezcla.'; }
+      else if (c2 && k2.warn) { m.hidden = false; m.className = 'msg ' + (k2.bad ? 'bad' : 'warn'); m.textContent = k2.warn; }
+      else m.hidden = true;
+      resumen(); chkCap();
+    };
+    $('#repTog').onclick = () => { repOn = !repOn; if (!repOn) $('#repL').value = ''; drawRep(); };
+    $('#repL').oninput = drawRep;
+  }
+  drawArr(); drawRep(); chkCap();
   const chkLit = () => { const l = num($('#lit').value), m = $('#litMsg');
     if (l > 0 && g.ult > 0 && Math.abs(l - g.ult) / g.ult > 0.4) { m.hidden = false; m.className = 'msg warn'; m.textContent = `Muy distinto de la última recogida (${fmt(g.ult)} l). Si hoy lleva dos días de leche es normal; si no, comprueba el dato.`; } else m.hidden = true; };
   const chkTmp = () => { const t = num($('#tmp').value), m = $('#tmpMsg');
@@ -685,7 +725,7 @@ function ficha(i) {
     if (t > cf.tempAlerta) { m.className = 'msg bad'; m.textContent = `Por encima de ${cf.tempAlerta} °C. Avisa a fábrica antes de cargar.`; }
     else if (t > cf.tempAviso) { m.className = 'msg warn'; m.textContent = `Por encima de ${cf.tempAviso} °C (recogida en días alternos). Quedará anotado como incidencia.`; }
     else { m.className = 'msg ok'; m.textContent = 'Temperatura correcta.'; } };
-  $('#lit').oninput = () => { chkLit(); chkCap(); }; chkCap(); $('#tmp').oninput = chkTmp; chkLit(); chkTmp();
+  $('#lit').oninput = () => { chkLit(); chkCap(); resumen(); }; chkCap(); resumen(); $('#tmp').oninput = chkTmp; chkLit(); chkTmp();
   $('#scanBtn').onclick = () => escanear(code => { $('#mue').value = code; });
   const guardarFicha = (sin) => {
     const l = Math.round(num($('#lit').value)), t = num($('#tmp').value), mu = $('#mue').value.trim(), e = $('#err');
@@ -700,19 +740,24 @@ function ficha(i) {
         e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return;
       }
     }
-    let arr = null;
-    if (!sin && arrOn) { const a = Math.round(num($('#arrL').value));
+    let arr = null, rep = null;
+    if (!sin) {
+      const a = arrOn ? Math.round(num($('#arrL').value)) || 0 : 0, p = repOn ? Math.round(num($('#repL').value)) || 0 : 0;
+      if (a + p > 0 && a + p >= l) { e.hidden = false; e.textContent = 'Lo que va a otros compartimentos tiene que ser menos que el total del ganadero.'; return; }
       if (a > 0) {
-        if (a >= l) { e.hidden = false; e.textContent = 'Lo que va al otro compartimento tiene que ser menos que el total del ganadero.'; return; }
-        if (!arrDest || arrDest === dest) { e.hidden = false; e.textContent = 'Elige a qué otro compartimento va esa parte.'; return; }
-        const esArr = grp(g.esp) === 'OV' && vcComps().some(v => v.id === arrDest) && a <= cf.arrastreAviso;
-        arr = { l: a, dest: arrDest, tipo: esArr ? 'arrastre' : 'reparto' };
-      } }
+        if (!arrDest || arrDest === dest) { e.hidden = false; e.textContent = 'Elige a qué compartimento va el arrastre.'; return; }
+        arr = { l: a, dest: arrDest, tipo: a <= cf.arrastreAviso ? 'arrastre' : 'reparto' };
+      }
+      if (p > 0) {
+        if (!repDest || repDest === dest) { e.hidden = false; e.textContent = 'Elige a qué otro compartimento va lo que no cabe.'; return; }
+        rep = { l: p, dest: repDest };
+      }
+    }
     const viajeId = r.viajeId || S.viaje.id;
     const rec = {
       recId: viajeId + '-' + g.cod + '-' + g.esp, viajeId, fecha: hoyTxt(), hora: hhmm(), ruta: x.ruta, ord: x.ord, cod: g.cod, esp: g.esp,
-      sin: !!sin, litros: sin ? 0 : l, temp: sin ? null : t, muestra: sin ? '' : mu, dest, letra: comp(dest).l, arr,
-      inc: !sin && t > cf.tempAviso, mezcla: !sin && (!compat(g.esp, comp(dest)).ok || !!arr && arr.tipo === 'reparto' && !compat(g.esp, comp(arr.dest)).ok),
+      sin: !!sin, litros: sin ? 0 : l, temp: sin ? null : t, muestra: sin ? '' : mu, dest, letra: comp(dest).l, arr, rep,
+      inc: !sin && t > cf.tempAviso, mezcla: !sin && (!compat(g.esp, comp(dest)).ok || !!arr && arr.tipo === 'reparto' && !compat(g.esp, comp(arr.dest)).ok || !!rep && !compat(g.esp, comp(rep.dest)).ok),
       lat: U.pos ? +U.pos.latitude.toFixed(6) : '', lon: U.pos ? +U.pos.longitude.toFixed(6) : ''
     };
     S.rec[kg(g)] = rec;
@@ -774,7 +819,7 @@ function trasvase() {
       const map = Object.assign({}, U.map);
       S.cam = adoptarCamion(r, nuevo.id);
       // Las recogidas ya hechas pasan a figurar en el compartimento del camión nuevo (se reenvían)
-      recsViaje().forEach(x => { if (x.sin) return; x.destOrig = x.destOrig || x.dest; x.dest = map[x.dest] || x.dest; x.letra = (comp(x.dest) || {}).l || x.letra; x.noHabitual = true; x.mezcla = x.mezcla || !compat(x.esp, comp(x.dest)).ok; if (x.arr) x.arr.dest = map[x.arr.dest] || x.arr.dest; S.cola.recs[x.recId] = x; });
+      recsViaje().forEach(x => { if (x.sin) return; x.destOrig = x.destOrig || x.dest; x.dest = map[x.dest] || x.dest; x.letra = (comp(x.dest) || {}).l || x.letra; x.noHabitual = true; x.mezcla = x.mezcla || !compat(x.esp, comp(x.dest)).ok; if (x.arr) x.arr.dest = map[x.arr.dest] || x.arr.dest; if (x.rep) x.rep.dest = map[x.rep.dest] || x.rep.dest; S.cola.recs[x.recId] = x; });
       S.decas.push(antes);
       S.viaje = Object.assign({}, r.viaje, { rutas: S.viaje.rutas, prefijo: S.viaje.prefijo, est: litros + pend, empezado: true,
         trasvase: { anterior: antes.num, desde: antes.matricula, litros } });
@@ -794,7 +839,7 @@ function diaTxt(f) { const m = String(f).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
 function totDia(viajes) {
   const t = {}; let total = 0, n = 0;
   viajes.forEach(v => v.recs.forEach(r => { if (r.sin) return; n++; total += r.l;
-    if (r.d1) t[r.d1] = (t[r.d1] || 0) + (r.l1 || r.l); if (r.d2 && r.l2) t[r.d2] = (t[r.d2] || 0) + r.l2; }));
+    if (r.d1) t[r.d1] = (t[r.d1] || 0) + (r.l1 || r.l); if (r.d2 && r.l2) t[r.d2] = (t[r.d2] || 0) + r.l2; if (r.d3 && r.l3) t[r.d3] = (t[r.d3] || 0) + r.l3; }));
   return { t, total, n };
 }
 async function historial() {
@@ -831,7 +876,7 @@ function histRender() {
       <table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
       ${vj.recs.map(r => `<tr${r.sin ? ' class="muted"' : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}</span></td>
         <td class="num">${r.sin ? '—' : fmt(r.l)}</td>
-        <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${esc(r.d1)} ${fmt(r.l1)}<br>${esc(r.d2)} ${fmt(r.l2)}` : esc(r.d1)}</td></tr>`).join('')}
+        <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${esc(r.d1)} ${fmt(r.l1)}<br>${esc(r.d2)} ${fmt(r.l2)}${r.d3 && r.l3 ? `<br>${esc(r.d3)} ${fmt(r.l3)}` : ''}` : esc(r.d1)}</td></tr>`).join('')}
       </tbody></table></div>`).join('')}
     <button class="btn sec" id="histVolver">Volver a los días</button>`;
   $('#histVolver').onclick = () => { U.histI = null; histRender(); };

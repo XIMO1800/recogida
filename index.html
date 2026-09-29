@@ -214,6 +214,8 @@ const S0 = { pin: null, datos: null, sel: [], pref: null, cam: null, nuevosCam: 
              viaje: null, cadena: [], decas: [], list: [], rec: {}, lastI: null,
              cola: { recs: {}, cierres: [] } };
 let S = Object.assign({}, S0, cargar() || {});
+// Migración: viajes en curso guardados antes de la clave código|especie
+(S.list || []).forEach(x => { if (x.k) return; const g = (S.datos && S.datos.ganaderos || []).find(g => g.cod === x.cod) || { cod: x.cod, esp: 'O' }; x.esp = g.esp; x.k = g.cod + '|' + g.esp; if (S.rec && S.rec[x.cod]) { S.rec[x.k] = S.rec[x.cod]; delete S.rec[x.cod]; } });
 const U = { view: null, camMode: null, nt: null, map: null, volver: null, vistaPrev: null, pos: null, ocupado: false };
 function cargar() { try { return JSON.parse(localStorage.getItem(LS)); } catch (e) { return null; } }
 function persistir() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} }
@@ -354,11 +356,11 @@ function cargarDatos(d) {
 }
 
 /* 1. Viaje de hoy: rutas y camión */
-function estSel() { const seen = new Set(); let t = 0; S.sel.forEach(r => ganRuta(r).forEach(g => { if (seen.has(g.cod)) return; seen.add(g.cod); t += g.ult || 0; })); return t; }
+function estSel() { const seen = new Set(); let t = 0; S.sel.forEach(r => ganRuta(r).forEach(g => { if (seen.has(kg(g))) return; seen.add(kg(g)); t += g.ult || 0; })); return t; }
 function rutas() {
   const c = D().conductor, keys = misRutas(), v = $('#vRutas');
   if (!T()) { v.innerHTML = `<div class="msg bad">No tienes ningún camión dado de alta. Avisa a la oficina o da de alta uno.</div><button class="btn" id="cambiarCam">Dar de alta camión</button>`; $('#cambiarCam').onclick = () => camion('inicio'); show('vRutas', 'Viaje de hoy', c.nombre); return; }
-  const seen = new Set(); const n = S.sel.reduce((a, r) => a + ganRuta(r).filter(g => !seen.has(g.cod) && seen.add(g.cod)).length, 0);
+  const seen = new Set(); const n = S.sel.reduce((a, r) => a + ganRuta(r).filter(g => !seen.has(kg(g)) && seen.add(kg(g))).length, 0);
   v.innerHTML = `<p class="muted" style="text-transform:capitalize">${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
   <div class="card stack">
     <div class="route-head"><h2>${esc(c.nombre)}</h2><span class="mono muted">${esc(T().matricula)}</span></div>
@@ -460,7 +462,7 @@ async function iniciar() {
   if (U.ocupado) return;
   const b = $('#ini'), m = $('#iniMsg');
   const seen = new Set(), list = [];
-  S.sel.forEach(r => ganRuta(r).forEach(g => { if (seen.has(g.cod)) return; seen.add(g.cod); list.push({ cod: g.cod, ruta: r, ord: g.ord }); }));
+  S.sel.forEach(r => ganRuta(r).forEach(g => { if (seen.has(kg(g))) return; seen.add(kg(g)); list.push({ cod: g.cod, esp: g.esp, k: kg(g), ruta: r, ord: g.ord }); }));
   const est = Math.round(num($('#estL').value) || 0);
   if (!(est > 0)) { m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe los litros estimados de hoy. El DeCA no puede salir con 0 kg.'; $('#estL').focus(); return; }
   const id = 'V' + Date.now().toString(36).toUpperCase() + '-' + D().conductor.id;
@@ -476,7 +478,9 @@ async function iniciar() {
     m.textContent = esRed(e) ? 'Sin cobertura: el DeCA necesita conexión para generarse. Busca cobertura y vuelve a pulsar.' : e.message;
   }
 }
-const gan = cod => D().ganaderos.find(g => g.cod === cod) || { cod, nom: cod, esp: 'O', dl: '', pue: '', ult: 0 };
+// Un mismo ganadero puede tener dos especies (oveja y cabra): cada especie es una parada distinta (clave código|especie)
+const kg = g => g.cod + '|' + g.esp;
+const gan = k => D().ganaderos.find(g => kg(g) === k) || D().ganaderos.find(g => g.cod === k) || { cod: String(k).split('|')[0], nom: String(k).split('|')[0], esp: String(k).split('|')[1] || 'O', dl: '', pue: '', ult: 0 };
 
 function deca() {
   const c = D().conductor, cfg = CFG(), V = S.viaje, enCurso = V.empezado, v = $('#vDeca');
@@ -507,17 +511,17 @@ function deca() {
 /* 3. Lista de ganaderos */
 function siguiente() {
   const L = S.list, desde = S.lastI == null ? -1 : S.lastI;
-  let k = L.findIndex((x, j) => j > desde && !S.rec[x.cod]);
-  if (k < 0) k = L.findIndex(x => !S.rec[x.cod]);
+  let k = L.findIndex((x, j) => j > desde && !S.rec[x.k]);
+  if (k < 0) k = L.findIndex(x => !S.rec[x.k]);
   return k;
 }
 function lista() {
-  const L = S.list, done = L.filter(x => S.rec[x.cod]).length, next = siguiente(), tot = totales();
+  const L = S.list, done = L.filter(x => S.rec[x.k]).length, next = siguiente(), tot = totales();
   const sum = Object.values(tot).reduce((a, b) => a + b, 0), nx = next >= 0 ? L[next] : null, v = $('#vLista');
   v.innerHTML = `${nx ? `<div class="next-card">
     <span class="lbl">Siguiente parada · ${next + 1} de ${L.length}</span>
-    <h2>${esc(gan(nx.cod).nom)}</h2>
-    <p>${esc(gan(nx.cod).pue)} · ${labelEsp(gan(nx.cod).esp)} · destino ${habitual(gan(nx.cod))}</p>
+    <h2>${esc(gan(nx.k).nom)}</h2>
+    <p>${esc(gan(nx.k).pue)} · ${labelEsp(gan(nx.k).esp)} · destino ${habitual(gan(nx.k))}</p>
     <button class="btn" id="anotar">Anotar recogida</button>
   </div>` : `<div class="msg ok">Todos los ganaderos anotados. Ya puedes terminar el viaje.</div>`}
   <div class="card stack">
@@ -527,11 +531,11 @@ function lista() {
   </div>
   <p class="small muted">Si hoy vas en otro orden, toca el ganadero que quieras.</p>
   <div class="stack">${L.map((x, i) => {
-    const g = gan(x.cod), r = S.rec[x.cod];
+    const g = gan(x.k), r = S.rec[x.k];
     const cls = r ? (r.sin ? 'skip' : 'done') : (i === next ? 'next' : '');
     const st = r ? (r.sin ? 'No recogido' : fmt(r.litros) + ' l · ' + r.dest) : (i === next ? 'Siguiente' : '');
     const prevRuta = i > 0 && L[i - 1].ruta !== x.ruta;
-    const cambio = i > 0 && !prevRuta && grp(gan(L[i - 1].cod).esp) !== grp(g.esp);
+    const cambio = i > 0 && !prevRuta && grp(gan(L[i - 1].k).esp) !== grp(g.esp);
     return `${prevRuta || (i === 0 && S.viaje.rutas.length > 1) ? `<span class="lbl" style="margin-top:6px">Ruta ${+x.ruta}</span>` : ''}${cambio ? `<span class="small" style="color:var(--warn);font-weight:700;padding-left:4px">↓ Cambio de manguera: ${grp(g.esp) === 'OV' ? 'vaca/cabra → oveja' : 'oveja → vaca/cabra'}</span>` : ''}
       <button class="farm ${cls}" data-i="${i}"><span class="n">${i + 1}</span>
       <span class="main"><span class="name">${esc(g.nom)}</span><span class="sub">${esc(g.pue)} · <span class="sp-${g.esp}">${labelEsp(g.esp)}</span></span></span>
@@ -549,7 +553,7 @@ function lista() {
 /* 4. Ficha de recogida */
 function ficha(i) {
   S.i = i;
-  const x = S.list[i], g = gan(x.cod), r = S.rec[x.cod] || {}, cf = CFG();
+  const x = S.list[i], g = gan(x.k), r = S.rec[x.k] || {}, cf = CFG();
   const hab = habitual(g); let dest = r.dest && comp(r.dest) ? r.dest : hab;
   U.pos = null;
   if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => U.pos = p.coords, () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 120000 });
@@ -599,7 +603,7 @@ function ficha(i) {
   let arrDest = r.arr ? r.arr.dest : (vcComps()[0] || {}).id, arrOn = !!r.arr;
   if ((g.esp === 'O' || g.esp === 'D') && vcComps().length) {
     $('#arrBox').hidden = false;
-    const prev = i > 0 ? gan(S.list[i - 1].cod) : null, next = i < S.list.length - 1 ? gan(S.list[i + 1].cod) : null;
+    const prev = i > 0 ? gan(S.list[i - 1].k) : null, next = i < S.list.length - 1 ? gan(S.list[i + 1].k) : null;
     const hint = prev && grp(prev.esp) === 'VC' ? `Vienes de ${labelEsp(prev.esp).toLowerCase()}: el arrastre del principio va a vaca/cabra.`
       : next && grp(next.esp) === 'VC' ? `El siguiente es ${labelEsp(next.esp).toLowerCase()}: si cambias la llave antes, anota aquí lo que pase.` : '';
     if (hint) { $('#arrHint').hidden = false; $('#arrHint').textContent = hint; if (!r.litros) arrOn = true; }
@@ -643,12 +647,12 @@ function ficha(i) {
       if (a > 0) { if (a >= l) { e.hidden = false; e.textContent = 'El arrastre no puede ser igual o mayor que los litros del ganadero.'; return; } arr = { l: a, dest: arrDest }; } }
     const viajeId = r.viajeId || S.viaje.id;
     const rec = {
-      recId: viajeId + '-' + g.cod, viajeId, fecha: hoyTxt(), hora: hhmm(), ruta: x.ruta, ord: x.ord, cod: g.cod, esp: g.esp,
+      recId: viajeId + '-' + g.cod + '-' + g.esp, viajeId, fecha: hoyTxt(), hora: hhmm(), ruta: x.ruta, ord: x.ord, cod: g.cod, esp: g.esp,
       sin: !!sin, litros: sin ? 0 : l, temp: sin ? null : t, muestra: sin ? '' : mu, dest, letra: comp(dest).l, arr,
       inc: !sin && t > cf.tempAviso, mezcla: !sin && !compat(g.esp, comp(dest)).ok,
       lat: U.pos ? +U.pos.latitude.toFixed(6) : '', lon: U.pos ? +U.pos.longitude.toFixed(6) : ''
     };
-    S.rec[g.cod] = rec;
+    S.rec[kg(g)] = rec;
     if (!sin) { g.ult = l; if (!rec.mezcla) g.dl = rec.letra; }
     S.lastI = i; persistir(); encolar(rec);
     toast(sin ? 'Anotado: hoy no se recoge' : (navigator.onLine ? 'Guardado' : 'Guardado en el móvil. Se enviará con cobertura.'));
@@ -697,7 +701,7 @@ function trasvase() {
     if (U.ocupado) return;
     const b = $('#trOk'), m = $('#trMsg');
     const litros = Object.values(tot).reduce((a, b) => a + b, 0);
-    const pend = S.list.filter(x => !S.rec[x.cod]).reduce((a, x) => a + (gan(x.cod).ult || 0), 0);
+    const pend = S.list.filter(x => !S.rec[x.k]).reduce((a, x) => a + (gan(x.k).ult || 0), 0);
     const id = 'V' + Date.now().toString(36).toUpperCase() + '-' + D().conductor.id;
     ocupado(b, 'Generando DeCA nuevo…');
     try {
@@ -725,7 +729,7 @@ function trasvase() {
 function fin() {
   const tot = totales(), sum = Object.values(tot).reduce((a, b) => a + b, 0), n = {};
   recsViaje().forEach(x => { if (!x.sin) n[x.dest] = (n[x.dest] || 0) + 1; });
-  const pend = S.list.filter(x => !S.rec[x.cod]).length;
+  const pend = S.list.filter(x => !S.rec[x.k]).length;
   const inc = recsViaje().filter(x => x.inc).length, mez = recsViaje().filter(x => x.mezcla).length;
   const arrs = recsViaje().filter(x => x.arr), arrSum = arrs.reduce((a, x) => a + x.arr.l, 0);
   const v = $('#vFin');

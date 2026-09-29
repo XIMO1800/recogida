@@ -165,6 +165,12 @@ body{margin:0}
 #scanner p{color:#fff;text-align:center;font-weight:700;margin:0}
 #reader{width:100%;max-width:480px;margin:0 auto;background:#000;border-radius:12px;overflow:hidden}
 #scanner .btn{max-width:480px;margin:0 auto;background:#fff;color:var(--brand)}
+  table.hist { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.hist th { text-align: left; font-size: 12px; color: var(--muted, #777); font-weight: 600; padding: 4px 4px 6px; border-bottom: 1px solid rgba(0,0,0,.12); }
+  table.hist td { padding: 8px 4px; border-bottom: 1px solid rgba(0,0,0,.07); vertical-align: top; }
+  table.hist td.num { text-align: right; font-weight: 700; white-space: nowrap; }
+  table.hist td:last-child { white-space: nowrap; }
+  tr.muted td { opacity: .55; }
 </style>
 </head>
 <body>
@@ -193,6 +199,7 @@ body{margin:0}
     <section id="vLista" class="stack" hidden></section>
     <section id="vFicha" class="stack" hidden></section>
     <section id="vFin" class="stack" hidden></section>
+    <section id="vHist" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -207,7 +214,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v7 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v8 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -314,7 +321,7 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin'];
+const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist'];
 function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
@@ -327,6 +334,7 @@ $('#back').onclick = () => {
   if (U.view === 'vCamion') return U.camMode === 'trasvase' ? lista() : rutas();
   if (U.view === 'vTras') return camion('trasvase');
   if (U.view === 'vFicha' || U.view === 'vFin') return lista();
+  if (U.view === 'vHist') { if (U.histI != null) { U.histI = null; return histRender(); } return rutas(); }
 };
 function ocupado(btn, txt) { U.ocupado = true; btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = txt; }
 function libre(btn) { U.ocupado = false; btn.disabled = false; if (btn.dataset.t) btn.textContent = btn.dataset.t; }
@@ -399,7 +407,9 @@ function rutas() {
     <button class="btn" id="ini" ${n ? '' : 'disabled'}>Iniciar viaje</button>
   </div>
   <p class="small muted">Al iniciar se genera el DeCA con su QR. Hace falta cobertura en ese momento.</p>
+  <button class="btn sec" id="histBtn">Consultar días anteriores</button>
   <div class="row"><button class="btn ghost" id="refrescar">Actualizar datos</button><button class="btn ghost" id="salir">Cambiar de conductor</button></div>`;
+  $('#histBtn').onclick = () => historial();
   v.querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
     const r = b.dataset.r;
     if (S.sel.includes(r)) { if (S.sel.length > 1) S.sel = S.sel.filter(x => x !== r); }
@@ -776,6 +786,56 @@ function trasvase() {
     }
   };
   show('vTras', 'Trasvase', `${T().matricula} → ${nuevo.matricula}`);
+}
+
+/* 6. Consulta de días anteriores (solo lectura). Si hay un error, se avisa a la oficina y la oficina lo corrige. */
+const DIAS_SEM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+function diaTxt(f) { const m = String(f).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (!m) return f; const d = new Date(+m[3], +m[2] - 1, +m[1]); return DIAS_SEM[d.getDay()] + ' ' + m[1] + '/' + m[2]; }
+function totDia(viajes) {
+  const t = {}; let total = 0, n = 0;
+  viajes.forEach(v => v.recs.forEach(r => { if (r.sin) return; n++; total += r.l;
+    if (r.d1) t[r.d1] = (t[r.d1] || 0) + (r.l1 || r.l); if (r.d2 && r.l2) t[r.d2] = (t[r.d2] || 0) + r.l2; }));
+  return { t, total, n };
+}
+async function historial() {
+  U.histI = null;
+  const v = $('#vHist');
+  v.innerHTML = '<div class="card"><p class="muted">Cargando los últimos 15 días…</p></div>';
+  show('vHist', 'Días anteriores', D().conductor.nombre);
+  try { const r = await api('historial', { dias: 15 }); S.hist = { dias: r.dias, hasta: r.hasta }; persistir(); U.histOff = false; }
+  catch (e) { U.histOff = true; if (!esRed(e)) { v.innerHTML = `<div class="msg bad">${esc(e.message)}</div>`; return; } }
+  histRender();
+}
+function histRender() {
+  const v = $('#vHist'), H = S.hist;
+  if (!H) { v.innerHTML = '<div class="msg warn">Sin cobertura y sin datos guardados. Vuelve a intentarlo con conexión.</div>'; return; }
+  const aviso = (U.histOff ? `<div class="msg warn">Sin cobertura. Estos datos son de la última consulta (${esc(H.hasta)}).</div>` : '')
+    + (pendientes() ? '<div class="msg warn">Hay datos en el móvil sin enviar todavía: no salen aquí hasta que se envíen.</div>' : '');
+  if (U.histI == null) {
+    v.innerHTML = `${aviso}<p class="small muted">Solo consulta. Si ves un error, avisa a la oficina para que lo corrija.</p>
+      ${H.dias.length ? '' : '<div class="card"><p class="muted">No hay recogidas en los últimos 15 días.</p></div>'}
+      <div class="stack">${H.dias.map((d, i) => { const k = totDia(d.viajes); return `<button class="farm" data-h="${i}"><span class="n">${esc(String(d.fecha).slice(0, 2))}</span>
+        <span class="main"><span class="name" style="text-transform:capitalize">${esc(diaTxt(d.fecha))}</span><span class="sub">${k.n} ganaderos · ${d.viajes.length} viaje${d.viajes.length > 1 ? 's' : ''}</span></span>
+        <span class="st num">${fmt(k.total)} l</span></button>`; }).join('')}</div>`;
+    v.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { U.histI = +b.dataset.h; histRender(); window.scrollTo(0, 0); });
+    show('vHist', 'Días anteriores', D().conductor.nombre); return;
+  }
+  const d = H.dias[U.histI], k = totDia(d.viajes);
+  const tanque = id => { const l = String(id).replace(/^\d+/, ''); return `<span class="tank sp-${l === 'd' ? 'D' : esc(l.toUpperCase())}">${esc(id)}</span>`; };
+  v.innerHTML = `${aviso}
+    <div class="card stack"><h2 style="text-transform:capitalize">${esc(diaTxt(d.fecha))}</h2>
+      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = x => 'DdOCV'.indexOf(x.replace(/^\d+/, '')); return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div>${tanque(c)}<b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
+      <p><b>Total ${fmt(k.total)} l</b> · ${k.n} ganaderos</p></div>
+    ${d.viajes.map(vj => `<div class="card stack">
+      <p class="small muted">DeCA <span class="mono">${esc(vj.deca)}</span> · <span class="mono">${esc(vj.matricula)}</span> · ${esc(vj.ini)}${vj.fin ? '–' + esc(vj.fin) : ''}${/CURSO/.test(vj.estado) ? ' · <b>sin cerrar</b>' : ''}${/TRASVASE/.test(vj.estado) ? ' · cerrado por trasvase' : ''}</p>
+      <table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
+      ${vj.recs.map(r => `<tr${r.sin ? ' class="muted"' : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}</span></td>
+        <td class="num">${r.sin ? '—' : fmt(r.l)}</td>
+        <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${esc(r.d1)} ${fmt(r.l1)}<br>${esc(r.d2)} ${fmt(r.l2)}` : esc(r.d1)}</td></tr>`).join('')}
+      </tbody></table></div>`).join('')}
+    <button class="btn sec" id="histVolver">Volver a los días</button>`;
+  $('#histVolver').onclick = () => { U.histI = null; histRender(); };
+  show('vHist', 'Días anteriores', D().conductor.nombre);
 }
 
 /* 5. Terminar viaje */

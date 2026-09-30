@@ -22,7 +22,6 @@
   --accent:var(--brand); --accent-ink:#fff; --accent-soft:var(--brand-soft);
   --ok:#1e7443; --ok-soft:#e1f2e7; --warn:#9c5c00; --warn-soft:#fdf0d8; --bad:#c0262d; --bad-soft:#fde4e4;
   --sp-do:#1c6b35; --sp-ov:#1d5796; --sp-ca:#b3262d; --sp-va:#5a5254;   /* texto: colores del tapón del bote de muestra */
-  --bg-do:#e0f1e4; --bg-ov:#e1ecf9; --bg-ca:#fbe3e3; --bg-va:#ffffff;   /* fondos suaves */
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -80,14 +79,27 @@ p{margin:0}
 .tank{font-family:var(--mono);font-weight:600;font-size:14px;border:2px solid currentColor;border-radius:8px;padding:2px 8px;background:var(--surface)}
 .sp-D{color:var(--sp-do)} .sp-O{color:var(--sp-ov)} .sp-C{color:var(--sp-ca)} .sp-V{color:var(--sp-va)}
 .sp-MX{color:var(--sp-ca)}
-/* Fondo suave por especie (tarjetas, filas, botones de destino, chapas de compartimento) */
-.bg-D{background:var(--bg-do)!important} .bg-O{background:var(--bg-ov)!important} .bg-C{background:var(--bg-ca)!important}
-.bg-V{background:var(--bg-va)!important} .bg-MX{background:linear-gradient(90deg,var(--bg-ca),var(--bg-va))!important}
-.tank.sp-D{background:var(--bg-do)} .tank.sp-O{background:var(--bg-ov)} .tank.sp-C{background:var(--bg-ca)} .tank.sp-V{background:var(--bg-va)}
-.tank.sp-MX{background:linear-gradient(90deg,var(--bg-ca),var(--bg-va))}
-.sp-badge.sp-D{background:var(--bg-do)} .sp-badge.sp-O{background:var(--bg-ov)} .sp-badge.sp-C{background:var(--bg-ca)} .sp-badge.sp-V{background:#fff}
-tr.bg-D td,tr.bg-O td,tr.bg-C td,tr.bg-V td{border-bottom-color:rgba(0,0,0,.08)}
-.farmer-head.bg-D{border-left-color:var(--sp-do)} .farmer-head.bg-O{border-left-color:var(--sp-ov)} .farmer-head.bg-C{border-left-color:var(--sp-ca)} .farmer-head.bg-V{border-left-color:#b9b0b2}
+/* Especie = color del tapón del bote de muestra. Cada ficha: fondo muy suave, borde fino del color y franja gruesa a la izquierda */
+.bg-D{--cf:#eef7f0;--cb:#a9d4b4;--cs:var(--sp-do)} .bg-O{--cf:#eff5fd;--cb:#a9c5e8;--cs:var(--sp-ov)}
+.bg-C{--cf:#fdf0f0;--cb:#ebb2b4;--cs:var(--sp-ca)} .bg-V{--cf:#ffffff;--cb:#d3cccd;--cs:#a39a9c}
+.bg-MX{--cf:linear-gradient(90deg,#fdf0f0,#fff);--cb:#ebb2b4;--cs:var(--sp-ca)}
+.farm[class*="bg-"],.dest[class*="bg-"],.tally div[class*="bg-"],.card[class*="bg-"]{background:var(--cf);border-color:var(--cb)}
+.farm[class*="bg-"],.card[class*="bg-"]{border-left:6px solid var(--cs)}
+.farm.next[class*="bg-"]{background:var(--cf);border-color:var(--brand);border-width:2px;border-left:6px solid var(--cs);box-shadow:0 2px 8px rgba(134,33,51,.15)}
+.farm.done[class*="bg-"],.farm.skip[class*="bg-"]{background:var(--cf)}
+.dest[class*="bg-"]{border-top:5px solid var(--cs)}
+.dest[aria-pressed="true"][class*="bg-"]{background:var(--cf);border-color:var(--brand);border-top-color:var(--cs)}
+.tally div[class*="bg-"]{border-top:4px solid var(--cs)}
+.tank.sp-D{background:#eef7f0} .tank.sp-O{background:#eff5fd} .tank.sp-C{background:#fdf0f0} .tank.sp-V{background:#fff;color:#5a5254}
+.tank.sp-MX{background:linear-gradient(90deg,#fdf0f0,#fff)}
+.sp-badge.sp-D{background:#eef7f0} .sp-badge.sp-O{background:#eff5fd} .sp-badge.sp-C{background:#fdf0f0} .sp-badge.sp-V{background:#fff}
+/* Tablas de consulta (oficina e historial): cada ganadero es una ficha separada */
+table.hist{border-collapse:separate!important;border-spacing:0 8px}
+table.hist thead th{border-bottom:0!important;padding-bottom:0}
+table.hist tbody td{background:var(--cf,#fff);border-top:1.5px solid var(--cb,var(--line));border-bottom:1.5px solid var(--cb,var(--line))!important;padding:10px 6px}
+table.hist tbody td:first-child{border-left:6px solid var(--cs,#a39a9c);border-radius:12px 0 0 12px;padding-left:10px}
+table.hist tbody td:last-child{border-right:1.5px solid var(--cb,var(--line));border-radius:0 12px 12px 0;padding-right:10px}
+table.hist td .tank{display:inline-block;margin-bottom:3px}
 
 .deca{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;border-top:6px solid var(--brand)}
 #qr{background:#fff;padding:8px;border-radius:8px;width:148px;height:148px;border:1px solid var(--line)}
@@ -226,7 +238,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v14 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v15 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */

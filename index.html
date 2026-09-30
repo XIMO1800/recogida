@@ -21,7 +21,8 @@
   --bg:#f2efee; --surface:#ffffff; --surface2:#f7f4f3; --ink:#1d1618; --muted:#6a5f61; --line:#ddd4d5;
   --accent:var(--brand); --accent-ink:#fff; --accent-soft:var(--brand-soft);
   --ok:#1e7443; --ok-soft:#e1f2e7; --warn:#9c5c00; --warn-soft:#fdf0d8; --bad:#c0262d; --bad-soft:#fde4e4;
-  --sp-do:#8c3a1c; --sp-ov:#8f6a0e; --sp-ca:#2c6a38; --sp-va:#1f5a91;
+  --sp-do:#1c6b35; --sp-ov:#1d5796; --sp-ca:#b3262d; --sp-va:#5a5254;   /* texto: colores del tapón del bote de muestra */
+  --bg-do:#e0f1e4; --bg-ov:#e1ecf9; --bg-ca:#fbe3e3; --bg-va:#ffffff;   /* fondos suaves */
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -79,6 +80,14 @@ p{margin:0}
 .tank{font-family:var(--mono);font-weight:600;font-size:14px;border:2px solid currentColor;border-radius:8px;padding:2px 8px;background:var(--surface)}
 .sp-D{color:var(--sp-do)} .sp-O{color:var(--sp-ov)} .sp-C{color:var(--sp-ca)} .sp-V{color:var(--sp-va)}
 .sp-MX{color:var(--sp-ca)}
+/* Fondo suave por especie (tarjetas, filas, botones de destino, chapas de compartimento) */
+.bg-D{background:var(--bg-do)!important} .bg-O{background:var(--bg-ov)!important} .bg-C{background:var(--bg-ca)!important}
+.bg-V{background:var(--bg-va)!important} .bg-MX{background:linear-gradient(90deg,var(--bg-ca),var(--bg-va))!important}
+.tank.sp-D{background:var(--bg-do)} .tank.sp-O{background:var(--bg-ov)} .tank.sp-C{background:var(--bg-ca)} .tank.sp-V{background:var(--bg-va)}
+.tank.sp-MX{background:linear-gradient(90deg,var(--bg-ca),var(--bg-va))}
+.sp-badge.sp-D{background:var(--bg-do)} .sp-badge.sp-O{background:var(--bg-ov)} .sp-badge.sp-C{background:var(--bg-ca)} .sp-badge.sp-V{background:#fff}
+tr.bg-D td,tr.bg-O td,tr.bg-C td,tr.bg-V td{border-bottom-color:rgba(0,0,0,.08)}
+.farmer-head.bg-D{border-left-color:var(--sp-do)} .farmer-head.bg-O{border-left-color:var(--sp-ov)} .farmer-head.bg-C{border-left-color:var(--sp-ca)} .farmer-head.bg-V{border-left-color:#b9b0b2}
 
 .deca{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;border-top:6px solid var(--brand)}
 #qr{background:#fff;padding:8px;border-radius:8px;width:148px;height:148px;border:1px solid var(--line)}
@@ -140,7 +149,7 @@ body.kb .back{width:38px}
 .dest{border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:64px;justify-content:center}
 .dest b{font-family:var(--mono);font-size:22px}
 .dest small{font-size:12px;color:var(--muted);text-align:center;line-height:1.2}
-.dest[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);box-shadow:inset 0 0 0 1px var(--brand)}
+.dest[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);box-shadow:inset 0 0 0 2px var(--brand)}
 .dest .hab{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand)}
 .fname{font-family:var(--display);font-weight:700;font-size:24px;line-height:1.05;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .farmer-head{padding-block:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-left:6px solid var(--brand)}
@@ -217,7 +226,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v13 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v14 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -261,6 +270,11 @@ const comps = () => compsDe(T());
 const comp = id => comps().find(c => c.id === id);
 const compLabel = c => c.esp.map(e => SP[e] || e).join(' + ');
 const spClass = c => c.esp.length > 1 ? 'sp-MX' : 'sp-' + c.esp[0];
+const bgComp = c => spClass(c).replace('sp-', 'bg-');                          // sp-O → bg-O
+const bgEsp = e => ({ D: 'bg-D', O: 'bg-O', C: 'bg-C', V: 'bg-V' })[String(e || '').toUpperCase()] || '';
+const letraDe = id => String(id || '').replace(/^\d+/, '').toUpperCase();   // 5D → D, 4v → V
+const bgId = id => bgEsp(letraDe(id));
+const tq = id => `<span class="tank sp-${esc(letraDe(id))}">${esc(id)}</span>`;
 function mezclaMsg(esp, c) {
   return c.esp.includes('D') && esp !== 'D'
     ? `${labelEsp(esp)} en ${c.id}: todo el compartimento deja de ser D.O.`
@@ -599,7 +613,7 @@ function lista() {
   <div class="card stack">
     <div class="route-head"><span class="lbl">${done} de ${L.length} ganaderos</span><b class="num" style="font-family:var(--display);font-size:24px">${fmt(sum)} l</b></div>
     <div class="progress"><i style="width:${L.length ? done / L.length * 100 : 0}%"></i></div>
-    <div class="tally">${comps().map(c => `<div><span class="tank ${spClass(c)}">${c.id}</span><b class="num">${fmt(tot[c.id])}</b>${c.cap ? `<small class="muted">de ${fmt(c.cap)}</small>` : ''}${mixed(c) ? '<small style="color:var(--bad);font-weight:700">mezcla</small>' : ''}</div>`).join('')}</div>
+    <div class="tally">${comps().map(c => `<div class="${bgComp(c)}"><span class="tank ${spClass(c)}">${c.id}</span><b class="num">${fmt(tot[c.id])}</b>${c.cap ? `<small class="muted">de ${fmt(c.cap)}</small>` : ''}${mixed(c) ? '<small style="color:var(--bad);font-weight:700">mezcla</small>' : ''}</div>`).join('')}</div>
   </div>
   <p class="small muted">Si hoy vas en otro orden, toca el ganadero que quieras.</p>
   <div class="stack">${L.map((x, i) => {
@@ -610,7 +624,7 @@ function lista() {
     const prevRuta = i > 0 && L[i - 1].ruta !== x.ruta;
     const cambio = i > 0 && !prevRuta && grp(gan(L[i - 1].k).esp) !== grp(g.esp);
     return `${prevRuta || (i === 0 && S.viaje.rutas.length > 1) ? `<span class="lbl" style="margin-top:6px">Ruta ${+x.ruta}</span>` : ''}${cambio ? `<span class="small" style="color:var(--warn);font-weight:700;padding-left:4px">↓ Cambio de manguera: ${grp(g.esp) === 'OV' ? 'vaca/cabra → oveja' : 'oveja → vaca/cabra'}</span>` : ''}
-      <button class="farm ${cls}" data-i="${i}"><span class="n">${i + 1}</span>
+      <button class="farm ${cls} ${bgEsp(g.esp)}" data-i="${i}"><span class="n">${i + 1}</span>
       <span class="main"><span class="name">${esc(g.nom)}</span><span class="sub">${esc(g.pue)} · <span class="sp-${g.esp}">${labelEsp(g.esp)}</span></span></span>
       <span class="st num">${st}</span></button>`;
   }).join('')}</div>
@@ -633,7 +647,7 @@ function ficha(i) {
   U.pos = null;
   if (navigator.geolocation) navigator.geolocation.getCurrentPosition(p => U.pos = p.coords, () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 120000 });
   const v = $('#vFicha');
-  v.innerHTML = `<div class="card farmer-head">
+  v.innerHTML = `<div class="card farmer-head ${bgEsp(g.esp)}">
       <div style="min-width:0"><h3 class="fname">${esc(g.nom)}</h3><p class="small muted"><span class="mono">${esc(g.cod)}</span> · R${+x.ruta}/${esc(x.ord)} · ${esc(g.pue)}</p></div>
       <span class="sp-badge sp-${g.esp}">${labelEsp(g.esp)}</span></div>
     <div class="pair">
@@ -676,7 +690,7 @@ function ficha(i) {
     <button class="btn" id="save">Guardar y siguiente</button>
     <button class="btn ghost" id="sin">Hoy no se recoge</button>`;
   const drawDests = () => {
-    $('#dests').innerHTML = comps().map(c => `<button class="dest" aria-pressed="${c.id === dest}" data-d="${c.id}">
+    $('#dests').innerHTML = comps().map(c => `<button class="dest ${bgComp(c)}" aria-pressed="${c.id === dest}" data-d="${c.id}">
       <b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small>${c.id === hab ? '<span class="hab">habitual</span>' : ''}</button>`).join('');
     $('#dests').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { dest = b.dataset.d; confirmMix = false; drawDests(); drawArr(); drawRep(); chkCap(); });
     const m = $('#destMsg'), k = compat(g.esp, comp(dest));
@@ -736,7 +750,7 @@ function ficha(i) {
       if (!vc.some(c => c.id === arrDest)) arrDest = (vc[0] || {}).id;
       $('#arrBody').hidden = !arrOn;
       $('#arrTog').textContent = arrOn ? 'Quitar arrastre' : 'Arrastre de manguera (a vaca/cabra)';
-      $('#arrDests').innerHTML = vc.map(c => `<button class="dest" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
+      $('#arrDests').innerHTML = vc.map(c => `<button class="dest ${bgComp(c)}" aria-pressed="${c.id === arrDest}" data-a="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
       $('#arrDests').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { arrDest = b.dataset.a; drawArr(); });
       const a = num($('#arrL').value), m = $('#arrMsg');
       if (a > cf.arrastreAviso) { m.hidden = false; m.className = 'msg bad'; m.textContent = `Más de ${cf.arrastreAviso} l de ${labelEsp(g.esp).toLowerCase()} en ${arrDest}: ya no es arrastre, se anota como mezcla.`; }
@@ -754,7 +768,7 @@ function ficha(i) {
       if (!repDest || repDest === dest) repDest = mejorOtro();
       $('#repBody').hidden = !repOn;
       $('#repTog').textContent = repOn ? 'Quitar: todo cabe en ' + dest : 'No cabe todo: parte a otro compartimento';
-      $('#repDests').innerHTML = otros().map(c => `<button class="dest" aria-pressed="${c.id === repDest}" data-p="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
+      $('#repDests').innerHTML = otros().map(c => `<button class="dest ${bgComp(c)}" aria-pressed="${c.id === repDest}" data-p="${c.id}"><b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small></button>`).join('');
       $('#repDests').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { repDest = b.dataset.p; drawRep(); });
       const m = $('#repMsg'), c2 = comp(repDest), k2 = c2 ? compat(g.esp, c2) : { ok: true };
       if (c2 && !k2.ok) { m.hidden = false; m.className = 'msg bad'; m.textContent = mezclaMsg(g.esp, c2) + ' Quedará anotado como mezcla.'; }
@@ -855,7 +869,7 @@ function trasvase() {
   ${conL.length ? conL.map(o => `<div class="card stack">
     <div class="route-head"><span><span class="tank ${spClass(o)}">${o.id}</span> <span class="small muted">${compLabel(o)}</span></span><b class="num">${fmt(tot[o.id])} l</b></div>
     <span class="lbl">Pasa a</span>
-    <div class="dests">${nc.map(d => `<button class="dest" aria-pressed="${U.map[o.id] === d.id}" data-o="${o.id}" data-d="${d.id}"><b class="${spClass(d)}">${d.id}</b><small>${compLabel(d)}</small></button>`).join('')}</div>
+    <div class="dests">${nc.map(d => `<button class="dest ${bgComp(d)}" aria-pressed="${U.map[o.id] === d.id}" data-o="${o.id}" data-d="${d.id}"><b class="${spClass(d)}">${d.id}</b><small>${compLabel(d)}</small></button>`).join('')}</div>
     ${!okPara(o, destDe(o)) ? `<div class="msg bad">${compLabel(o)} a un compartimento de ${compLabel(destDe(o))}: se mezclan${destDe(o).esp.includes('D') ? ' y deja de ser D.O.' : ''}. Si no hay otro sitio, confirma igualmente y quedará como incidencia.</div>` : ''}
   </div>`).join('') : `<div class="msg ok">Todavía no hay leche recogida. Solo cambian el camión y el DeCA.</div>`}
   <div id="trMsg" hidden></div>
@@ -922,17 +936,17 @@ function histRender() {
     show('vHist', 'Días anteriores', D().conductor.nombre); return;
   }
   const d = H.dias[U.histI], k = totDia(d.viajes);
-  const tanque = id => { const l = String(id).replace(/^\d+/, ''); return `<span class="tank sp-${esc(l.toUpperCase())}">${esc(id)}</span>`; };
+  const tanque = tq;
   v.innerHTML = `${aviso}
     <div class="card stack"><h2 style="text-transform:capitalize">${esc(diaTxt(d.fecha))}</h2>
-      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = x => 'DdOCV'.indexOf(x.replace(/^\d+/, '')); return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div>${tanque(c)}<b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
+      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = x => { const l = x.replace(/^\d+/, ''); return 'DOCV'.indexOf(l.toUpperCase()) * 2 + (l === l.toLowerCase() ? 1 : 0); }; return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div class="${bgId(c)}">${tanque(c)}<b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
       <p><b>Total ${fmt(k.total)} l</b> · ${k.n} ganaderos</p></div>
     ${d.viajes.map(vj => `<div class="card stack">
       <p class="small muted">DeCA <span class="mono">${esc(vj.deca)}</span> · <span class="mono">${esc(vj.matricula)}</span> · ${esc(vj.ini)}${vj.fin ? '–' + esc(vj.fin) : ''}${/CURSO/.test(vj.estado) ? ' · <b>sin cerrar</b>' : ''}${/TRASVASE/.test(vj.estado) ? ' · cerrado por trasvase' : ''}</p>
       <table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
-      ${vj.recs.map(r => `<tr${r.sin ? ' class="muted"' : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.cor ? '<br><b style="color:var(--warn)">Corregido por la oficina</b>' : ''}</span></td>
+      ${vj.recs.map(r => `<tr class="${bgEsp(r.esp)}${r.sin ? ' muted' : ''}"><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.cor ? '<br><b style="color:var(--warn)">Corregido por la oficina</b>' : ''}</span></td>
         <td class="num">${r.sin ? '—' : fmt(r.l)}</td>
-        <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${esc(r.d1)} ${fmt(r.l1)}<br>${esc(r.d2)} ${fmt(r.l2)}${r.d3 && r.l3 ? `<br>${esc(r.d3)} ${fmt(r.l3)}` : ''}` : esc(r.d1)}</td></tr>`).join('')}
+        <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${tq(r.d1)} ${fmt(r.l1)}<br>${tq(r.d2)} ${fmt(r.l2)}${r.d3 && r.l3 ? `<br>${tq(r.d3)} ${fmt(r.l3)}` : ''}` : tq(r.d1)}</td></tr>`).join('')}
       </tbody></table></div>`).join('')}
     <button class="btn sec" id="histVolver">Volver a los días</button>`;
   $('#histVolver').onclick = () => { U.histI = null; histRender(); };
@@ -976,16 +990,16 @@ function ofiViaje(id) {
   const ult = x.recs.filter(r => r.hora && r.lat).sort((a, b) => a.hora < b.hora ? 1 : -1)[0];
   v.innerHTML = `<div class="card stack"><h2>${esc(x.nombre)} · ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')}</h2>
       <p class="small muted">${esc(diaTxt(x.fecha))} · DeCA <span class="mono">${esc(x.deca)}</span> · <span class="mono">${esc(x.matricula)}</span> · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${cerrado ? '' : ' · <b>en curso</b>'}${x.exportado && x.exportado !== 'NO' ? ' · fichero ' + esc(x.exportado) : ''}</p>
-      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = y => { const l = y.replace(/^\d+/, ''); return 'DOCV'.indexOf(l.toUpperCase()) * 2 + (l === l.toLowerCase() ? 1 : 0); }; return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div><span class="tank sp-${esc(c.replace(/^\d+/, '').toUpperCase())}">${esc(c)}</span><b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
+      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = y => { const l = y.replace(/^\d+/, ''); return 'DOCV'.indexOf(l.toUpperCase()) * 2 + (l === l.toLowerCase() ? 1 : 0); }; return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div class="${bgId(c)}">${tq(c)}<b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
       <p><b>Total ${fmt(k.total)} l</b> · ${k.n} ganaderos${x.falta.length ? ` · faltan ${x.falta.length}` : ''}</p>
       ${ult ? `<a class="btn ghost" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(String(ult.lat).replace(',', '.') + ',' + String(ult.lon).replace(',', '.'))}">Ver en el mapa la última recogida (${esc(ult.hora)})</a>` : ''}
       ${cerrado ? '<p class="small muted">Toca un ganadero para corregirlo. Cada cambio queda registrado con tu nombre.</p>' : '<p class="small muted">Viaje en curso: solo consulta. Se podrá corregir cuando esté cerrado.</p>'}</div>
     <div class="card"><table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
-      ${x.recs.map((r, i) => `<tr${r.sin ? ' class="muted"' : ''} ${cerrado ? `data-r="${i}" style="cursor:pointer"` : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.hora ? ' · ' + esc(r.hora) : ''}${r.cor ? `<br><b style="color:var(--warn)">Corregido: ${esc(r.cor)}</b>` : ''}</span></td>
-        <td class="num">${r.sin ? '—' : fmt(r.l)}</td><td>${r.sin ? '<span class="small">No recogido</span>' : (r.d2 ? [[r.d1, r.l1], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]).map(z => esc(z[0]) + ' ' + fmt(z[1])).join('<br>') : esc(r.d1))}</td></tr>`).join('')}
+      ${x.recs.map((r, i) => `<tr class="${bgEsp(r.esp)}${r.sin ? ' muted' : ''}" ${cerrado ? `data-r="${i}" style="cursor:pointer"` : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.hora ? ' · ' + esc(r.hora) : ''}${r.cor ? `<br><b style="color:var(--warn)">Corregido: ${esc(r.cor)}</b>` : ''}</span></td>
+        <td class="num">${r.sin ? '—' : fmt(r.l)}</td><td>${r.sin ? '<span class="small">No recogido</span>' : (r.d2 ? [[r.d1, r.l1], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]).map(z => tq(z[0]) + ' ' + fmt(z[1])).join('<br>') : tq(r.d1))}</td></tr>`).join('')}
     </tbody></table></div>
     ${x.falta.length ? `<div class="card stack"><span class="lbl">${cerrado ? 'Sin apuntar en este viaje' : 'Faltan por recoger'}</span>
-      ${x.falta.map((g, i) => `<button class="farm" ${cerrado ? `data-f="${i}"` : 'disabled'}><span class="main"><span class="name">${esc(g.nom)}</span><span class="sub">${esc(g.cod)} · R${+g.ruta}/${esc(g.ord)} · ${labelEsp(g.esp)}</span></span><span class="st">${cerrado ? 'Añadir' : ''}</span></button>`).join('')}</div>` : ''}`;
+      ${x.falta.map((g, i) => `<button class="farm ${bgEsp(g.esp)}" ${cerrado ? `data-f="${i}"` : 'disabled'}><span class="main"><span class="name">${esc(g.nom)}</span><span class="sub">${esc(g.cod)} · R${+g.ruta}/${esc(g.ord)} · ${labelEsp(g.esp)}</span></span><span class="st">${cerrado ? 'Añadir' : ''}</span></button>`).join('')}</div>` : ''}`;
   v.querySelectorAll('[data-r]').forEach(tr => tr.onclick = () => ofiEditar(x, x.recs[+tr.dataset.r], null));
   v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => ofiEditar(x, null, x.falta[+b.dataset.f]));
   show('vOfiV', 'Viaje', x.nombre);
@@ -993,8 +1007,8 @@ function ofiViaje(id) {
 function ofiEditar(x, r, nuevo) {
   const v = $('#vOfiE'), g = r || nuevo, comps = x.comps.length ? x.comps : Array.from(new Set(x.recs.flatMap(y => [y.d1, y.d2, y.d3]).filter(Boolean)));
   let d1 = r ? r.d1 : (comps[0] || ''), d2 = r ? r.d2 : '', d3 = r ? r.d3 : '';
-  const chips = (id, sel) => `<div class="dests" id="${id}">${comps.map(c => `<button class="dest" aria-pressed="${c === sel}" data-c="${esc(c)}"><b>${esc(c)}</b></button>`).join('')}</div>`;
-  v.innerHTML = `<div class="card stack"><h3 class="fname">${esc(g.nom || g.cod)}</h3>
+  const chips = (id, sel) => `<div class="dests" id="${id}">${comps.map(c => `<button class="dest ${bgId(c)}" aria-pressed="${c === sel}" data-c="${esc(c)}"><b class="sp-${esc(letraDe(c))}">${esc(c)}</b></button>`).join('')}</div>`;
+  v.innerHTML = `<div class="card stack ${bgEsp(g.esp)}"><h3 class="fname">${esc(g.nom || g.cod)}</h3>
       <p class="small muted">${esc(g.cod)} · R${+g.ruta}/${esc(g.ord)} · ${labelEsp(g.esp)} · ${esc(diaTxt(x.fecha))} · DeCA ${esc(x.deca)}</p>
       ${r ? `<p class="small">Ahora: <b>${r.sin ? 'no recogido' : fmt(r.l) + ' l'}</b>${r.sin ? '' : ' · ' + esc(r.t) + ' °C · muestra ' + esc(r.mue) + ' · ' + [[r.d1, r.l1], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]).map(z => esc(z[0]) + ' ' + fmt(z[1])).join(' + ')}</p>` : '<div class="msg warn">Se añadirá este ganadero al viaje.</div>'}
     </div>

@@ -200,6 +200,9 @@ body{margin:0}
     <section id="vFicha" class="stack" hidden></section>
     <section id="vFin" class="stack" hidden></section>
     <section id="vHist" class="stack" hidden></section>
+    <section id="vOfi" class="stack" hidden></section>
+    <section id="vOfiV" class="stack" hidden></section>
+    <section id="vOfiE" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -214,7 +217,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v9 · 29/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v12 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -279,7 +282,8 @@ function habitual(g) { const c = comps().find(c => c.l === g.dl); return c ? c.i
 /* ═══════════ SERVIDOR Y COLA SIN COBERTURA ═══════════ */
 async function api(accion, datos) {
   if (API.startsWith('PEGAR')) throw new Error('Falta configurar la dirección del servidor (API) en la app.');
-  const r = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ accion, pin: S.pin }, datos)) });
+  if (!S.dev) { S.dev = 'D' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); persistir(); }
+  const r = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ accion, pin: S.pin, dev: S.dev }, datos)) });
   const j = await r.json();
   if (!j.ok) {
     if (j.error === 'PIN incorrecto' && accion !== 'login') { pinCaducado(); throw new Error('El PIN ha cambiado. Escribe el nuevo.'); }
@@ -321,11 +325,11 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist'];
+const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE'];
 function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
-  $('#back').hidden = ['vPin', 'vDeca', 'vRutas'].includes(v) || (v === 'vLista');
+  $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista');
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
   window.scrollTo(0, 0); syncPill();
 }
@@ -334,6 +338,8 @@ $('#back').onclick = () => {
   if (U.view === 'vCamion') return U.camMode === 'trasvase' ? lista() : rutas();
   if (U.view === 'vTras') return camion('trasvase');
   if (U.view === 'vFicha' || U.view === 'vFin') return lista();
+  if (U.view === 'vOfiE') return ofiViaje(U.ofiV);
+  if (U.view === 'vOfiV') return oficina(true);
   if (U.view === 'vHist') { if (U.histI != null) { U.histI = null; return histRender(); } return rutas(); }
 };
 function ocupado(btn, txt) { U.ocupado = true; btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = txt; }
@@ -356,13 +362,14 @@ function pinView(msg) {
   const go = async () => {
     const pin = $('#pin').value.trim(); if (!pin) return;
     const b = $('#entrar'); ocupado(b, 'Entrando…');
-    const antes = S.datos && S.datos.conductor ? S.datos.conductor.id : null;
+    const antes = S.datos && S.datos.conductor && !S.datos.oficina ? S.datos.conductor.id : null;
     try {
       S.pin = pin; const d = await api('login', {});
-      if (antes && d.conductor.id !== antes && (pendientes() || S.viaje)) {
+      if (antes && (!d.conductor || d.conductor.id !== antes) && (pendientes() || S.viaje)) {
         S.pin = null; libre(b);
         pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
       }
+      if (d.rol === 'OFICINA') { S.datos = { oficina: true, usuario: d.usuario, config: d.config }; persistir(); oficina(); return; }
       cargarDatos(d);
       if (S.viaje) (S.viaje.empezado ? lista : deca)(); else rutas();
       flush();
@@ -373,7 +380,7 @@ function pinView(msg) {
   show('vPin', 'Recogida de leche', 'Quesos El Hidalgo');
 }
 function cargarDatos(d) {
-  S.datos = { conductor: d.conductor, rutas: d.rutas, ganaderos: d.ganaderos, camiones: d.camiones, config: d.config };
+  S.datos = { conductor: d.conductor, rutas: d.rutas, ganaderos: d.ganaderos, camiones: d.camiones, config: d.config, hoy: d.hoy || { viajes: [], recs: {} } };
   const rs = misRutas();
   S.sel = S.sel.filter(r => rs.includes(r)); if (!S.sel.length && rs.length) S.sel = [rs[0]];
   if (!CAM(S.cam)) S.cam = CAM(d.conductor.habitual) ? d.conductor.habitual : (d.camiones[0] || {}).id;
@@ -403,8 +410,9 @@ function rutas() {
       <div class="unit"><input class="big" id="estL" inputmode="numeric" autocomplete="off" placeholder="0" value="${S.estManual || estSel() || ''}" style="font-size:34px"><span>l</span></div>
       <span class="small muted">Sale calculado con la última recogida de cada ganadero. Corrígelo si hoy llevas más o menos.</span></div>
     ${n ? '' : `<div class="msg bad">No hay ganaderos cargados en ${S.sel.length > 1 ? 'estas rutas' : 'esta ruta'}. Avisa a la oficina.</div>`}
+    ${viajesHoy(S.sel).length ? `<div class="msg warn"><b>Hoy ya hay ${viajesHoy(S.sel).length > 1 ? 'viajes' : 'un viaje'} de ${S.sel.length > 1 ? 'estas rutas' : 'esta ruta'}:</b><br>${viajesHoy(S.sel).map(v => esc(txtViaje(v))).join('<br>')}<br>Inicia otro solo si de verdad vuelves a salir.</div>` : ''}
     <div id="iniMsg" hidden></div>
-    <button class="btn" id="ini" ${n ? '' : 'disabled'}>Iniciar viaje</button>
+    <button class="btn" id="ini" ${n ? '' : 'disabled'}>${viajesHoy(S.sel).length ? 'Iniciar otro viaje' : 'Iniciar viaje'}</button>
   </div>
   <p class="small muted">Al iniciar se genera el DeCA con su QR. Hace falta cobertura en ese momento.</p>
   <button class="btn sec" id="histBtn">Consultar días anteriores</button>
@@ -495,7 +503,17 @@ async function iniciar() {
   const id = 'V' + Date.now().toString(36).toUpperCase() + '-' + D().conductor.id;
   ocupado(b, 'Generando DeCA…');
   try {
-    const r = await api('iniciarViaje', { viaje: { id, rutas: S.sel, pref: pref(), camion: camionPayload(T()), estLitros: est } });
+    const r = await api('iniciarViaje', { viaje: { id, rutas: S.sel, pref: pref(), camion: camionPayload(T()), estLitros: est, confirmado: !!U.otroViaje } });
+    if (r.hoy) { S.datos.hoy = r.hoy; persistir(); }
+    if (r.aviso) {
+      libre(b); m.hidden = false; m.className = 'msg bad';
+      m.innerHTML = `<p><b>Hoy ya se ha hecho ${S.sel.length > 1 ? 'esta ruta' : 'la ruta ' + (+S.sel[0])}:</b></p><p class="small">${r.aviso.map(v => esc(txtViaje(v))).join('<br>')}</p>
+        <p style="margin-top:6px">Si es un segundo viaje de verdad, confírmalo. Si no, no lo inicies: se repetirían los ganaderos.</p>
+        <button class="btn" id="otroOk" style="margin-top:10px;background:var(--bad);box-shadow:none">Sí, es otro viaje. Iniciar</button>`;
+      $('#otroOk').onclick = () => { U.otroViaje = true; iniciar(); };
+      return;
+    }
+    U.otroViaje = false;
     S.cam = adoptarCamion(r, S.cam);
     S.viaje = Object.assign({}, r.viaje, { rutas: S.sel.slice(), prefijo: pref(), est, empezado: false });
     S.cadena = [r.viaje.id]; S.decas = []; S.list = list; S.rec = {}; S.lastI = null; S.estManual = '';
@@ -505,6 +523,11 @@ async function iniciar() {
     m.textContent = esRed(e) ? 'Sin cobertura: el DeCA necesita conexión para generarse. Busca cobertura y vuelve a pulsar.' : e.message;
   }
 }
+// Lo ya recogido HOY en otros viajes (de esta u otra app): para no repetir la ruta por error
+const HOY = () => (D() && D().hoy) || { viajes: [], recs: {} };
+const hoyOtro = k => { const h = HOY().recs[k]; return h && !(S.cadena || []).includes(h.viaje) ? h : null; };
+const viajesHoy = rs => HOY().viajes.filter(v => !(S.cadena || []).includes(v.id) && String(v.rutas).split(/[,\s]+/).some(r => rs.map(x => String(+x)).includes(String(+r))));
+const txtViaje = v => `DeCA ${v.deca} · ${v.matricula} · ${v.ini}${v.fin ? '–' + v.fin : ''}${/CURSO/.test(v.estado) ? ' (sin cerrar)' : ''} · ${fmt(v.litros)} l${v.conductor !== D().conductor.id ? ' · ' + v.conductor : ''}`;
 // Un mismo ganadero puede tener dos especies (oveja y cabra): cada especie es una parada distinta (clave código|especie)
 const kg = g => g.cod + '|' + g.esp;
 const gan = k => D().ganaderos.find(g => kg(g) === k) || D().ganaderos.find(g => g.cod === k) || { cod: String(k).split('|')[0], nom: String(k).split('|')[0], esp: String(k).split('|')[1] || 'O', dl: '', pue: '', ult: 0 };
@@ -527,12 +550,32 @@ function deca() {
     </dl></div>
   <a class="btn sec" href="${esc(V.decaUrl)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">Abrir el PDF</a>
   <p class="small muted">Si te para la Guardia Civil, enseña esta pantalla: el QR descarga el PDF sin pedir clave. Durante el viaje lo tienes siempre en el botón <b>DeCA</b> de arriba.</p>
-  <button class="btn" id="go">${enCurso ? 'Volver a la recogida' : 'Empezar recogida'}</button>`;
+  <button class="btn" id="go">${enCurso ? 'Volver a la recogida' : 'Empezar recogida'}</button>
+  ${anulable() ? '<button class="btn ghost" id="anular">Me he equivocado: anular este viaje</button>' : ''}`;
   try { new QRCode($('#qr'), { text: V.decaUrl, width: 130, height: 130, colorDark: '#1d1618', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); }
   catch (e) { $('#qr').innerHTML = '<p class="small">QR no disponible</p>'; }
+  if ($('#anular')) $('#anular').onclick = anular;
   $('#go').onclick = () => { S.viaje.empezado = true; persistir();
     if (U.vistaPrev === 'vFicha' && U.volver != null) ficha(U.volver); else if (U.vistaPrev === 'vFin') fin(); else lista(); };
   show('vDeca', 'DeCA · Ruta ' + S.viaje.rutas.map(x => +x).join(' y '), V.matricula);
+}
+
+/* Anular un viaje iniciado por error (sin ningún ganadero apuntado) */
+const anulable = () => S.viaje && !Object.keys(S.rec).length && (S.cadena || []).length <= 1 && !pendientes();
+function anular() {
+  const v = U.view === 'vDeca' ? $('#vDeca') : $('#vLista'), b = $('#anular');
+  if (!b.dataset.ok) {
+    b.dataset.ok = '1'; b.className = 'btn'; b.style.background = 'var(--bad)'; b.style.boxShadow = 'none';
+    b.textContent = 'Sí, anular. No voy a hacer este viaje';
+    b.insertAdjacentHTML('beforebegin', '<div class="msg warn" id="anuMsg">Se anulará el DeCA ' + esc(S.viaje.decaNum) + '. No se envía nada a la oficina y podrás iniciar el viaje de nuevo cuando toque.</div>');
+    return;
+  }
+  if (U.ocupado) return;
+  ocupado(b, 'Anulando…');
+  api('anularViaje', { viajeId: S.viaje.id }).then(() => {
+    S.viaje = null; S.list = []; S.rec = {}; S.decas = []; S.cadena = []; S.lastI = null; persistir();
+    toast('Viaje anulado'); rutas();
+  }).catch(e => { libre(b); const m = $('#anuMsg'); if (m) { m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin cobertura: para anular hace falta conexión.' : e.message; } });
 }
 
 /* 3. Lista de ganaderos */
@@ -560,7 +603,8 @@ function lista() {
   <div class="stack">${L.map((x, i) => {
     const g = gan(x.k), r = S.rec[x.k];
     const cls = r ? (r.sin ? 'skip' : 'done') : (i === next ? 'next' : '');
-    const st = r ? (r.sin ? 'No recogido' : fmt(r.litros) + ' l · ' + r.dest) : (i === next ? 'Siguiente' : '');
+    const ho = !r && hoyOtro(x.k);
+    const st = r ? (r.sin ? 'No recogido' : fmt(r.litros) + ' l · ' + r.dest) : ho ? `<span style="color:var(--bad)">Ya hoy ${esc(ho.hora)}<br>${fmt(ho.l)} l</span>` : (i === next ? 'Siguiente' : '');
     const prevRuta = i > 0 && L[i - 1].ruta !== x.ruta;
     const cambio = i > 0 && !prevRuta && grp(gan(L[i - 1].k).esp) !== grp(g.esp);
     return `${prevRuta || (i === 0 && S.viaje.rutas.length > 1) ? `<span class="lbl" style="margin-top:6px">Ruta ${+x.ruta}</span>` : ''}${cambio ? `<span class="small" style="color:var(--warn);font-weight:700;padding-left:4px">↓ Cambio de manguera: ${grp(g.esp) === 'OV' ? 'vaca/cabra → oveja' : 'oveja → vaca/cabra'}</span>` : ''}
@@ -569,7 +613,9 @@ function lista() {
       <span class="st num">${st}</span></button>`;
   }).join('')}</div>
   <button class="btn ${done === L.length ? '' : 'sec'}" id="fin">Terminar viaje</button>
-  <button class="btn ghost" id="averia">Avería: trasvase a otro camión</button>`;
+  <button class="btn ghost" id="averia">Avería: trasvase a otro camión</button>
+  ${anulable() ? '<button class="btn ghost" id="anular">Me he equivocado: anular este viaje</button>' : ''}`;
+  if ($('#anular')) $('#anular').onclick = anular;
   v.querySelectorAll('[data-i]').forEach(b => b.onclick = () => ficha(+b.dataset.i));
   if (nx) $('#anotar').onclick = () => ficha(next);
   $('#fin').onclick = fin;
@@ -637,7 +683,7 @@ function ficha(i) {
     else if (dest !== hab) { m.hidden = false; m.className = 'msg warn'; m.textContent = `Cambiado. Lo habitual es ${hab}.`; }
     else m.hidden = true;
   };
-  let confirmMix = !!r.mezcla;
+  let confirmMix = !!r.mezcla, confirmDup = !!r.litros;
   drawDests();
   // Hasta tres destinos: el principal, el arrastre de manguera (oveja → vaca/cabra) y lo que no cabe (reparto)
   const otros = () => comps().filter(c => c.id !== dest);
@@ -732,6 +778,14 @@ function ficha(i) {
     if (!sin) {
       const falta = []; if (!(l > 0)) falta.push('litros'); if (isNaN(t)) falta.push('temperatura'); if (!mu) falta.push('muestra');
       if (falta.length) { e.hidden = false; e.textContent = 'Falta: ' + falta.join(', ') + '.'; e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+      const ho = hoyOtro(kg(g));
+      if (ho && !confirmDup) {
+        e.hidden = false;
+        e.innerHTML = `<p>Este ganadero <b>ya se ha recogido hoy</b> a las ${esc(ho.hora)} con ${fmt(ho.l)} l (DeCA ${esc(ho.deca)}).</p><p style="margin-top:6px">¿Es otra recogida distinta?</p>
+          <button class="btn" id="dupOk" style="margin-top:10px;background:var(--bad);box-shadow:none">Sí, es otra recogida. Guardar</button>`;
+        $('#dupOk').onclick = () => { confirmDup = true; guardarFicha(false); };
+        e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return;
+      }
       if (!compat(g.esp, comp(dest)).ok && !confirmMix) {
         e.hidden = false;
         e.innerHTML = `<p>${esc(mezclaMsg(g.esp, comp(dest)))}</p><p style="margin-top:6px">¿La leche va ahí de verdad?</p>
@@ -874,13 +928,115 @@ function histRender() {
     ${d.viajes.map(vj => `<div class="card stack">
       <p class="small muted">DeCA <span class="mono">${esc(vj.deca)}</span> · <span class="mono">${esc(vj.matricula)}</span> · ${esc(vj.ini)}${vj.fin ? '–' + esc(vj.fin) : ''}${/CURSO/.test(vj.estado) ? ' · <b>sin cerrar</b>' : ''}${/TRASVASE/.test(vj.estado) ? ' · cerrado por trasvase' : ''}</p>
       <table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
-      ${vj.recs.map(r => `<tr${r.sin ? ' class="muted"' : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}</span></td>
+      ${vj.recs.map(r => `<tr${r.sin ? ' class="muted"' : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.cor ? '<br><b style="color:var(--warn)">Corregido por la oficina</b>' : ''}</span></td>
         <td class="num">${r.sin ? '—' : fmt(r.l)}</td>
         <td>${r.sin ? '<span class="small">No recogido</span>' : r.d2 && r.l2 ? `${esc(r.d1)} ${fmt(r.l1)}<br>${esc(r.d2)} ${fmt(r.l2)}${r.d3 && r.l3 ? `<br>${esc(r.d3)} ${fmt(r.l3)}` : ''}` : esc(r.d1)}</td></tr>`).join('')}
       </tbody></table></div>`).join('')}
     <button class="btn sec" id="histVolver">Volver a los días</button>`;
   $('#histVolver').onclick = () => { U.histI = null; histRender(); };
   show('vHist', 'Días anteriores', D().conductor.nombre);
+}
+
+/* 7. OFICINA (PIN con ROL OFICINA): rutas en directo y corrección de viajes cerrados.
+   Cada corrección queda en la pestaña CAMBIOS (quién, cuándo, antes, después, motivo) y rehace el fichero del viaje. */
+const O = { viajes: null, hasta: '', off: false };
+async function oficina(sinCargar) {
+  const v = $('#vOfi'), u = D().usuario;
+  if (!sinCargar || !O.viajes) {
+    v.innerHTML = '<div class="card"><p class="muted">Cargando rutas…</p></div>';
+    show('vOfi', 'Oficina', u.nombre);
+    try { const r = await api('oficinaViajes', { dias: 15 }); O.viajes = r.viajes; O.hasta = r.hasta; O.off = false; }
+    catch (e) { O.off = true; if (!O.viajes) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin cobertura.' : e.message)}</div><button class="btn" id="ofiRe">Reintentar</button>`; $('#ofiRe').onclick = () => oficina(); return; } }
+  }
+  const tot = x => x.recs.reduce((a, r) => a + (r.sin ? 0 : r.l), 0);
+  const enCurso = O.viajes.filter(x => /CURSO/.test(x.estado));
+  const cerrados = O.viajes.filter(x => !/CURSO/.test(x.estado));
+  const dias = {}; cerrados.forEach(x => (dias[x.fecha] = dias[x.fecha] || []).push(x));
+  const tarjeta = x => { const ult = x.recs.filter(r => r.hora).sort((a, b) => a.hora < b.hora ? 1 : -1)[0], hechos = x.recs.length, total = hechos + x.falta.length;
+    return `<button class="farm${/CURSO/.test(x.estado) ? ' next' : ''}" data-v="${esc(x.id)}"><span class="main"><span class="name">${esc(x.nombre)} · ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
+      <span class="sub">${esc(x.matricula)} · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${/CURSO/.test(x.estado) ? ` · ${hechos} de ${total} · último ${ult ? esc(ult.hora) : '—'}` : ''}${x.recs.some(r => r.cor) ? ' · <b style="color:var(--warn)">corregido</b>' : ''}${/TRASVASE/.test(x.estado) ? ' · trasvase' : ''}</span></span>
+      <span class="st num">${fmt(tot(x))} l</span></button>`; };
+  v.innerHTML = `${O.off ? `<div class="msg warn">Sin cobertura: datos de las ${esc(O.hasta)}.</div>` : ''}
+    <div class="row"><button class="btn sec" id="ofiAct">Actualizar</button><button class="btn ghost" id="ofiSalir">Salir</button></div>
+    <span class="lbl">En curso ahora</span>
+    <div class="stack">${enCurso.length ? enCurso.map(tarjeta).join('') : '<p class="small muted">Ningún camión en ruta.</p>'}</div>
+    ${Object.keys(dias).map(f => `<span class="lbl" style="text-transform:capitalize">${esc(diaTxt(f))}</span><div class="stack">${dias[f].map(tarjeta).join('')}</div>`).join('')}
+    <p class="small muted">Datos de las ${esc(O.hasta)} · últimos 15 días.</p>`;
+  v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => ofiViaje(b.dataset.v));
+  $('#ofiAct').onclick = () => oficina();
+  $('#ofiSalir').onclick = () => { S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); O.viajes = null; persistir(); pinView(); };
+  show('vOfi', 'Oficina', u.nombre);
+  clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi') oficina(); }, 60000);
+}
+function ofiViaje(id) {
+  U.ofiV = id; const x = O.viajes.find(y => y.id === id), v = $('#vOfiV'); if (!x) return oficina();
+  const cerrado = !/CURSO/.test(x.estado), k = totDia([x]);
+  const ult = x.recs.filter(r => r.hora && r.lat).sort((a, b) => a.hora < b.hora ? 1 : -1)[0];
+  v.innerHTML = `<div class="card stack"><h2>${esc(x.nombre)} · ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')}</h2>
+      <p class="small muted">${esc(diaTxt(x.fecha))} · DeCA <span class="mono">${esc(x.deca)}</span> · <span class="mono">${esc(x.matricula)}</span> · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${cerrado ? '' : ' · <b>en curso</b>'}${x.exportado && x.exportado !== 'NO' ? ' · fichero ' + esc(x.exportado) : ''}</p>
+      <div class="tally">${Object.keys(k.t).sort((a, b) => { const o = y => 'DdOCV'.indexOf(y.replace(/^\d+/, '')); return o(a) - o(b) || (a < b ? -1 : 1); }).map(c => `<div><span class="tank sp-${c.replace(/^\d+/, '') === 'd' ? 'D' : esc(c.replace(/^\d+/, '').toUpperCase())}">${esc(c)}</span><b class="num">${fmt(k.t[c])}</b></div>`).join('')}</div>
+      <p><b>Total ${fmt(k.total)} l</b> · ${k.n} ganaderos${x.falta.length ? ` · faltan ${x.falta.length}` : ''}</p>
+      ${ult ? `<a class="btn ghost" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(String(ult.lat).replace(',', '.') + ',' + String(ult.lon).replace(',', '.'))}">Ver en el mapa la última recogida (${esc(ult.hora)})</a>` : ''}
+      ${cerrado ? '<p class="small muted">Toca un ganadero para corregirlo. Cada cambio queda registrado con tu nombre.</p>' : '<p class="small muted">Viaje en curso: solo consulta. Se podrá corregir cuando esté cerrado.</p>'}</div>
+    <div class="card"><table class="hist"><thead><tr><th>Ganadero</th><th>Litros</th><th>Destino</th></tr></thead><tbody>
+      ${x.recs.map((r, i) => `<tr${r.sin ? ' class="muted"' : ''} ${cerrado ? `data-r="${i}" style="cursor:pointer"` : ''}><td><b>${esc(r.nom || r.cod)}</b><br><span class="small muted">${esc(r.cod)} · R${+r.ruta}/${esc(r.ord)} · ${labelEsp(r.esp)}${r.sin ? '' : ' · ' + esc(r.t) + ' °C'}${r.hora ? ' · ' + esc(r.hora) : ''}${r.cor ? `<br><b style="color:var(--warn)">Corregido: ${esc(r.cor)}</b>` : ''}</span></td>
+        <td class="num">${r.sin ? '—' : fmt(r.l)}</td><td>${r.sin ? '<span class="small">No recogido</span>' : (r.d2 ? [[r.d1, r.l1], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]).map(z => esc(z[0]) + ' ' + fmt(z[1])).join('<br>') : esc(r.d1))}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${x.falta.length ? `<div class="card stack"><span class="lbl">${cerrado ? 'Sin apuntar en este viaje' : 'Faltan por recoger'}</span>
+      ${x.falta.map((g, i) => `<button class="farm" ${cerrado ? `data-f="${i}"` : 'disabled'}><span class="main"><span class="name">${esc(g.nom)}</span><span class="sub">${esc(g.cod)} · R${+g.ruta}/${esc(g.ord)} · ${labelEsp(g.esp)}</span></span><span class="st">${cerrado ? 'Añadir' : ''}</span></button>`).join('')}</div>` : ''}`;
+  v.querySelectorAll('[data-r]').forEach(tr => tr.onclick = () => ofiEditar(x, x.recs[+tr.dataset.r], null));
+  v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => ofiEditar(x, null, x.falta[+b.dataset.f]));
+  show('vOfiV', 'Viaje', x.nombre);
+}
+function ofiEditar(x, r, nuevo) {
+  const v = $('#vOfiE'), g = r || nuevo, comps = x.comps.length ? x.comps : Array.from(new Set(x.recs.flatMap(y => [y.d1, y.d2, y.d3]).filter(Boolean)));
+  let d1 = r ? r.d1 : (comps[0] || ''), d2 = r ? r.d2 : '', d3 = r ? r.d3 : '';
+  const chips = (id, sel) => `<div class="dests" id="${id}">${comps.map(c => `<button class="dest" aria-pressed="${c === sel}" data-c="${esc(c)}"><b>${esc(c)}</b></button>`).join('')}</div>`;
+  v.innerHTML = `<div class="card stack"><h3 class="fname">${esc(g.nom || g.cod)}</h3>
+      <p class="small muted">${esc(g.cod)} · R${+g.ruta}/${esc(g.ord)} · ${labelEsp(g.esp)} · ${esc(diaTxt(x.fecha))} · DeCA ${esc(x.deca)}</p>
+      ${r ? `<p class="small">Ahora: <b>${r.sin ? 'no recogido' : fmt(r.l) + ' l'}</b>${r.sin ? '' : ' · ' + esc(r.t) + ' °C · muestra ' + esc(r.mue) + ' · ' + [[r.d1, r.l1], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]).map(z => esc(z[0]) + ' ' + fmt(z[1])).join(' + ')}</p>` : '<div class="msg warn">Se añadirá este ganadero al viaje.</div>'}
+    </div>
+    <label class="row small" style="gap:8px;align-items:center"><input type="checkbox" id="eSin" ${r && r.sin ? 'checked' : ''} style="width:22px;height:22px"> No se le recogió</label>
+    <div id="eDatos" class="stack">
+      <div class="pair"><div class="field"><label class="lbl" for="eL">Litros totales</label><div class="unit"><input class="big" id="eL" inputmode="numeric" value="${r && !r.sin ? r.l : ''}"><span>l</span></div></div>
+        <div class="field"><label class="lbl" for="eT">Temperatura</label><div class="unit"><input class="big" id="eT" inputmode="decimal" value="${r && !r.sin ? esc(r.t) : ''}"><span>°C</span></div></div></div>
+      <div class="field"><label class="lbl" for="eM">Muestra</label><input id="eM" inputmode="numeric" value="${r ? esc(r.mue) : ''}"></div>
+      <div class="field"><span class="lbl">Destino principal</span>${chips('eD1', d1)}<input id="eD1t" value="${esc(d1)}" placeholder="p. ej. 5D" style="margin-top:6px"></div>
+      <div class="field"><span class="lbl">Otro destino (si se repartió)</span>${chips('eD2', d2)}<div class="pair"><input id="eD2t" value="${esc(d2)}" placeholder="destino"><input id="eL2" inputmode="numeric" value="${r && r.l2 ? r.l2 : ''}" placeholder="litros"></div></div>
+      <div class="field"><span class="lbl">Tercer destino</span>${chips('eD3', d3)}<div class="pair"><input id="eD3t" value="${esc(d3)}" placeholder="destino"><input id="eL3" inputmode="numeric" value="${r && r.l3 ? r.l3 : ''}" placeholder="litros"></div></div>
+      <div id="eRes" class="msg ok" hidden></div>
+    </div>
+    <div class="field"><label class="lbl" for="eMot">Motivo de la corrección (obligatorio)</label>
+      <div class="row" id="eMq">${['Error al teclear', 'Cuadre de contador', 'Destino equivocado', 'Se olvidó apuntar'].map(t => `<button class="btn sec" data-m="${t}" style="padding:6px 10px;min-height:40px;font-size:14px">${t}</button>`).join('')}</div>
+      <input id="eMot" placeholder="Escribe el motivo" style="margin-top:6px"></div>
+    <div id="eErr" class="msg bad" hidden></div>
+    <button class="btn" id="eOk">Guardar corrección</button>
+    <button class="btn ghost" id="eNo">Cancelar</button>
+    <p class="small muted">Se guardará con tu nombre (${esc(D().usuario.nombre)}), la fecha y la hora, y se rehará el fichero del viaje para el programa de gestión.</p>`;
+  const sync = () => {
+    ['1', '2', '3'].forEach(n => v.querySelectorAll('#eD' + n + ' [data-c]').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === $('#eD' + n + 't').value.trim())));
+    const sin = $('#eSin').checked; $('#eDatos').hidden = sin;
+    const L = Math.round(num($('#eL').value) || 0), a = Math.round(num($('#eL2').value) || 0), b = Math.round(num($('#eL3').value) || 0), el = $('#eRes');
+    if (!sin && L > 0 && (a || b)) { el.hidden = false; el.className = 'msg ' + (a + b >= L ? 'bad' : 'ok'); el.textContent = a + b >= L ? 'Lo que va a otros destinos no puede ser igual o mayor que el total.' : `${$('#eD1t').value} ${fmt(L - a - b)} l${a ? ' · ' + $('#eD2t').value + ' ' + fmt(a) + ' l' : ''}${b ? ' · ' + $('#eD3t').value + ' ' + fmt(b) + ' l' : ''}`; }
+    else el.hidden = true;
+  };
+  ['1', '2', '3'].forEach(n => { v.querySelectorAll('#eD' + n + ' [data-c]').forEach(b => b.onclick = () => { const t = $('#eD' + n + 't'); t.value = t.value.trim() === b.dataset.c && n !== '1' ? '' : b.dataset.c; sync(); }); $('#eD' + n + 't').oninput = sync; });
+  ['eL', 'eL2', 'eL3'].forEach(id => $('#' + id).oninput = sync); $('#eSin').onchange = sync;
+  $('#eMq').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { $('#eMot').value = b.dataset.m; });
+  $('#eNo').onclick = () => ofiViaje(x.id);
+  $('#eOk').onclick = async () => {
+    if (U.ocupado) return; const b = $('#eOk'), e = $('#eErr'); e.hidden = true;
+    const datos = { sin: $('#eSin').checked, litros: $('#eL').value, temp: $('#eT').value.trim(), muestra: $('#eM').value.trim(),
+      d1: $('#eD1t').value.trim(), d2: $('#eD2t').value.trim(), l2: $('#eL2').value, d3: $('#eD3t').value.trim(), l3: $('#eL3').value };
+    ocupado(b, 'Guardando…');
+    try {
+      const res = await api('corregir', { viajeId: x.id, recId: r ? r.id : null, cod: g.cod, esp: g.esp, ruta: g.ruta, ord: g.ord, datos, motivo: $('#eMot').value.trim() });
+      toast(res.sinCambios ? 'No había nada que cambiar' : `Corrección guardada${res.fichero && res.fichero !== 'NO' ? ' · fichero ' + res.fichero + ' rehecho' : ''}`);
+      await oficina(); ofiViaje(x.id);
+    } catch (err) { libre(b); e.hidden = false; e.textContent = esRed(err) ? 'Sin cobertura: la corrección necesita conexión.' : err.message; }
+  };
+  sync();
+  show('vOfiE', r ? 'Corregir' : 'Añadir ganadero', x.nombre);
 }
 
 /* 5. Terminar viaje */
@@ -941,6 +1097,7 @@ document.addEventListener('keydown', e => {
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 { const v = $('#ver'); if (v) v.textContent = VERSION; }
 if (!S.pin || !S.datos) pinView();
+else if (S.datos.oficina) oficina();
 else if (S.viaje) (S.viaje.empezado ? lista : deca)();
 else rutas();
 flush();

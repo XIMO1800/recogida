@@ -231,6 +231,7 @@ body{margin:0}
     <section id="vOfiE" class="stack" hidden></section>
     <section id="vRecep" class="stack" hidden></section>
     <section id="vRecepC" class="stack" hidden></section>
+    <section id="vAgua" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -245,7 +246,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v19 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v21 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -361,10 +362,10 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
+const VIEWS = ['vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
 function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
-  document.body.classList.toggle('ancho', v === 'vRecep' || v === 'vRecepC');
+  document.body.classList.toggle('ancho', v === 'vRecep' || v === 'vRecepC' || v === 'vAgua');
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
   $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
@@ -378,6 +379,7 @@ $('#back').onclick = () => {
   if (U.view === 'vOfiE') return ofiViaje(U.ofiV);
   if (U.view === 'vOfiV') return oficina(true);
   if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
+  if (U.view === 'vAgua') return recepcion(true);
   if (U.view === 'vRecep' && D().oficina) return oficina(true);
   if (U.view === 'vHist') { if (U.histI != null) { U.histI = null; return histRender(); } return rutas(); }
 };
@@ -1148,7 +1150,7 @@ document.addEventListener('keydown', e => {
    Por camión: cada compartimento en el orden de descarga con su parcial de contador, controles y reparto a silos.
    Al final, el total del contador del camión (debe ser la suma de los parciales), limpieza de cisterna y filtro. */
 const R = { viajes: null, deps: [], hasta: '', ed: null };
-const ESPS = { D: 'Oveja D.O.', O: 'Oveja', C: 'Cabra', V: 'Vaca', AG: 'Agua' };
+const ESPS = { D: 'Oveja D.O.', O: 'Oveja', C: 'Cabra', V: 'Vaca' };
 const espComp = c => (c.esp && c.esp.length ? c.esp[0] : letraDe(c.id)) || '';
 const usoMalo = (esp, dep) => { const d = R.deps.find(x => x.id === dep); return d && /oveja|d\.?o/i.test(d.uso) && !/mezcla/i.test(d.uso) && /^[CV]$/.test(esp); };
 async function recepcion(sinCargar) {
@@ -1156,12 +1158,13 @@ async function recepcion(sinCargar) {
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', 'Recepción de leche', u.nombre);
-    try { const r = await api('recepViajes', {}); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; }
+    try { const r = await api('recepViajes', {}); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   // Lo que ha entrado hoy en cada silo según las recepciones guardadas
-  const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })));
+  const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => { x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })); });
+  (R.agua || []).forEach(a => { silo[a.dep] = (silo[a.dep] || 0) + a.l; });
   const pend = R.viajes.filter(x => !x.recep), hechos = R.viajes.filter(x => x.recep);
   const tarjeta = x => `<button class="farm${x.recep ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
@@ -1174,12 +1177,14 @@ async function recepcion(sinCargar) {
       <p class="small muted">Solo lo recibido con esta app (no incluye lo que ya había en el depósito). El uso de cada depósito se cambia en la hoja DEPOSITOS.</p></div>
     <span class="lbl">Por recibir</span>
     <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>
-    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor, agua…)</button>
+    <button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
+    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>
     ${hechos.length ? `<span class="lbl">Recibidos</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : ''}
     <p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
   $('#reAct').onclick = () => recepcion();
   $('#reOtra').onclick = () => recepOtra();
+  $('#reAgua').onclick = () => { U.ag = null; recepAgua(); };
   $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); R.viajes = null; persistir(); pinView(); };
   show('vRecep', 'Recepción de leche', u.nombre);
 }
@@ -1187,21 +1192,21 @@ function recepOtra() {
   const v = $('#vRecepC'); U.otra = U.otra || { prov: '', mat: '', esp: 'C' };
   const o = U.otra;
   v.innerHTML = `<div class="card stack"><h2>Otra entrada</h2>
-    <p class="small muted">Para cisternas que no vienen de la app (otro proveedor, compra de leche) o para apuntar agua que pasa por el contador.</p>
+    <p class="small muted">Para cisternas que no vienen de la app (otro proveedor, compra de leche). El agua de arrastre va aparte, en «Agua de arrastre del día».</p>
     <div class="field"><label class="lbl" for="oProv">Proveedor o descripción</label><input class="big" id="oProv" style="font-size:22px" value="${esc(o.prov)}" placeholder="Ej.: Cisterna cabra Cooperativa X"></div>
     <div class="field"><label class="lbl" for="oMat">Matrícula</label><input class="big" id="oMat" style="font-size:22px;font-family:var(--mono)" value="${esc(o.mat)}" placeholder="0000-XXX"></div>
     <span class="lbl">Qué entra</span>
-    <div class="dests">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" aria-pressed="${o.esp === k}" data-e="${k}"><b class="sp-${k}">${k === 'AG' ? 'AG' : k}</b><small>${t}</small></button>`).join('')}</div>
+    <div class="dests">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" aria-pressed="${o.esp === k}" data-e="${k}"><b class="sp-${k}">${k}</b><small>${t}</small></button>`).join('')}</div>
     <div id="oMsg" hidden></div>
     <button class="btn" id="oOk">Continuar</button></div>`;
   $('#oProv').oninput = e => o.prov = e.target.value; $('#oMat').oninput = e => o.mat = e.target.value.toUpperCase();
   v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { o.esp = b.dataset.e; recepOtra(); });
   $('#oOk').onclick = () => {
-    if (!o.prov.trim() && o.esp !== 'AG') { const m = $('#oMsg'); m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el proveedor o una descripción.'; return; }
+    if (!o.prov.trim()) { const m = $('#oMsg'); m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el proveedor o una descripción.'; return; }
     const id = 'X' + Date.now().toString(36).toUpperCase();
-    const comp = o.esp === 'AG' ? 'AG1' : o.esp;
+    const comp = 'V' + o.esp;   // cisternas externas: VC, VD, VO, VV
     U.otra = null;
-    recepCamion({ id, otra: true, matricula: o.mat.trim(), conductor: o.prov.trim() || 'Agua', rutas: '', ruta: '', deca: '', fecha: '', comps: [{ id: comp, esp: o.esp === 'AG' ? [] : [o.esp], decl: 0, cap: 0 }] });
+    recepCamion({ id, otra: true, matricula: o.mat.trim(), conductor: o.prov.trim(), rutas: '', ruta: '', deca: '', fecha: '', comps: [{ id: comp, esp: [o.esp], decl: 0, cap: 0 }] });
   };
   show('vRecepC', 'Otra entrada', D().usuario.nombre);
 }
@@ -1286,6 +1291,7 @@ function recepRender() {
       if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
       if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin depósito o sin litros.`);
     }
+    if (!(tot > 0) && E.x.otra) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
     if (Math.round(tot) !== Math.round(suma) && !m.dataset.ok) { m.dataset.ok = '1'; m.hidden = false; m.className = 'msg warn'; m.textContent = `El total (${fmt(tot)} l) no cuadra con la suma de parciales (${fmt(suma)} l). Revisa; si es correcto, pulsa otra vez Guardar.`; return; }
     const recep = { viajeId: E.x.id, total: tot, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
@@ -1296,6 +1302,64 @@ function recepRender() {
     catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
   };
   show('vRecepC', 'Recepción', (x.matricula || '') + ' · ' + x.conductor);
+}
+
+
+/* Agua de arrastre del día (AG1 y, si hubo una segunda descarga tras limpiar, AG2).
+   El colector pasa por delante de los depósitos 1 → 5: el agua de ARRANQUE va al primer depósito que recibe leche;
+   el ARRASTRE FINAL va al último depósito al que se pasó leche y a todos los de número mayor que recibieron leche
+   en esa descarga (nunca a los de número menor). Propuesta: 70 l cada uno (CONFIG: AGUA_ARRANQUE, AGUA_FINAL). */
+function recepAgua(guardado) {
+  const v = $('#vAgua'), d = R.aguaDef || { arranque: 70, final: 70 };
+  const cams = R.viajes.filter(x => x.recep && x.recep.comps && x.recep.comps.length).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1);
+  if (!U.ag) {
+    const ya = R.agua || [];
+    U.ag = { corte: ya.length ? (ya.find(a => a.cod === 'AG2') ? (ya.find(a => a.cod === 'AG2').desde || '') : '') : '', manual: {}, l: {} };
+    ya.forEach(a => { U.ag.manual[a.cod] = true; U.ag.l[a.cod + '|' + a.dep] = String(a.l); });
+  }
+  const A = U.ag, deps = R.deps.map(x => x.id);
+  const cortei = A.corte ? cams.findIndex(x => x.id === A.corte) : -1;
+  const sesiones = [{ cod: 'AG1', cams: cortei > 0 ? cams.slice(0, cortei) : cams }].concat(cortei > 0 ? [{ cod: 'AG2', cams: cams.slice(cortei), desde: A.corte }] : []);
+  const propuesta = ses => {
+    const orden = []; ses.cams.forEach(x => x.recep.comps.forEach(c => { const p = (c.reps.find(r => r.tipo === 'PRINCIPAL') || c.reps[0] || {}).dep; if (p) orden.push(p); c.reps.forEach(r => { if (r.dep && !orden.includes(r.dep)) orden.push(r.dep); }); }));
+    const m = {}; if (!orden.length) return { m, txt: '' };
+    const ini = orden[0], ult = orden[orden.length - 1], usados = [...new Set(orden)];
+    m[ini] = (m[ini] || 0) + d.arranque;
+    const fin = usados.filter(x => x === ult || +x > +ult); fin.forEach(x => { m[x] = (m[x] || 0) + d.final; });
+    return { m, txt: `Arranque → dep. ${ini} · Arrastre final → dep. ${fin.sort((a, b) => a - b).join(', ')}` };
+  };
+  const val = (ses, dep, pr) => A.manual[ses.cod] ? (A.l[ses.cod + '|' + dep] || '') : (pr.m[dep] ? String(pr.m[dep]) : '');
+  v.innerHTML = `<div class="card stack"><h2>Agua de arrastre del día</h2>
+      <p class="small muted">Es el agua que entra a los depósitos al arrancar el contador y al arrastrar la leche al final. La app la propone según el orden de descarga; ajústala si hoy ha sido distinto. No cuenta en el total de ningún camión.</p>
+      ${cams.length ? `<span class="lbl">Camiones recibidos hoy, por orden</span>
+      <div class="stack">${cams.map((x, i) => `<div class="small"><b>${esc(x.recep.hora)}</b> · <span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)} → ${x.recep.comps.map(c => tq(c.id) + ' dep. ' + [...new Set(c.reps.map(r => r.dep))].join('+')).join(' · ')}</div>`).join('')}</div>
+      ${cams.length > 1 ? `<div class="field"><label class="lbl" for="agCorte">¿Hubo limpieza y una segunda descarga (AG2)? Empieza en:</label>
+        <select id="agCorte" class="big" style="font-size:20px"><option value="">No, todo es una descarga (solo AG1)</option>${cams.slice(1).map(x => `<option value="${esc(x.id)}" ${A.corte === x.id ? 'selected' : ''}>${esc(x.recep.hora)} · ${esc(x.matricula)} · ${esc(x.conductor)}</option>`).join('')}</select></div>` : ''}`
+      : '<div class="msg warn">Todavía no hay ningún camión recibido hoy.</div>'}
+    </div>
+    ${sesiones.filter(ses => ses.cams.length).map(ses => { const pr = propuesta(ses); const tot = deps.reduce((a, dp) => a + (num(val(ses, dp, pr)) || 0), 0);
+      return `<div class="card stack"><div class="route-head"><h2>${ses.cod}</h2><b class="num">${fmt(tot)} l</b></div>
+        <p class="small muted">${A.manual[ses.cod] ? 'Ajustado a mano.' : esc(pr.txt) + ` (${d.arranque} + ${d.final} l por depósito)`}</p>
+        <div class="tally">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>l</span></div></div>`).join('')}</div>
+        ${A.manual[ses.cod] ? `<button class="btn ghost" data-rest="${ses.cod}">Volver a la propuesta</button>` : ''}</div>`; }).join('')}
+    <div id="agMsg" hidden></div>
+    ${cams.length ? '<button class="btn" id="agOk">Guardar agua del día</button>' : ''}`;
+  const sel = $('#agCorte'); if (sel) sel.onchange = () => { A.corte = sel.value; delete A.manual.AG2; recepAgua(); };
+  v.querySelectorAll('[data-ag]').forEach(inp => inp.oninput = () => {
+    const ses = sesiones.find(z => z.cod === inp.dataset.ag), pr = propuesta(ses);
+    if (!A.manual[ses.cod]) { deps.forEach(dp => { A.l[ses.cod + '|' + dp] = pr.m[dp] ? String(pr.m[dp]) : ''; }); A.manual[ses.cod] = true; }
+    A.l[ses.cod + '|' + inp.dataset.dep] = inp.value.replace(/\D/g, '');
+  });
+  v.querySelectorAll('[data-ag]').forEach(inp => inp.onchange = () => recepAgua());
+  v.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => { delete A.manual[b.dataset.rest]; recepAgua(); });
+  if ($('#agOk')) $('#agOk').onclick = async () => {
+    const filas = [];
+    sesiones.filter(ses => ses.cams.length).forEach(ses => { const pr = propuesta(ses); deps.forEach(dp => { const l = Math.round(num(val(ses, dp, pr)) || 0); if (l > 0) filas.push({ cod: ses.cod, dep: dp, l, desde: ses.desde || '' }); }); });
+    const b = $('#agOk'); ocupado(b, 'Guardando…');
+    try { const r = await api('guardarAgua', { agua: filas }); R.agua = filas; U.ag = null; toast('Agua guardada' + (r.fichero ? ' · fichero ' + r.fichero : '')); recepcion(true); }
+    catch (e) { libre(b); const m = $('#agMsg'); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha guardado.' : e.message; }
+  };
+  show('vAgua', 'Agua de arrastre', D().usuario.nombre);
 }
 
 /* ═══════════ ARRANQUE ═══════════ */

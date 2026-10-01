@@ -245,7 +245,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v18 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v19 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1169,9 +1169,9 @@ async function recepcion(sinCargar) {
       <span class="comps">${(x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
       <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
   v.innerHTML = `<div class="row"><button class="btn sec" id="reAct">Actualizar</button><button class="btn ghost" id="reSalir">${D().oficina ? 'Volver a oficina' : 'Salir'}</button></div>
-    <div class="card stack"><span class="lbl">Silos · entrado hoy</span>
-      <div class="tally">${R.deps.map(d => `<div><b class="mono" style="font-size:18px">${esc(d.id)}</b><b class="num">${fmt(silo[d.id] || 0)}</b><small class="muted">${esc(d.uso)}${d.cap ? ' · ' + fmt(d.cap) : ''}</small></div>`).join('')}</div>
-      <p class="small muted">Solo lo recibido con esta app (no incluye lo que ya había en el silo). El uso de cada silo se cambia en la hoja DEPOSITOS.</p></div>
+    <div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
+      <div class="tally">${R.deps.map(d => `<div><b class="mono" style="font-size:18px">Dep. ${esc(d.id)}</b><b class="num">${fmt(silo[d.id] || 0)}</b><small class="muted">${esc(d.uso)}${d.cap ? ' · ' + fmt(d.cap) : ''}</small></div>`).join('')}</div>
+      <p class="small muted">Solo lo recibido con esta app (no incluye lo que ya había en el depósito). El uso de cada depósito se cambia en la hoja DEPOSITOS.</p></div>
     <span class="lbl">Por recibir</span>
     <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>
     <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor, agua…)</button>
@@ -1228,7 +1228,7 @@ function recepRender() {
   v.innerHTML = `<div class="card stack ${x.otra ? '' : ''}">
       <div class="route-head"><h2><span class="mono">${esc(x.matricula || '—')}</span></h2><span class="muted">${esc(x.conductor)}</span></div>
       <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
-      <p class="small muted">Descarga los compartimentos en orden. Por cada uno: el <b>parcial</b> del contador, los controles y el silo. Al terminar, el <b>total</b> del contador del camión.</p></div>
+      <p class="small muted">Descarga los compartimentos en orden. Por cada uno: el <b>parcial</b> del contador, los controles y el depósito. Al terminar, el <b>total</b> del contador del camión.</p></div>
     <div class="recgrid">${E.comps.map((c, i) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c)">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
         <span class="small muted">${i + 1}º en descargar ${i > 0 ? `<button class="btn ghost" data-up="${i}" style="min-height:32px;padding:2px 10px;width:auto;display:inline-block">↑</button>` : ''}</span></div>
@@ -1243,17 +1243,17 @@ function recepRender() {
         <div class="field"><label class="lbl">Acidez ºD</label><input class="big" style="font-size:26px" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></div>
       </div>
       <span class="lbl">Visual leche</span>${ci('visual', c.visual, i)}
-      <span class="lbl">Silo</span>
+      <span class="lbl">Depósito</span>
       <div class="dests">${silos.map(s => { const d = R.deps.find(z => z.id === s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b>${s}</b><small>${esc(d.uso)}</small></button>`; }).join('')}</div>
-      ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad">¡Atención! ${esc(ESPS[c.esp])} a ${ppal(c)}, que está marcado como ${esc(R.deps.find(z => z.id === ppal(c)).uso)}.</div>` : ''}
-      ${extras(c).map((p, j) => `<div class="card stack" style="background:rgba(255,255,255,.7)"><span class="lbl">${p.tipo === 'ARRASTRE' ? 'Arrastre' : 'A otro silo'}</span>
+      ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad">¡Atención! ${esc(ESPS[c.esp])} al depósito ${ppal(c)}, que está marcado como ${esc(R.deps.find(z => z.id === ppal(c)).uso)}.</div>` : ''}
+      ${extras(c).map((p, j) => `<div class="card stack" style="background:rgba(255,255,255,.7)"><span class="lbl">${p.tipo === 'ARRASTRE' ? 'Arrastre' : 'A otro depósito'}</span>
         <div class="row" style="gap:6px;flex-wrap:wrap">${silos.filter(s => s !== ppal(c)).map(s => `<button class="btn ${p.dep === s ? '' : 'sec'}" data-xdep="${s}" data-i="${i}" data-j="${j}" style="min-height:44px;padding:6px 14px;width:auto">${s}</button>`).join('')}</div>
         <div class="xrow"><div class="unit"><input class="big" style="font-size:28px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
           ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}
           <button class="btn ghost" data-xdel="${i}" data-j="${j}">Quitar</button></div></div>`).join('')}
-      <div class="row" style="gap:8px"><button class="btn ghost" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre a mezcla</button><button class="btn ghost" data-xadd="${i}" data-t="OTRO">+ Parte a otro silo</button></div>
-      ${ppal(c) && num(c.contador) ? `<p class="small"><b>${fmt(resto(c))} l a ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l a ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
-      ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros silos es más que el parcial del contador.</div>' : ''}
+      <div class="row" style="gap:8px"><button class="btn ghost" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre a mezcla</button><button class="btn ghost" data-xadd="${i}" data-t="OTRO">+ Parte a otro depósito</button></div>
+      ${ppal(c) && num(c.contador) ? `<p class="small"><b>${fmt(resto(c))} l al depósito ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
+      ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial del contador.</div>' : ''}
     </div>`).join('')}</div>
     <div class="card stack">
       <div class="field"><label class="lbl" for="reTot">Total contador del camión</label><div class="unit"><input class="big" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div></div>
@@ -1282,9 +1282,9 @@ function recepRender() {
     const usados = E.comps.filter(c => num(c.contador) > 0);
     if (!usados.length) return err('Escribe el parcial del contador de al menos un compartimento.');
     for (const c of usados) {
-      if (!ppal(c)) return err(`Elige el silo de ${c.id}.`);
-      if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros silos es más que el parcial.`);
-      if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin silo o sin litros.`);
+      if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
+      if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
+      if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin depósito o sin litros.`);
     }
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
     if (Math.round(tot) !== Math.round(suma) && !m.dataset.ok) { m.dataset.ok = '1'; m.hidden = false; m.className = 'msg warn'; m.textContent = `El total (${fmt(tot)} l) no cuadra con la suma de parciales (${fmt(suma)} l). Revisa; si es correcto, pulsa otra vez Guardar.`; return; }

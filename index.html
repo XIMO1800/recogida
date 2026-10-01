@@ -38,7 +38,18 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .tl{display:grid;grid-template-columns:auto auto 1fr auto;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
+.rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+input.sm{width:100%;font-family:var(--display);font-weight:700;font-size:20px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.d5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.d5 .dest{min-height:48px;padding:4px 2px;border-top-width:2px}
+.tg{display:flex;gap:4px}.tg button{flex:1;min-height:38px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-weight:700;font-size:14px;font-family:inherit}.tg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.tg button.on.bad{background:var(--bad);border-color:var(--bad)}
+.lnk{border:1.5px dashed var(--line);background:transparent;border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px;color:var(--muted);font-family:inherit;flex:1}
+.xbox{background:rgba(255,255,255,.75);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.pendc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:180px;border-style:dashed;border-width:2px;font:inherit;color:inherit;cursor:pointer}
+.camgrid{display:grid;gap:10px}
+@media (min-width:900px){body.ancho .recgrid.rc{grid-template-columns:repeat(var(--n),minmax(0,1fr))}.camgrid{grid-template-columns:1.3fr 1fr 1fr 1.6fr;align-items:start}}
 .xrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.xrow .unit{flex:1 1 150px;min-width:150px}.xrow .btn{width:auto;min-height:48px;padding:6px 12px}
+.rc .xrow{flex-wrap:nowrap;gap:4px}.rc .xrow .unit{flex:1 1 70px;min-width:70px}.rc .xrow .btn{min-height:40px;padding:4px 6px;font-size:14px}.rc .xrow .lnk{flex:0 0 auto}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
@@ -250,7 +261,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v23 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v24 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1266,48 +1277,41 @@ function recepRender() {
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
-  v.innerHTML = `<div class="card stack ${x.otra ? '' : ''}">
-      <div class="route-head"><h2><span class="mono">${esc(x.matricula || '—')}</span></h2><span class="muted">${esc(x.conductor)}</span></div>
+  v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px">
+      <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
       <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
-      <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b>: así queda el orden real, del que depende el agua de arrastre. Por cada uno: el <b>parcial</b> del contador, los controles y el depósito. Al terminar, el <b>total</b> del contador del camión.</p></div>
-    <div class="recgrid">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c)">
+      <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
+    <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:8px;padding:12px">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
-        <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span><span class="small muted">en descargar</span>${x.unico && E.comps.length === 1 ? '' : `<button class="btn ghost" data-unord="${i}" style="min-height:36px;padding:2px 10px;width:auto">${x.otra ? 'Quitar' : 'No era este'}</button>`}</span></div>
-      ${c.decl ? `<p class="small muted">Declarado por el recogedor: <b>${fmt(c.decl)} l</b></p>` : ''}
-      <div class="pair">
-        <div class="field"><label class="lbl">Parcial contador</label><div class="unit"><input class="big" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
-        <div class="field"><label class="lbl">Temperatura</label><div class="unit"><input class="big" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="0,0"><span>°C</span></div></div>
-      </div>
-      <div data-dif="${i}" class="small">${dif(c)}</div>
-      <div class="pair">
-        <div class="field"><label class="lbl">pH</label><input class="big" style="font-size:26px" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></div>
-        <div class="field"><label class="lbl">Acidez ºD</label><input class="big" style="font-size:26px" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></div>
-      </div>
-      <span class="lbl">Visual leche</span>${ci('visual', c.visual, i)}
-      <span class="lbl">Depósito</span>
-      <div class="dests">${silos.map(s => { const d = R.deps.find(z => z.id === s); const k = contenidoDep(s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b>${s}</b><small>${esc(k.tipo || '')}</small></button>`; }).join('')}</div>
-      ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad">¡Atención! ${esc(ESPS[c.esp])} al depósito ${ppal(c)}, que lleva oveja/D.O.: pasaría a ser mezcla.</div>` : ''}
-      ${extras(c).map((p, j) => `<div class="card stack" style="background:rgba(255,255,255,.7)"><span class="lbl">${p.tipo === 'ARRASTRE' ? 'Arrastre' : 'A otro depósito'}</span>
-        <div class="row" style="gap:6px;flex-wrap:wrap">${silos.filter(s => s !== ppal(c)).map(s => `<button class="btn ${p.dep === s ? '' : 'sec'}" data-xdep="${s}" data-i="${i}" data-j="${j}" style="min-height:44px;padding:6px 14px;width:auto">${s}</button>`).join('')}</div>
-        <div class="xrow"><div class="unit"><input class="big" style="font-size:28px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
-          ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}
-          <button class="btn ghost" data-xdel="${i}" data-j="${j}">Quitar</button></div></div>`).join('')}
-      <div class="row" style="gap:8px"><button class="btn ghost" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre a mezcla</button><button class="btn ghost" data-xadd="${i}" data-t="OTRO">+ Parte a otro depósito</button></div>
-      ${ppal(c) && num(c.contador) ? `<p class="small"><b>${fmt(resto(c))} l al depósito ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
-      ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial del contador.</div>' : ''}
-    </div>`).join('')}</div>
-    ${x.otra ? `<div class="card stack"><span class="lbl">Cisterna externa: ¿descargas otro compartimento?</span>
-      <p class="small muted">Añade uno por cada compartimento que traiga, con su parcial. Al final, el total del contador de la cisterna.</p>
-      <div class="dests">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small>${t}</small></button>`).join('')}</div></div>` : ''}
-    ${pend.length ? `<div class="card stack"><span class="lbl">${desc.length ? '¿Qué compartimento descargas ahora?' : '¿Qué compartimento descargas primero?'}</span>
-      <p class="small muted">Tócalo cuando empieces a descargarlo: así queda el orden real${desc.length ? ` (será el ${desc.length + 1}º)` : ''}. Si alguno viene vacío, déjalo sin tocar.</p>
-      <div class="dests">${pend.map(c => `<button class="dest ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}" style="min-height:96px"><b class="sp-${esc(c.esp)}" style="font-size:30px">${esc(c.id)}</b><small>${esc(ESPS[c.esp] || '')}${c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</small></button>`).join('')}</div></div>` : ''}
+        <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span>${x.unico && E.comps.length === 1 ? '' : `<button class="lnk" data-unord="${i}">${x.otra ? 'Quitar' : 'No era este'}</button>`}</span></div>
+      <div><span class="tiny">Parcial contador${c.decl ? ` · declarado ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div>
+        <div data-dif="${i}" class="small">${dif(c)}</div></div>
+      <div class="mini"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
+        <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
+        <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label></div>
+      <div class="tg"><span class="tiny" style="align-self:center;min-width:52px">Visual</span>${['C', 'I'].map(k => `<button class="${c.visual === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="visual" data-i="${i}" data-val="${k}" title="${k === 'C' ? 'Correcto' : 'Incorrecto'}">${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>
+      <div><span class="tiny">Depósito</span><div class="d5">${silos.map(s => { const k = contenidoDep(s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b style="font-size:20px">${s}</b><small style="font-size:10px">${esc(k.tipo || '')}</small></button>`; }).join('')}</div></div>
+      ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad" style="padding:6px 10px">¡Atención! ${esc(ESPS[c.esp])} al ${ppal(c)}, que lleva oveja/D.O.: pasaría a mezcla.</div>` : ''}
+      ${extras(c).map((p, j) => `<div class="xbox"><span class="tiny">${p.tipo === 'ARRASTRE' ? 'Arrastre a' : 'Parte a'}</span>
+        <div class="d5">${silos.map(s => `<button class="dest" aria-pressed="${p.dep === s}" ${s === ppal(c) ? 'disabled style="opacity:.35"' : ''} data-xdep="${s}" data-i="${i}" data-j="${j}"><b>${s}</b></button>`).join('')}</div>
+        <div class="xrow"><div class="unit"><input class="sm" style="font-size:22px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
+          ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}<button class="lnk" data-xdel="${i}" data-j="${j}">✕</button></div></div>`).join('')}
+      <div class="row" style="gap:6px"><button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button><button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>
+      ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
+      ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
+    </div>`).join('')}
+    ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:var(--mono)">${esc(c.id)}</b><span>${esc(ESPS[c.esp] || '')}${c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>
+      <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
+    ${x.otra ? `<div class="card stack pendc" style="cursor:default"><span class="tiny">Otro compartimento</span><div class="d5" style="grid-template-columns:repeat(4,1fr)">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small style="font-size:10px">${t}</small></button>`).join('')}</div></div>` : ''}</div>
+    ${pend.length && !desc.length ? '<p class="small muted">Toca el compartimento que empiezas a descargar. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}
     <div class="card stack">
-      <div class="field"><label class="lbl" for="reTot">Total contador del camión</label><div class="unit"><input class="big" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div></div>
-      <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con la suma de parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: la suma de parciales es ${fmt(suma)} l (diferencia ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div>
-      <span class="lbl">Limpieza cisterna</span>${ci('limpieza', E.limpieza)}
-      <span class="lbl">Filtro</span>${ci('filtro', E.filtro)}
-      <div class="field"><label class="lbl" for="reObs">Observaciones / acciones correctivas</label><input class="big" id="reObs" style="font-size:20px" value="${esc(E.obs)}"></div>
+      <div class="camgrid">
+        <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>
+          <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con los parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: parciales ${fmt(suma)} l (dif. ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div></div>
+        <div><span class="tiny">Limpieza cisterna</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.limpieza === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="limpieza" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
+        <div><span class="tiny">Filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
+        <div><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
+      </div>
       <div id="reMsg" hidden></div>
       <button class="btn" id="reGuardar">Guardar recepción</button>
     </div>`;

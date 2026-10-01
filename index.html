@@ -238,7 +238,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v16 · 30/09/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v17 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -331,14 +331,15 @@ async function flush() {
     if (recs.length) {
       const r = await api('guardar', { recs });
       r.ids.forEach(id => delete S.cola.recs[id]); persistir();
+      if (r.sinViaje) toast(r.sinViaje + (r.sinViaje > 1 ? ' recogidas eran' : ' recogida era') + ' de un viaje que ya no existe: se han guardado aparte para la oficina');
     }
     while (S.cola.cierres.length) {
       await api('cerrarViaje', S.cola.cierres[0]);
       S.cola.cierres.shift(); persistir();
       toast('Viaje cerrado y enviado a la oficina');
     }
-    S.online = true;
-  } catch (e) { S.online = !esRed(e) ? S.online : false; if (!esRed(e)) toast('Error al enviar: ' + e.message); }
+    S.online = true; U.errServ = null;
+  } catch (e) { S.online = !esRed(e) ? S.online : false; if (!esRed(e)) { U.errServ = e.message; toast('Error al enviar: ' + e.message); } }
   flushing = false; syncPill();
 }
 function syncPill() {
@@ -457,7 +458,16 @@ function rutas() {
   $('#estL').oninput = e => { S.estManual = e.target.value.replace(/\D/g, ''); };
   $('#ini').onclick = iniciar;
   $('#refrescar').onclick = async () => { const b = $('#refrescar'); ocupado(b, 'Actualizando…'); try { cargarDatos(await api('login', {})); toast('Datos actualizados'); rutas(); } catch (e) { libre(b); toast(esRed(e) ? 'Sin cobertura' : e.message); } };
-  $('#salir').onclick = () => { if (pendientes()) { toast('Hay datos sin enviar. Espera a tener cobertura.'); return; } S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] } }); persistir(); pinView(); };
+  $('#salir').onclick = () => {
+    const b = $('#salir');
+    if (pendientes() && !(U.errServ && b.dataset.ok)) {
+      // Sin cobertura: hay que esperar. Si es el servidor el que rechaza los datos, se deja descartarlos confirmando.
+      if (!U.errServ) { toast('Hay datos sin enviar. Espera a tener cobertura.'); return; }
+      b.dataset.ok = '1'; b.textContent = 'Salir y borrar ' + pendientes() + ' sin enviar'; b.style.color = 'var(--bad)';
+      toast('El servidor no acepta esos datos (' + U.errServ + '). Pulsa otra vez para salir y borrarlos del móvil.'); return;
+    }
+    S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); U.errServ = null; persistir(); pinView();
+  };
   show('vRutas', 'Viaje de hoy', c.nombre + (keys.length ? ' · rutas ' + keys.map(x => +x).join(', ') : ''));
 }
 

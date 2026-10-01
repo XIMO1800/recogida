@@ -35,6 +35,8 @@ body{color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45}
 body.ancho .app,body.ancho .top-in{max-width:1180px}
 .recgrid{display:grid;gap:12px}
 @media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
+.ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.tl{display:grid;grid-template-columns:auto auto 1fr auto;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .xrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.xrow .unit{flex:1 1 150px;min-width:150px}.xrow .btn{width:auto;min-height:48px;padding:6px 12px}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
@@ -246,7 +248,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v21 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v22 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1206,7 +1208,7 @@ function recepOtra() {
     const id = 'X' + Date.now().toString(36).toUpperCase();
     const comp = 'V' + o.esp;   // cisternas externas: VC, VD, VO, VV
     U.otra = null;
-    recepCamion({ id, otra: true, matricula: o.mat.trim(), conductor: o.prov.trim(), rutas: '', ruta: '', deca: '', fecha: '', comps: [{ id: comp, esp: [o.esp], decl: 0, cap: 0 }] });
+    recepCamion({ id, otra: true, matricula: o.mat.trim(), conductor: o.prov.trim(), rutas: '', ruta: '', deca: '', fecha: '', comps: [{ id: comp, esp: [o.esp], decl: 0, cap: 0 }], unico: true });
   };
   show('vRecepC', 'Otra entrada', D().usuario.nombre);
 }
@@ -1214,8 +1216,9 @@ function recepCamion(x) {
   // Borrador de la recepción: se parte de lo guardado o de los compartimentos del camión (en su orden)
   const prev = x.recep;
   const base = x.comps.map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, cap: c.cap || 0 }));
-  const comps = prev ? prev.comps.map(c => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
-  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
+  const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
+  if (x.unico) comps.forEach(c => { c.ord = 1; });
   R.ed = { x, comps, total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
@@ -1227,16 +1230,17 @@ function recepRender() {
   const resto = c => Math.round((num(c.contador) || 0) - extras(c).reduce((a, r) => a + (num(r.l) || 0), 0));
   const dif = c => { const n = num(c.contador) || 0; if (!c.decl || !n) return ''; const d = Math.round(n - c.decl), pct = d / c.decl * 100;
     return `<span class="${Math.abs(pct) > 2 ? 'd-bad' : 'd-ok'}">${d > 0 ? '+' : ''}${fmt(d)} l (${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %) frente a lo declarado</span>`; };
-  const suma = E.comps.reduce((a, c) => a + (num(c.contador) || 0), 0);
+  const desc = E.comps.filter(c => c.ord).sort((a, b) => a.ord - b.ord), pend = E.comps.filter(c => !c.ord);
+  const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
   v.innerHTML = `<div class="card stack ${x.otra ? '' : ''}">
       <div class="route-head"><h2><span class="mono">${esc(x.matricula || '—')}</span></h2><span class="muted">${esc(x.conductor)}</span></div>
       <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
-      <p class="small muted">Descarga los compartimentos en orden. Por cada uno: el <b>parcial</b> del contador, los controles y el depósito. Al terminar, el <b>total</b> del contador del camión.</p></div>
-    <div class="recgrid">${E.comps.map((c, i) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c)">
+      <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b>: así queda el orden real, del que depende el agua de arrastre. Por cada uno: el <b>parcial</b> del contador, los controles y el depósito. Al terminar, el <b>total</b> del contador del camión.</p></div>
+    <div class="recgrid">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c)">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
-        <span class="small muted">${i + 1}º en descargar ${i > 0 ? `<button class="btn ghost" data-up="${i}" style="min-height:32px;padding:2px 10px;width:auto;display:inline-block">↑</button>` : ''}</span></div>
+        <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span><span class="small muted">en descargar</span>${x.unico ? '' : `<button class="btn ghost" data-unord="${i}" style="min-height:36px;padding:2px 10px;width:auto">No era este</button>`}</span></div>
       ${c.decl ? `<p class="small muted">Declarado por el recogedor: <b>${fmt(c.decl)} l</b></p>` : ''}
       <div class="pair">
         <div class="field"><label class="lbl">Parcial contador</label><div class="unit"><input class="big" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
@@ -1260,6 +1264,9 @@ function recepRender() {
       ${ppal(c) && num(c.contador) ? `<p class="small"><b>${fmt(resto(c))} l al depósito ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial del contador.</div>' : ''}
     </div>`).join('')}</div>
+    ${pend.length ? `<div class="card stack"><span class="lbl">${desc.length ? '¿Qué compartimento descargas ahora?' : '¿Qué compartimento descargas primero?'}</span>
+      <p class="small muted">Tócalo cuando empieces a descargarlo: así queda el orden real${desc.length ? ` (será el ${desc.length + 1}º)` : ''}. Si alguno viene vacío, déjalo sin tocar.</p>
+      <div class="dests">${pend.map(c => `<button class="dest ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}" style="min-height:96px"><b class="sp-${esc(c.esp)}" style="font-size:30px">${esc(c.id)}</b><small>${esc(ESPS[c.esp] || '')}${c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</small></button>`).join('')}</div></div>` : ''}
     <div class="card stack">
       <div class="field"><label class="lbl" for="reTot">Total contador del camión</label><div class="unit"><input class="big" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div></div>
       <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con la suma de parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: la suma de parciales es ${fmt(suma)} l (diferencia ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div>
@@ -1279,12 +1286,13 @@ function recepRender() {
   v.querySelectorAll('[data-xl]').forEach(inp => { inp.oninput = () => { extras(C(inp.dataset.xl))[+inp.dataset.j].l = inp.value.replace(/\D/g, ''); }; inp.onchange = () => recepRender(); });
   v.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].l = b.dataset.q; recepRender(); });
   v.querySelectorAll('[data-xdel]').forEach(b => b.onclick = () => { const c = C(b.dataset.xdel), p = extras(c)[+b.dataset.j]; c.reps = c.reps.filter(r => r !== p); recepRender(); });
-  v.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const i = +b.dataset.up; [E.comps[i - 1], E.comps[i]] = [E.comps[i], E.comps[i - 1]]; recepRender(); });
+  v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
+  v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; }); recepRender(); });
   $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => recepRender();
   $('#reObs').oninput = e => { E.obs = e.target.value; };
   $('#reGuardar').onclick = async () => {
     const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
-    const usados = E.comps.filter(c => num(c.contador) > 0);
+    const usados = desc.filter(c => num(c.contador) > 0);
     if (!usados.length) return err('Escribe el parcial del contador de al menos un compartimento.');
     for (const c of usados) {
       if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
@@ -1321,9 +1329,12 @@ function recepAgua(guardado) {
   const cortei = A.corte ? cams.findIndex(x => x.id === A.corte) : -1;
   const sesiones = [{ cod: 'AG1', cams: cortei > 0 ? cams.slice(0, cortei) : cams }].concat(cortei > 0 ? [{ cod: 'AG2', cams: cams.slice(cortei), desde: A.corte }] : []);
   const propuesta = ses => {
-    const orden = []; ses.cams.forEach(x => x.recep.comps.forEach(c => { const p = (c.reps.find(r => r.tipo === 'PRINCIPAL') || c.reps[0] || {}).dep; if (p) orden.push(p); c.reps.forEach(r => { if (r.dep && !orden.includes(r.dep)) orden.push(r.dep); }); }));
-    const m = {}; if (!orden.length) return { m, txt: '' };
-    const ini = orden[0], ult = orden[orden.length - 1], usados = [...new Set(orden)];
+    const pasos = []; ses.cams.forEach(x => x.recep.comps.forEach(c => pasos.push(c)));
+    const ppalDe = c => (c.reps.find(r => r.tipo === 'PRINCIPAL') || c.reps[0] || {}).dep;
+    const m = {}; if (!pasos.length) return { m, txt: '' };
+    // Arranque: al primer depósito que recibe leche. Arrastre final: al depósito del último compartimento y a todos los de número mayor que recibieron leche
+    const ini = ppalDe(pasos[0]), ult = ppalDe(pasos[pasos.length - 1]);
+    const usados = [...new Set(pasos.flatMap(c => c.reps.map(r => r.dep)).filter(Boolean))];
     m[ini] = (m[ini] || 0) + d.arranque;
     const fin = usados.filter(x => x === ult || +x > +ult); fin.forEach(x => { m[x] = (m[x] || 0) + d.final; });
     return { m, txt: `Arranque → dep. ${ini} · Arrastre final → dep. ${fin.sort((a, b) => a - b).join(', ')}` };
@@ -1331,8 +1342,13 @@ function recepAgua(guardado) {
   const val = (ses, dep, pr) => A.manual[ses.cod] ? (A.l[ses.cod + '|' + dep] || '') : (pr.m[dep] ? String(pr.m[dep]) : '');
   v.innerHTML = `<div class="card stack"><h2>Agua de arrastre del día</h2>
       <p class="small muted">Es el agua que entra a los depósitos al arrancar el contador y al arrastrar la leche al final. La app la propone según el orden de descarga; ajústala si hoy ha sido distinto. No cuenta en el total de ningún camión.</p>
-      ${cams.length ? `<span class="lbl">Camiones recibidos hoy, por orden</span>
-      <div class="stack">${cams.map((x, i) => `<div class="small"><b>${esc(x.recep.hora)}</b> · <span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)} → ${x.recep.comps.map(c => tq(c.id) + ' dep. ' + [...new Set(c.reps.map(r => r.dep))].join('+')).join(' · ')}</div>`).join('')}</div>
+      ${cams.length ? `<span class="lbl">Orden de descarga de hoy</span>
+      ${sesiones.filter(z => z.cams.length).map(ses => { let n = 0; const filas = ses.cams.flatMap(x => x.recep.comps.map((c, k) => ({ x, c, k }))); return `${sesiones.length > 1 ? `<span class="lbl" style="margin-top:6px">${ses.cod}</span>` : ''}
+        <div class="tl">${filas.map((f, j) => { n++; const reps = f.c.reps; return `<span class="n">${n}</span>
+          <span>${f.k === 0 ? `<b class="mono small">${esc(f.x.recep.hora)}</b> <span class="small">${esc(f.x.conductor)}</span>` : ''}</span>
+          <span>${tq(f.c.id)} → ${reps.map(r => `<b>dep. ${esc(r.dep)}</b>${reps.length > 1 ? ' <span class="small muted">' + fmt(r.l) + ' l</span>' : ''}`).join(' + ')}</span>
+          <span>${j === 0 ? '<span class="tag ini">arranque</span>' : ''}${j === filas.length - 1 ? '<span class="tag fin">último · arrastre final</span>' : ''}</span>`; }).join('')}</div>`; }).join('')}
+      <p class="small muted">Si el orden no es el real, abre ese camión desde la lista de recepción: con «No era este» lo quitas y lo vuelves a tocar en su sitio.</p>
       ${cams.length > 1 ? `<div class="field"><label class="lbl" for="agCorte">¿Hubo limpieza y una segunda descarga (AG2)? Empieza en:</label>
         <select id="agCorte" class="big" style="font-size:20px"><option value="">No, todo es una descarga (solo AG1)</option>${cams.slice(1).map(x => `<option value="${esc(x.id)}" ${A.corte === x.id ? 'selected' : ''}>${esc(x.recep.hora)} · ${esc(x.matricula)} · ${esc(x.conductor)}</option>`).join('')}</select></div>` : ''}`
       : '<div class="msg warn">Todavía no hay ningún camión recibido hoy.</div>'}

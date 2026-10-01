@@ -31,6 +31,11 @@
 html,body{background:var(--bg)}
 body{color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45}
 .app{max-width:480px;margin:0 auto;padding-inline:16px;padding-block:16px 48px}
+/* Recepción: pantalla de cuadro (15" o más, horizontal) */
+body.ancho .app,body.ancho .top-in{max-width:1180px}
+.recgrid{display:grid;gap:12px}
+@media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
+.xrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.xrow .unit{flex:1 1 150px;min-width:150px}.xrow .btn{width:auto;min-height:48px;padding:6px 12px}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
@@ -224,6 +229,8 @@ body{margin:0}
     <section id="vOfi" class="stack" hidden></section>
     <section id="vOfiV" class="stack" hidden></section>
     <section id="vOfiE" class="stack" hidden></section>
+    <section id="vRecep" class="stack" hidden></section>
+    <section id="vRecepC" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -238,7 +245,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v17 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v18 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -354,11 +361,12 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE'];
+const VIEWS = ['vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
 function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
+  document.body.classList.toggle('ancho', v === 'vRecep' || v === 'vRecepC');
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
-  $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista');
+  $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
   window.scrollTo(0, 0); syncPill();
 }
@@ -369,6 +377,8 @@ $('#back').onclick = () => {
   if (U.view === 'vFicha' || U.view === 'vFin') return lista();
   if (U.view === 'vOfiE') return ofiViaje(U.ofiV);
   if (U.view === 'vOfiV') return oficina(true);
+  if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
+  if (U.view === 'vRecep' && D().oficina) return oficina(true);
   if (U.view === 'vHist') { if (U.histI != null) { U.histI = null; return histRender(); } return rutas(); }
 };
 function ocupado(btn, txt) { U.ocupado = true; btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = txt; }
@@ -398,6 +408,7 @@ function pinView(msg) {
         S.pin = null; libre(b);
         pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
       }
+      if (d.rol === 'RECEPCION') { S.datos = { recepcion: true, usuario: d.usuario }; persistir(); recepcion(); return; }
       if (d.rol === 'OFICINA') { S.datos = { oficina: true, usuario: d.usuario, config: d.config }; persistir(); oficina(); return; }
       cargarDatos(d);
       if (S.viaje) (S.viaje.empezado ? lista : deca)(); else rutas();
@@ -996,12 +1007,14 @@ async function oficina(sinCargar) {
       <span class="st num">${fmt(tot(x))} l</span></button>`; };
   v.innerHTML = `${O.off ? `<div class="msg warn">Sin cobertura: datos de las ${esc(O.hasta)}.</div>` : ''}
     <div class="row"><button class="btn sec" id="ofiAct">Actualizar</button><button class="btn ghost" id="ofiSalir">Salir</button></div>
+    <button class="btn sec" id="ofiRecep">Recepción en fábrica</button>
     <span class="lbl">En curso ahora</span>
     <div class="stack">${enCurso.length ? enCurso.map(tarjeta).join('') : '<p class="small muted">Ningún camión en ruta.</p>'}</div>
     ${Object.keys(dias).map(f => `<span class="lbl" style="text-transform:capitalize">${esc(diaTxt(f))}</span><div class="stack">${dias[f].map(tarjeta).join('')}</div>`).join('')}
     <p class="small muted">Datos de las ${esc(O.hasta)} · últimos 15 días.</p>`;
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => ofiViaje(b.dataset.v));
   $('#ofiAct').onclick = () => oficina();
+  $('#ofiRecep').onclick = () => recepcion();
   $('#ofiSalir').onclick = () => { S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); O.viajes = null; persistir(); pinView(); };
   show('vOfi', 'Oficina', u.nombre);
   clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi') oficina(); }, 60000);
@@ -1131,10 +1144,165 @@ document.addEventListener('keydown', e => {
   if (i < orden.length - 1) $('#' + orden[i + 1]).focus(); else e.target.blur();
 });
 
+/* 8. RECEPCIÓN EN FÁBRICA (PIN con ROL RECEPCION; la oficina entra desde su pantalla).
+   Por camión: cada compartimento en el orden de descarga con su parcial de contador, controles y reparto a silos.
+   Al final, el total del contador del camión (debe ser la suma de los parciales), limpieza de cisterna y filtro. */
+const R = { viajes: null, deps: [], hasta: '', ed: null };
+const ESPS = { D: 'Oveja D.O.', O: 'Oveja', C: 'Cabra', V: 'Vaca', AG: 'Agua' };
+const espComp = c => (c.esp && c.esp.length ? c.esp[0] : letraDe(c.id)) || '';
+const usoMalo = (esp, dep) => { const d = R.deps.find(x => x.id === dep); return d && /oveja|d\.?o/i.test(d.uso) && !/mezcla/i.test(d.uso) && /^[CV]$/.test(esp); };
+async function recepcion(sinCargar) {
+  const v = $('#vRecep'), u = D().usuario;
+  if (!sinCargar || !R.viajes) {
+    v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
+    show('vRecep', 'Recepción de leche', u.nombre);
+    try { const r = await api('recepViajes', {}); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; }
+    catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
+  }
+  const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Lo que ha entrado hoy en cada silo según las recepciones guardadas
+  const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })));
+  const pend = R.viajes.filter(x => !x.recep), hechos = R.viajes.filter(x => x.recep);
+  const tarjeta = x => `<button class="farm${x.recep ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
+      <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
+      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}</span>
+      <span class="comps">${(x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
+      <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
+  v.innerHTML = `<div class="row"><button class="btn sec" id="reAct">Actualizar</button><button class="btn ghost" id="reSalir">${D().oficina ? 'Volver a oficina' : 'Salir'}</button></div>
+    <div class="card stack"><span class="lbl">Silos · entrado hoy</span>
+      <div class="tally">${R.deps.map(d => `<div><b class="mono" style="font-size:18px">${esc(d.id)}</b><b class="num">${fmt(silo[d.id] || 0)}</b><small class="muted">${esc(d.uso)}${d.cap ? ' · ' + fmt(d.cap) : ''}</small></div>`).join('')}</div>
+      <p class="small muted">Solo lo recibido con esta app (no incluye lo que ya había en el silo). El uso de cada silo se cambia en la hoja DEPOSITOS.</p></div>
+    <span class="lbl">Por recibir</span>
+    <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>
+    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor, agua…)</button>
+    ${hechos.length ? `<span class="lbl">Recibidos</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : ''}
+    <p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
+  v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
+  $('#reAct').onclick = () => recepcion();
+  $('#reOtra').onclick = () => recepOtra();
+  $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); R.viajes = null; persistir(); pinView(); };
+  show('vRecep', 'Recepción de leche', u.nombre);
+}
+function recepOtra() {
+  const v = $('#vRecepC'); U.otra = U.otra || { prov: '', mat: '', esp: 'C' };
+  const o = U.otra;
+  v.innerHTML = `<div class="card stack"><h2>Otra entrada</h2>
+    <p class="small muted">Para cisternas que no vienen de la app (otro proveedor, compra de leche) o para apuntar agua que pasa por el contador.</p>
+    <div class="field"><label class="lbl" for="oProv">Proveedor o descripción</label><input class="big" id="oProv" style="font-size:22px" value="${esc(o.prov)}" placeholder="Ej.: Cisterna cabra Cooperativa X"></div>
+    <div class="field"><label class="lbl" for="oMat">Matrícula</label><input class="big" id="oMat" style="font-size:22px;font-family:var(--mono)" value="${esc(o.mat)}" placeholder="0000-XXX"></div>
+    <span class="lbl">Qué entra</span>
+    <div class="dests">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" aria-pressed="${o.esp === k}" data-e="${k}"><b class="sp-${k}">${k === 'AG' ? 'AG' : k}</b><small>${t}</small></button>`).join('')}</div>
+    <div id="oMsg" hidden></div>
+    <button class="btn" id="oOk">Continuar</button></div>`;
+  $('#oProv').oninput = e => o.prov = e.target.value; $('#oMat').oninput = e => o.mat = e.target.value.toUpperCase();
+  v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { o.esp = b.dataset.e; recepOtra(); });
+  $('#oOk').onclick = () => {
+    if (!o.prov.trim() && o.esp !== 'AG') { const m = $('#oMsg'); m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el proveedor o una descripción.'; return; }
+    const id = 'X' + Date.now().toString(36).toUpperCase();
+    const comp = o.esp === 'AG' ? 'AG1' : o.esp;
+    U.otra = null;
+    recepCamion({ id, otra: true, matricula: o.mat.trim(), conductor: o.prov.trim() || 'Agua', rutas: '', ruta: '', deca: '', fecha: '', comps: [{ id: comp, esp: o.esp === 'AG' ? [] : [o.esp], decl: 0, cap: 0 }] });
+  };
+  show('vRecepC', 'Otra entrada', D().usuario.nombre);
+}
+function recepCamion(x) {
+  // Borrador de la recepción: se parte de lo guardado o de los compartimentos del camión (en su orden)
+  const prev = x.recep;
+  const base = x.comps.map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, cap: c.cap || 0 }));
+  const comps = prev ? prev.comps.map(c => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
+  R.ed = { x, comps, total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
+  recepRender();
+}
+function recepRender() {
+  const E = R.ed, x = E.x, v = $('#vRecepC');
+  const silos = R.deps.map(d => d.id);
+  const ppal = c => { const p = c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL'); return p ? p.dep : ''; };
+  const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
+  const resto = c => Math.round((num(c.contador) || 0) - extras(c).reduce((a, r) => a + (num(r.l) || 0), 0));
+  const dif = c => { const n = num(c.contador) || 0; if (!c.decl || !n) return ''; const d = Math.round(n - c.decl), pct = d / c.decl * 100;
+    return `<span class="${Math.abs(pct) > 2 ? 'd-bad' : 'd-ok'}">${d > 0 ? '+' : ''}${fmt(d)} l (${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %) frente a lo declarado</span>`; };
+  const suma = E.comps.reduce((a, c) => a + (num(c.contador) || 0), 0);
+  const tot = num(E.total) || 0;
+  const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
+  v.innerHTML = `<div class="card stack ${x.otra ? '' : ''}">
+      <div class="route-head"><h2><span class="mono">${esc(x.matricula || '—')}</span></h2><span class="muted">${esc(x.conductor)}</span></div>
+      <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
+      <p class="small muted">Descarga los compartimentos en orden. Por cada uno: el <b>parcial</b> del contador, los controles y el silo. Al terminar, el <b>total</b> del contador del camión.</p></div>
+    <div class="recgrid">${E.comps.map((c, i) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c)">
+      <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
+        <span class="small muted">${i + 1}º en descargar ${i > 0 ? `<button class="btn ghost" data-up="${i}" style="min-height:32px;padding:2px 10px;width:auto;display:inline-block">↑</button>` : ''}</span></div>
+      ${c.decl ? `<p class="small muted">Declarado por el recogedor: <b>${fmt(c.decl)} l</b></p>` : ''}
+      <div class="pair">
+        <div class="field"><label class="lbl">Parcial contador</label><div class="unit"><input class="big" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
+        <div class="field"><label class="lbl">Temperatura</label><div class="unit"><input class="big" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="0,0"><span>°C</span></div></div>
+      </div>
+      <div data-dif="${i}" class="small">${dif(c)}</div>
+      <div class="pair">
+        <div class="field"><label class="lbl">pH</label><input class="big" style="font-size:26px" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></div>
+        <div class="field"><label class="lbl">Acidez ºD</label><input class="big" style="font-size:26px" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></div>
+      </div>
+      <span class="lbl">Visual leche</span>${ci('visual', c.visual, i)}
+      <span class="lbl">Silo</span>
+      <div class="dests">${silos.map(s => { const d = R.deps.find(z => z.id === s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b>${s}</b><small>${esc(d.uso)}</small></button>`; }).join('')}</div>
+      ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad">¡Atención! ${esc(ESPS[c.esp])} a ${ppal(c)}, que está marcado como ${esc(R.deps.find(z => z.id === ppal(c)).uso)}.</div>` : ''}
+      ${extras(c).map((p, j) => `<div class="card stack" style="background:rgba(255,255,255,.7)"><span class="lbl">${p.tipo === 'ARRASTRE' ? 'Arrastre' : 'A otro silo'}</span>
+        <div class="row" style="gap:6px;flex-wrap:wrap">${silos.filter(s => s !== ppal(c)).map(s => `<button class="btn ${p.dep === s ? '' : 'sec'}" data-xdep="${s}" data-i="${i}" data-j="${j}" style="min-height:44px;padding:6px 14px;width:auto">${s}</button>`).join('')}</div>
+        <div class="xrow"><div class="unit"><input class="big" style="font-size:28px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
+          ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}
+          <button class="btn ghost" data-xdel="${i}" data-j="${j}">Quitar</button></div></div>`).join('')}
+      <div class="row" style="gap:8px"><button class="btn ghost" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre a mezcla</button><button class="btn ghost" data-xadd="${i}" data-t="OTRO">+ Parte a otro silo</button></div>
+      ${ppal(c) && num(c.contador) ? `<p class="small"><b>${fmt(resto(c))} l a ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l a ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
+      ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros silos es más que el parcial del contador.</div>' : ''}
+    </div>`).join('')}</div>
+    <div class="card stack">
+      <div class="field"><label class="lbl" for="reTot">Total contador del camión</label><div class="unit"><input class="big" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div></div>
+      <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con la suma de parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: la suma de parciales es ${fmt(suma)} l (diferencia ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div>
+      <span class="lbl">Limpieza cisterna</span>${ci('limpieza', E.limpieza)}
+      <span class="lbl">Filtro</span>${ci('filtro', E.filtro)}
+      <div class="field"><label class="lbl" for="reObs">Observaciones / acciones correctivas</label><input class="big" id="reObs" style="font-size:20px" value="${esc(E.obs)}"></div>
+      <div id="reMsg" hidden></div>
+      <button class="btn" id="reGuardar">Guardar recepción</button>
+    </div>`;
+  const C = i => E.comps[+i];
+  v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const d = v.querySelector(`[data-dif="${inp.dataset.i}"]`); if (d) d.innerHTML = dif(c); } });
+  v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => recepRender());
+  v.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { if (b.dataset.i !== '') C(b.dataset.i)[b.dataset.ci] = b.dataset.val; else E[b.dataset.ci] = b.dataset.val; recepRender(); });
+  v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
+  v.querySelectorAll('[data-xadd]').forEach(b => b.onclick = () => { const c = C(b.dataset.xadd); const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== ppal(c)); c.reps.push({ dep: b.dataset.t === 'ARRASTRE' && mez ? mez.id : '', l: b.dataset.t === 'ARRASTRE' ? '100' : '', tipo: b.dataset.t === 'ARRASTRE' ? 'ARRASTRE' : 'OTRO' }); recepRender(); });
+  v.querySelectorAll('[data-xdep]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].dep = b.dataset.xdep; recepRender(); });
+  v.querySelectorAll('[data-xl]').forEach(inp => { inp.oninput = () => { extras(C(inp.dataset.xl))[+inp.dataset.j].l = inp.value.replace(/\D/g, ''); }; inp.onchange = () => recepRender(); });
+  v.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].l = b.dataset.q; recepRender(); });
+  v.querySelectorAll('[data-xdel]').forEach(b => b.onclick = () => { const c = C(b.dataset.xdel), p = extras(c)[+b.dataset.j]; c.reps = c.reps.filter(r => r !== p); recepRender(); });
+  v.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { const i = +b.dataset.up; [E.comps[i - 1], E.comps[i]] = [E.comps[i], E.comps[i - 1]]; recepRender(); });
+  $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => recepRender();
+  $('#reObs').oninput = e => { E.obs = e.target.value; };
+  $('#reGuardar').onclick = async () => {
+    const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
+    const usados = E.comps.filter(c => num(c.contador) > 0);
+    if (!usados.length) return err('Escribe el parcial del contador de al menos un compartimento.');
+    for (const c of usados) {
+      if (!ppal(c)) return err(`Elige el silo de ${c.id}.`);
+      if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros silos es más que el parcial.`);
+      if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin silo o sin litros.`);
+    }
+    if (!(tot > 0)) return err('Escribe el total del contador del camión.');
+    if (Math.round(tot) !== Math.round(suma) && !m.dataset.ok) { m.dataset.ok = '1'; m.hidden = false; m.className = 'msg warn'; m.textContent = `El total (${fmt(tot)} l) no cuadra con la suma de parciales (${fmt(suma)} l). Revisa; si es correcto, pulsa otra vez Guardar.`; return; }
+    const recep = { viajeId: E.x.id, total: tot, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
+      comps: usados.map(c => ({ id: c.id, esp: c.esp, decl: c.decl, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
+        reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
+    const b = $('#reGuardar'); ocupado(b, 'Guardando…');
+    try { const r = await api('guardarRecepcion', { recep }); toast('Recepción guardada · fichero ' + r.fichero); R.ed = null; recepcion(); }
+    catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+  };
+  show('vRecepC', 'Recepción', (x.matricula || '') + ' · ' + x.conductor);
+}
+
 /* ═══════════ ARRANQUE ═══════════ */
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 { const v = $('#ver'); if (v) { v.textContent = VERSION.split(' ')[0]; v.title = VERSION; } }
 if (!S.pin || !S.datos) pinView();
+else if (S.datos.recepcion) recepcion();
 else if (S.datos.oficina) oficina();
 else if (S.viaje) (S.viaje.empezado ? lista : deca)();
 else rutas();

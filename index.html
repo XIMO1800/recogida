@@ -261,7 +261,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v25 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v26 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1272,8 +1272,30 @@ function recepRender() {
   const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
   const resto = c => Math.round((num(c.contador) || 0) - extras(c).reduce((a, r) => a + (num(r.l) || 0), 0));
   const dif = c => { const n = num(c.contador) || 0; if (!c.decl || !n) return ''; const d = Math.round(n - c.decl), pct = d / c.decl * 100;
-    return `<span class="${Math.abs(pct) > 2 ? 'd-bad' : 'd-ok'}">${d > 0 ? '+' : ''}${fmt(d)} l (${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %) frente a lo declarado</span>`; };
+    return `<span class="${Math.abs(pct) > 2 ? 'd-bad' : 'd-ok'}">${d > 0 ? '+' : ''}${fmt(d)} l (${pct > 0 ? '+' : ''}${pct.toFixed(1).replace('.', ',')} %) frente a cisterna</span>`; };
   const desc = E.comps.filter(c => c.ord).sort((a, b) => a.ord - b.ord), pend = E.comps.filter(c => !c.ord);
+  // Cuadre como el papel «Registro litros contador»: CARTILLA = lo recogido por especie (aunque fuera a otro compartimento);
+  // CISTERNA = lo que el recogedor puso en cada compartimento (destinos). Diferencias = contador − cartilla / contador − cisterna.
+  const cuadreDatos = () => {
+    const cart = x.cart || {};
+    const F = ['D', 'O', 'V', 'C'].filter(e => (cart[e] || 0) > 0 || E.comps.some(c => c.esp === e && (c.decl || num(c.contador)))).map(e => {
+      const cs = E.comps.filter(c => c.esp === e);
+      return { e, ids: cs.map(c => c.id), cont: cs.filter(c => c.ord).reduce((a, c) => a + (num(c.contador) || 0), 0), cart: Math.round(cart[e] || 0), cist: Math.round(cs.reduce((a, c) => a + (c.decl || 0), 0)) };
+    });
+    return { F, T: F.reduce((a, f) => ({ cont: a.cont + f.cont, cart: a.cart + f.cart, cist: a.cist + f.cist }), { cont: 0, cart: 0, cist: 0 }) };
+  };
+  const cuadreHtml = () => {
+    if (x.otra) return '';
+    const { F, T } = cuadreDatos(); if (!F.length) return '';
+    const malo = (a, b) => Math.abs(a - b) > Math.max(30, b * 0.015);
+    const dd = (a, b, al) => !a || !b ? '<td class="num muted">—</td>' : `<td class="num ${al ? (malo(a, b) ? 'd-bad' : 'd-ok') : ''}" style="font-size:20px">${a - b > 0 ? '+' : ''}${fmt(a - b)}</td>`;
+    const td = n => `<td class="num" style="font-size:20px">${n ? fmt(n) : '<span class="muted">—</span>'}</td>`;
+    return `<span class="lbl">Cuadre del camión · como el registro de litros contador</span>
+      <div style="overflow-x:auto"><table class="hist" style="width:100%"><thead><tr><th style="text-align:left">Cisterna</th><th>Litros contador</th><th>Litros cartilla</th><th>Dif. cont./cartilla</th><th>Litros cisterna</th><th>Dif. cont./cisterna</th></tr></thead><tbody>
+      ${F.map(f => `<tr class="${bgEsp(f.e)}"><td style="border-left:6px solid var(--cs)"><b>${esc(ESPS[f.e])}</b> <span class="small muted">${f.ids.map(esc).join(' · ')}</span></td>${td(f.cont)}${td(f.cart)}${dd(f.cont, f.cart, false)}${td(f.cist)}${dd(f.cont, f.cist, true)}</tr>`).join('')}
+      <tr><td><b>TOTAL</b></td>${td(T.cont)}${td(T.cart)}${dd(T.cont, T.cart, true)}${td(T.cist)}${dd(T.cont, T.cist, true)}</tr></tbody></table></div>
+      <p class="small muted" style="margin:0">Cartilla: lo recogido de cada especie, aunque el recogedor lo pusiera en otro compartimento. Cisterna: lo que el recogedor anotó en cada compartimento. En verde si la diferencia es pequeña (≤ 30 l o 1,5 %).</p>`;
+  };
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
@@ -1284,7 +1306,7 @@ function recepRender() {
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:8px;padding:12px">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
         <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span>${x.unico && E.comps.length === 1 ? '' : `<button class="lnk" data-unord="${i}">${x.otra ? 'Quitar' : 'No era este'}</button>`}</span></div>
-      <div><span class="tiny">Parcial contador${c.decl ? ` · declarado ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div>
+      <div><span class="tiny">Parcial contador${c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div>
         <div data-dif="${i}" class="small">${dif(c)}</div></div>
       <div class="mini"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
@@ -1304,6 +1326,7 @@ function recepRender() {
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
     ${x.otra ? `<div class="card stack pendc" style="cursor:default"><span class="tiny">Otro compartimento</span><div class="d5" style="grid-template-columns:repeat(4,1fr)">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small style="font-size:10px">${t}</small></button>`).join('')}</div></div>` : ''}</div>
     ${pend.length && !desc.length ? '<p class="small muted">Toca el compartimento que empiezas a descargar. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}
+    ${x.otra ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
     <div class="card stack">
       <div class="camgrid">
         <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>
@@ -1324,7 +1347,7 @@ function recepRender() {
       </div>` : ''}
     </div>`;
   const C = i => E.comps[+i];
-  v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const d = v.querySelector(`[data-dif="${inp.dataset.i}"]`); if (d) d.innerHTML = dif(c); } });
+  v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const d = v.querySelector(`[data-dif="${inp.dataset.i}"]`); if (d) d.innerHTML = dif(c); const q = $('#reCuadre'); if (q) q.innerHTML = cuadreHtml(); } });
   v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => recepRender());
   v.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { if (b.dataset.i !== '') C(b.dataset.i)[b.dataset.ci] = b.dataset.val; else E[b.dataset.ci] = b.dataset.val; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
@@ -1352,7 +1375,7 @@ function recepRender() {
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
     if (Math.round(tot) !== Math.round(suma) && !m.dataset.ok) { m.dataset.ok = '1'; m.hidden = false; m.className = 'msg warn'; m.textContent = `El total (${fmt(tot)} l) no cuadra con la suma de parciales (${fmt(suma)} l). Revisa; si es correcto, pulsa otra vez Guardar.`; return; }
-    const recep = { viajeId: E.x.id, total: tot, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
+    const cq = cuadreDatos().T, recep = { viajeId: E.x.id, total: tot, cuadre: E.x.otra ? null : { cartilla: cq.cart, cisterna: cq.cist }, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
       comps: usados.map(c => ({ id: c.id, esp: c.esp, decl: c.decl, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
         reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
     const b = $('#reGuardar'); ocupado(b, 'Guardando…');

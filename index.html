@@ -261,7 +261,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v24 · 01/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v25 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1314,6 +1314,14 @@ function recepRender() {
       </div>
       <div id="reMsg" hidden></div>
       <button class="btn" id="reGuardar">Guardar recepción</button>
+      ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
+      <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">
+        <b>Anular la recepción de ${esc(x.matricula || '')} · ${esc(x.conductor)}</b>
+        <p class="small">Se borra como si no se hubiera descargado: sale de los depósitos y su fichero <b>${esc(x.recep.fichero || '')}</b> se rehace con una línea <b>ANULADA</b> para que el programa quite lo que importó.${x.otra ? '' : ' El camión vuelve a «Por recibir».'} Queda apuntado en CAMBIOS.</p>
+        <div class="field"><label class="lbl" for="reAnuMot">Motivo</label><input class="sm" id="reAnuMot" style="font-size:18px" placeholder="Ej.: era una prueba / puesto en el día equivocado"></div>
+        <div id="reAnuMsg" hidden></div>
+        <div class="row"><button class="btn" id="reAnuOk" style="background:var(--bad)">Sí, anular</button><button class="btn sec" id="reAnuNo">No</button></div>
+      </div>` : ''}
     </div>`;
   const C = i => E.comps[+i];
   v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const d = v.querySelector(`[data-dif="${inp.dataset.i}"]`); if (d) d.innerHTML = dif(c); } });
@@ -1351,6 +1359,20 @@ function recepRender() {
     try { const r = await api('guardarRecepcion', { recep }); toast('Recepción guardada · fichero ' + r.fichero); R.ed = null; recepcion(); }
     catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
   };
+  if ($('#reAnular')) {
+    $('#reAnular').onclick = () => { $('#reAnu').hidden = false; $('#reAnular').hidden = true; $('#reAnu').scrollIntoView({ block: 'center' }); $('#reAnuMot').focus(); };
+    $('#reAnuNo').onclick = () => { $('#reAnu').hidden = true; $('#reAnular').hidden = false; };
+    $('#reAnuOk').onclick = async () => {
+      const m = $('#reAnuMsg'), mot = $('#reAnuMot').value.trim(), b = $('#reAnuOk');
+      if (!mot) { m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el motivo.'; return; }
+      ocupado(b, 'Anulando…');
+      try {
+        const r = await api('anularRecepcion', { viajeId: x.id, motivo: mot });
+        toast('Recepción anulada' + (r.fichero ? ' · fichero ' + r.fichero : '') + (r.revisarAgua ? ' · revisa el agua del día' : ''));
+        R.ed = null; U.ag = null; recepcion();
+      } catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha anulado.' : e.message; }
+    };
+  }
   show('vRecepC', 'Recepción', (x.matricula || '') + ' · ' + x.conductor);
 }
 

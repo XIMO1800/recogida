@@ -247,7 +247,8 @@ table.dt tr.sin td{opacity:.5}
 table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child(3){min-width:200px}table.dt td:nth-child(4){white-space:nowrap}
 #vOfiE input:not([type=checkbox]):not(.big),#drawerIn input:not([type=checkbox]):not(.big){width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
 #vOfiE label.row,#drawerIn label.row{justify-content:flex-start}#vOfiE label.row input,#drawerIn label.row input{flex:0 0 auto}
-.esc2 .tally{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.esc2 .dep-card>b:first-child{font-size:14px!important;white-space:nowrap}.esc2 .dep-card{padding:8px}
+.esc2 .tally{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.esc2 .dep-card>b:first-child{font-size:14px!important;white-space:nowrap}.esc2 .dep-card{padding:8px;overflow:hidden}.esc2 .dep-card b.num{font-size:22px}.esc2 .dep-card small b{font-size:12.5px}
+.repw{display:inline-flex;flex-direction:column;align-items:center}.reparto{display:flex;justify-content:center;margin-top:3px;padding-top:3px;border-top:1px solid var(--line)}.reparto>span{display:flex;flex-direction:column;align-items:center;padding:0 7px;line-height:1.2}.reparto>span+span{border-left:1px solid var(--line)}.reparto b{font-size:14px}.reparto i{font-style:normal;font-size:12px;font-weight:700}
 #veil{position:fixed;inset:0;background:rgba(29,22,24,.35);z-index:8}
 #drawer{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--bg);box-shadow:-10px 0 30px rgba(0,0,0,.2);z-index:9;overflow:auto;padding:22px 24px 40px}
 </style>
@@ -302,7 +303,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v29 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v35 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -467,6 +468,7 @@ function pinView(msg) {
         pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
       }
       if (d.rol === 'RECEPCION') { S.datos = { recepcion: true, usuario: d.usuario }; persistir(); recepcion(); return; }
+      if (d.rol === 'CALIDAD') { S.datos = { calidad: true, usuario: d.usuario }; persistir(); R.fecha = ''; recepcion(); return; }
       if (d.rol === 'OFICINA') { S.datos = { oficina: true, usuario: d.usuario, config: d.config }; persistir(); oficina(); return; }
       cargarDatos(d);
       if (S.viaje) (S.viaje.empezado ? lista : deca)(); else rutas();
@@ -711,7 +713,11 @@ function lista() {
     const g = gan(x.k), r = S.rec[x.k];
     const cls = r ? (r.sin ? 'skip' : 'done') : (i === next ? 'next' : '');
     const ho = !r && hoyOtro(x.k);
-    const st = r ? (r.sin ? 'No recogido' : fmt(r.litros) + ' l · ' + r.dest) : ho ? `<span style="color:var(--bad)">Ya hoy ${esc(ho.hora)}<br>${fmt(ho.l)} l</span>` : (i === next ? 'Siguiente' : '');
+    const xs = r && !r.sin ? [r.arr, r.rep].filter(z => z && z.l > 0) : [];
+    const partes = xs.length ? [[r.dest, r.litros - xs.reduce((a, z) => a + z.l, 0)]].concat(xs.map(z => [z.dest, z.l])) : [];
+    const st = r ? (r.sin ? 'No recogido' : xs.length
+      ? `<span class="repw"><span>${fmt(r.litros)} l</span><span class="reparto">${partes.map(([d, l]) => `<span><b>${fmt(l)}</b><i class="mono sp-${esc(letraDe(d))}">${esc(d)}</i></span>`).join('')}</span></span>`
+      : fmt(r.litros) + ' l · ' + r.dest) : ho ? `<span style="color:var(--bad)">Ya hoy ${esc(ho.hora)}<br>${fmt(ho.l)} l</span>` : (i === next ? 'Siguiente' : '');
     const prevRuta = i > 0 && L[i - 1].ruta !== x.ruta;
     const cambio = i > 0 && !prevRuta && grp(gan(L[i - 1].k).esp) !== grp(g.esp);
     return `${prevRuta || (i === 0 && S.viaje.rutas.length > 1) ? `<span class="lbl" style="margin-top:6px">Ruta ${+x.ruta}</span>` : ''}${cambio ? `<span class="small" style="color:var(--warn);font-weight:700;padding-left:4px">↓ Cambio de manguera: ${grp(g.esp) === 'OV' ? 'vaca/cabra → oveja' : 'oveja → vaca/cabra'}</span>` : ''}
@@ -1050,7 +1056,7 @@ const O = { viajes: null, hasta: '', off: false };
 /* ═══════════ Escritorio (oficina y recepción en el ordenador) ═══════════
    Con pantalla de 1100 px o más y usuario de oficina o recepción: menú lateral, lista + detalle de viajes,
    tabla completa de recogidas y la corrección en un panel lateral. En el móvil todo sigue igual. */
-const esEsc = () => !!(S.datos && (S.datos.oficina || S.datos.recepcion)) && innerWidth >= 1100;
+const esEsc = () => !!(S.datos && (S.datos.oficina || S.datos.recepcion || S.datos.calidad)) && innerWidth >= 1100;
 function salir() {
   cerrarDrawer(); clearTimeout(U.ofiT);
   S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); O.viajes = null; R.viajes = null; persistir();
@@ -1059,8 +1065,10 @@ function salir() {
 function marcoEsc() {
   const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
   const ofi = !!S.datos.oficina, v = U.view;
-  const it = [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
-  $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' : 'Recepción'}</small></div>
+  const cal = !!S.datos.calidad;
+  const it = cal ? [['recep', 'Recepción', 'Verificación de calidad', ['vRecep', 'vDep']]]
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+  $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' : cal ? 'Calidad' : 'Recepción'}</small></div>
     <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
   const ir = { rec: () => oficina(), recep: () => recepcion(), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
@@ -1320,7 +1328,8 @@ async function recepcion(sinCargar) {
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', 'Recepción de leche', u.nombre);
-    try { const r = await api('recepViajes', {}); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || []; }
+    try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
+      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1337,23 +1346,135 @@ async function recepcion(sinCargar) {
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}${d.letraQ ? ' · Q ' + esc(d.letraQ) : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div>
       <p class="small muted">Toca un depósito para ver lo que ha entrado. Solo lo recibido hoy con esta app, agua incluida.</p></div>`;
-  const pendHtml = `<span class="lbl">Por recibir</span>
-    <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>`;
-  const botones = `<button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
-    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>`;
-  const hechosHtml = hechos.length ? `<span class="lbl">Recibidos</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : '';
+  const cal = !!D().calidad, ofi = !!D().oficina, editable = !cal;
+  const pendHtml = R.esHoy && !cal ? `<span class="lbl">Por recibir</span>
+    <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>` : '';
+  const botones = R.esHoy && editable ? `<button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
+    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>` : '';
+  const hechosHtml = hechos.length ? `<span class="lbl">Recibidos${R.esHoy ? '' : ' el ' + esc(R.dia)}</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay recepciones guardadas con la app.</p>');
   const pie = `<p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
   const cab = `<div class="row solo-movil"><button class="btn sec" id="reAct">Actualizar</button><button class="btn ghost" id="reSalir">${D().oficina ? 'Volver a oficina' : 'Salir'}</button></div>`;
-  v.innerHTML = esEsc()
-    ? `${cab}<div class="esc2"><div class="stack">${pendHtml}${hechosHtml}${pie}</div><div class="stack">${depHtml}${botones}</div></div>`
-    : `${cab}${depHtml}${pendHtml}${botones}${hechosHtml}${pie}`;
-  v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
+  const diaNav = ofi || cal ? `<div class="row" style="align-items:center;gap:8px"><button class="btn sec" id="diaAnt" style="width:auto;padding:6px 14px">‹</button>
+      <b style="font-size:18px;flex:1;text-align:center">${R.esHoy ? 'Hoy · ' : ''}${esc(diaTxt(R.dia))}</b>
+      <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}</div>` : '';
+  const html = esEsc()
+    ? `${cab}${diaNav}<div class="esc2"><div class="stack">${cal ? calidadHtml() : ''}${pendHtml}${hechosHtml}${pie}</div><div class="stack">${parteHtml()}${depHtml}${botones}</div></div>`
+    : `${cab}${diaNav}${cal ? calidadHtml() : ''}${depHtml}${pendHtml}${botones}${hechosHtml}${parteHtml()}${pie}`;
+  v.innerHTML = html;
+  if (editable) v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
+  else v.querySelectorAll('.farm[data-v]').forEach(b => { b.style.cursor = 'default'; });
   $('#reAct').onclick = () => recepcion();
-  $('#reOtra').onclick = () => recepOtra();
+  if ($('#reOtra')) $('#reOtra').onclick = () => recepOtra();
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
-  $('#reAgua').onclick = () => { U.ag = null; recepAgua(); };
+  if ($('#reAgua')) $('#reAgua').onclick = () => { U.ag = null; recepAgua(); };
   $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); salir(); };
+  const mover = n => { const [d, m, y] = String(R.dia).split('/').map(Number), f = new Date(y, m - 1, d + n); R.fecha = f.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }); recepcion(); };
+  if ($('#diaAnt')) $('#diaAnt').onclick = () => mover(-1);
+  if ($('#diaSig')) $('#diaSig').onclick = () => mover(1);
+  if ($('#diaHoy')) $('#diaHoy').onclick = () => { R.fecha = ''; recepcion(); };
+  enlazarParte(v);
   show('vRecep', 'Recepción de leche', u.nombre);
+}
+/* ═══════════ Parte del día (FOR PR 7.-02), verificación de calidad y leche vendida ═══════════ */
+const ORD_ESP = ['D', 'O', 'V', 'C'];
+const espDe = c => String(c.esp || '').toUpperCase();
+function totEsp() {
+  const t = { D: 0, O: 0, V: 0, C: 0 };
+  R.viajes.filter(x => x.recep).forEach(x => x.recep.comps.forEach(c => { const e = espDe(c); if (e in t) t[e] += Number(c.contador) || 0; }));
+  return t;
+}
+function calidadHtml() {
+  const hs = R.viajes.filter(x => x.recep && x.recep.comps.length);
+  if (!hs.length) return '<div class="card"><p class="muted">No hay recepciones ese día.</p></div>';
+  return `<div class="card stack"><span class="lbl">Verificación de mezcla · calidad</span>
+    <p class="small muted" style="margin:0">Comprueba que la D.O. y la oveja no llevan cabra ni vaca, y que la cabra es pura. La vaca no se verifica.</p>
+    ${hs.map(x => `<div class="stack" style="gap:6px"><b>${esc(x.conductor)} <span class="mono small muted">${esc(x.matricula)}</span>${x.otra ? '' : ' · ruta ' + rutasTxt(x)}</b>
+      ${x.recep.comps.filter(c => 'DOC'.includes(espDe(c))).map(c => { const m = (R.mezclas || {})[x.id + '|' + c.id] || '';
+        return `<div class="row ${bgEsp(espDe(c))}" style="align-items:center;padding:6px 10px;border-radius:10px;border:1px solid var(--cb,var(--line));border-left:5px solid var(--cs);background:var(--cf)"><span style="flex:1">${tq(c.id)} <b>${esc(ESPS[espDe(c)] || '')}</b> · ${fmt(c.contador)} l</span>
+          <div class="tg" style="width:240px">${['C', 'I'].map(k => `<button class="${m === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-mz="${esc(x.id + '|' + c.id)}" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>`; }).join('') || '<p class="small muted" style="margin:0">Solo vaca: no se verifica.</p>'}</div>`).join('')}</div>`;
+}
+function parteHtml() {
+  const t = totEsp(), P = R.parte || {}, ve = R.ventas || [], cal = !!D().calidad;
+  return `<div class="card stack"><span class="lbl">Parte del día · ${esc(R.dia || '')}</span>
+    <div class="tally">${ORD_ESP.map(e => `<div class="${bgEsp(e)}" style="border-left:5px solid var(--cs)"><small>${esc(ESPS[e])}</small><b class="num">${fmt(t[e])}</b></div>`).join('')}</div>
+    <p class="small muted" style="margin:0">Total de leche recepcionada por especie (contador, sin agua), incluidas las cisternas de otros proveedores.</p>
+    <span class="lbl">Leche vendida</span>
+    ${ve.length ? `<table class="hist"><tbody>${ve.map(x => `<tr class="${bgEsp(x.esp)}"><td><b>${esc(ESPS[x.esp] || x.esp)}</b>${x.dep ? ' · dep. ' + esc(x.dep) : ''}</td><td class="num">${fmt(x.l)} l</td><td>${esc(x.cliente)}</td><td>${cal ? '' : `<button class="lnk" style="flex:0" data-vdel="${esc(x.id)}">✕</button>`}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted" style="margin:0">Ninguna.</p>'}
+    ${cal ? '' : `<button class="btn ghost" id="vtNueva">+ Venta de leche</button>
+      <div id="vtForm" class="stack" hidden><div class="tg">${ORD_ESP.map(e => `<button data-vesp="${e}">${esc(ESPS[e])}</button>`).join('')}</div>
+        <div class="pair"><div class="field"><label class="lbl" for="vtDep">Depósito</label><select id="vtDep" class="big" style="font-size:20px"><option value="">—</option>${R.deps.map(d => `<option>${esc(d.id)}</option>`).join('')}</select></div>
+          <div class="field"><label class="lbl" for="vtL">Litros</label><input class="sm" id="vtL" inputmode="numeric"></div></div>
+        <div class="field"><label class="lbl" for="vtCli">Vendida a</label><input class="sm" id="vtCli" style="font-family:var(--body)"></div>
+        <div id="vtMsg" hidden></div><button class="btn" id="vtOk">Guardar venta</button></div>`}
+    <div class="field"><span class="lbl">Acciones correctivas / observaciones</span>${cal ? `<p style="margin:0">${esc(P.obs || '—')}</p>` : `<textarea id="pObs" rows="2" style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px">${esc(P.obs || '')}</textarea><button class="btn sec" id="pObsOk" style="margin-top:6px">Guardar observaciones</button>`}</div>
+    <div class="msg ${P.verificado ? 'ok' : 'warn'}" style="margin:0">${P.verificado ? `Verificado por calidad: <b>${esc(P.verificado)}</b> · ${esc(P.horaVerif)}` : 'Sin verificar por calidad.'}</div>
+    ${cal ? `<button class="btn" id="pVerif">${P.verificado ? 'Quitar la verificación' : 'Firmar verificación del día'}</button>` : ''}
+    <button class="btn sec" id="pPrint">Imprimir parte del día</button></div>`;
+}
+function enlazarParte(v) {
+  const recargar = () => recepcion();
+  v.querySelectorAll('[data-mz]').forEach(b => b.onclick = async () => {
+    const [vid, comp] = b.dataset.mz.split('|'), k = b.dataset.mz, val = (R.mezclas[k] || '') === b.dataset.val ? '' : b.dataset.val;
+    try { await api('guardarMezcla', { viajeId: vid, comp, mezcla: val }); R.mezclas[k] = val; recepcion(true); } catch (e) { toast(esRed(e) ? 'Sin conexión' : e.message); }
+  });
+  if ($('#vtNueva')) {
+    let esp = '';
+    $('#vtNueva').onclick = () => { $('#vtForm').hidden = false; $('#vtNueva').hidden = true; };
+    v.querySelectorAll('[data-vesp]').forEach(b => b.onclick = () => { esp = b.dataset.vesp; v.querySelectorAll('[data-vesp]').forEach(z => z.classList.toggle('on', z === b)); });
+    $('#vtOk').onclick = async () => {
+      const m = $('#vtMsg'), b = $('#vtOk'); ocupado(b, 'Guardando…');
+      try { await api('guardarVenta', { fecha: R.dia, venta: { esp, dep: $('#vtDep').value, l: $('#vtL').value, cliente: $('#vtCli').value } }); toast('Venta guardada'); recargar(); }
+      catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión.' : e.message; }
+    };
+  }
+  v.querySelectorAll('[data-vdel]').forEach(b => b.onclick = async () => { if (b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = '¿Borrar?'; return; }
+    try { await api('borrarVenta', { id: b.dataset.vdel }); recargar(); } catch (e) { toast(e.message); } });
+  if ($('#pObsOk')) $('#pObsOk').onclick = async () => { const b = $('#pObsOk'); ocupado(b, 'Guardando…');
+    try { await api('guardarObsDia', { fecha: R.dia, obs: $('#pObs').value }); toast('Observaciones guardadas'); R.parte.obs = $('#pObs').value; libre(b); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
+  if ($('#pVerif')) $('#pVerif').onclick = async () => { const b = $('#pVerif'); ocupado(b, 'Firmando…');
+    try { await api('verificarDia', { fecha: R.dia, quitar: !!R.parte.verificado }); toast(R.parte.verificado ? 'Verificación quitada' : 'Parte verificado'); recargar(); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
+  if ($('#pPrint')) $('#pPrint').onclick = imprimirParte;
+}
+/** Parte en papel con el formato del FOR PR 7.-02: un bloque por camión, una línea por compartimento. */
+function imprimirParte() {
+  const cams = R.viajes.filter(x => x.recep && x.recep.comps.length).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1);
+  const P = R.parte || {}, t = totEsp(), logo = ($('.logo img') || {}).src || '';
+  const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, num1 = x => x === '' || x == null ? '' : String(x).replace('.', ',');
+  const bloque = x => {
+    const base = x.comps || [], comps = x.recep.comps.slice().sort((a, b) => ORD_ESP.indexOf(espDe(a)) - ORD_ESP.indexOf(espDe(b)));
+    const nComp = (c, i) => { const b = base.find(z => z.id === c.id); return b && b.n ? b.n : (x.otra ? x.recep.comps.indexOf(c) + 1 : ''); };
+    const total = x.recep.total || x.recep.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
+    return `<table class="b"><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
+      ${comps.map((c, i) => `<tr>${i === 0 ? `<td class="prov" rowspan="${comps.length}"><b>${esc(x.otra ? x.conductor : x.conductor + ' · ruta ' + rutasTxt(x))}</b><br>Matrícula: ${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
+        <td><b>${EP[espDe(c)] || esc(c.esp)}</b> <small>${esc(c.id)}</small></td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
+        <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(x.recep.limpieza || '')}</td><td>${esc(x.recep.filtro || '')}</td><td>${nComp(c, i)}</td>
+        <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
+        ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(x.recep.usuario || '')}<br><small>${esc(x.recep.hora || '')}</small><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
+      ${x.recep.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(x.recep.obs)}</small></td></tr>` : ''}</tbody></table>`;
+  };
+  const ve = R.ventas || [], vend = e => ve.filter(z => z.esp === e);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Registro recepción de leche ${esc(R.dia)}</title><style>
+    @page{size:A4;margin:10mm}body{font-family:Arial,sans-serif;font-size:10.5px;color:#111;margin:0}
+    .h{display:flex;align-items:center;border:1.5px solid #333;margin-bottom:6px}.h img{height:38px;padding:4px 10px;border-right:1.5px solid #333}.h h1{flex:1;font-size:16px;text-align:center;margin:0}.h .f{border-left:1.5px solid #333;padding:4px 14px;text-align:center;font-size:12px}
+    table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3px 4px;text-align:center;vertical-align:middle}th{background:#eee;font-size:9px}
+    table.b{margin-bottom:6px;page-break-inside:avoid}td.prov{text-align:left;width:120px}td.n{text-align:right;font-weight:bold}td.firma{width:80px;font-size:10px}.tot{margin-top:4px;border-top:1px solid #555;padding-top:2px}
+    .pie{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-top:8px}.pie td{text-align:left}.pie td.n{text-align:right}
+    .obs{border:1px solid #555;min-height:34px;padding:4px;margin-top:8px}.ver{margin-top:8px;display:flex;justify-content:space-between;font-size:11px}
+  </style></head><body>
+    <div class="h">${logo ? `<img src="${logo}">` : ''}<h1>REGISTRO RECEPCIÓN DE LECHE</h1><div class="f">FECHA<br><b>${esc(R.dia)}</b></div></div>
+    ${cams.map(bloque).join('') || '<p>Sin recepciones.</p>'}
+    <div class="pie">
+      <table><tr><th colspan="2">TOTAL LITROS LECHE RECEPCIONADA</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${t[e] ? fmt(t[e]) : ''}</td></tr>`).join('')}</table>
+      <table><tr><th colspan="2">LITROS LECHE MEZCLA</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n"></td></tr>`).join('')}</table>
+      <table><tr><th>LITROS LECHE VENDIDA</th><th></th><th>VENDIDA A</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${vend(e).length ? fmt(vend(e).reduce((a, z) => a + z.l, 0)) : ''}</td><td>${esc(vend(e).map(z => z.cliente).join(', '))}</td></tr>`).join('')}</table>
+    </div>
+    <div class="obs"><b>Acciones correctivas / Observaciones:</b> ${esc(P.obs || '')}</div>
+    <div class="ver"><span>FOR PR 7.-02 agosto 2019</span><span>Verificado por calidad: <b>${esc(P.verificado || '________________')}</b> ${esc(P.horaVerif || '')}</span></div>
+  </body></html>`;
+  let f = $('#printFrame'); if (f) f.remove();
+  f = document.createElement('iframe'); f.id = 'printFrame'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+  f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+  setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 300);
 }
 function recepOtra() {
   const v = $('#vRecepC'); U.otra = U.otra || { prov: '', mat: '', esp: 'C' };
@@ -1388,7 +1509,7 @@ function recepCamion(x) {
   recepRender();
 }
 function recepRender() {
-  const E = R.ed, x = E.x, v = $('#vRecepC');
+  const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
   const silos = R.deps.map(d => d.id);
   const ppal = c => { const p = c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL'); return p ? p.dep : ''; };
   const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
@@ -1398,39 +1519,45 @@ function recepRender() {
   const desc = E.comps.filter(c => c.ord).sort((a, b) => a.ord - b.ord), pend = E.comps.filter(c => !c.ord);
   // Cuadre como el papel «Registro litros contador»: CARTILLA = lo recogido por especie (aunque fuera a otro compartimento);
   // CISTERNA = lo que el recogedor puso en cada compartimento (destinos). Diferencias = contador − cartilla / contador − cisterna.
+  // Solo cuenta lo ya descargado (compartimento tocado y con parcial): así la diferencia con la cisterna vale desde el primero.
+  // La de la cartilla (por especie) solo se calcula cuando están descargados todos los compartimentos de esa especie.
   const cuadreDatos = () => {
-    const cart = x.cart || {};
+    const cart = x.cart || {}, hecho = c => c.ord && num(c.contador) > 0, pendiente = c => !hecho(c) && (c.decl || 0) > 0;
     const F = ['D', 'O', 'V', 'C'].filter(e => (cart[e] || 0) > 0 || E.comps.some(c => c.esp === e && (c.decl || num(c.contador)))).map(e => {
-      const cs = E.comps.filter(c => c.esp === e);
-      return { e, ids: cs.map(c => c.id), cont: cs.filter(c => c.ord).reduce((a, c) => a + (num(c.contador) || 0), 0), cart: Math.round(cart[e] || 0), cist: Math.round(cs.reduce((a, c) => a + (c.decl || 0), 0)) };
+      const cs = E.comps.filter(c => c.esp === e), ya = cs.filter(hecho);
+      return { e, ids: cs.map(c => c.id), cont: ya.reduce((a, c) => a + (num(c.contador) || 0), 0), cart: Math.round(cart[e] || 0),
+        cist: Math.round(ya.reduce((a, c) => a + (c.decl || 0), 0)), completa: !cs.some(pendiente) };
     });
-    return { F, T: F.reduce((a, f) => ({ cont: a.cont + f.cont, cart: a.cart + f.cart, cist: a.cist + f.cist }), { cont: 0, cart: 0, cist: 0 }) };
+    const T = F.reduce((a, f) => ({ cont: a.cont + f.cont, cart: a.cart + f.cart, cist: a.cist + f.cist }), { cont: 0, cart: 0, cist: 0 });
+    T.completa = !E.comps.some(pendiente);
+    return { F, T };
   };
   const cuadreHtml = () => {
     if (x.otra) return '';
     const { F, T } = cuadreDatos(); if (!F.length) return '';
     const malo = (a, b) => Math.abs(a - b) > Math.max(30, b * 0.015);
-    const dd = (a, b, al) => !a || !b ? '<td class="num muted">—</td>' : `<td class="num ${al ? (malo(a, b) ? 'd-bad' : 'd-ok') : ''}" style="font-size:20px">${a - b > 0 ? '+' : ''}${fmt(a - b)}</td>`;
-    const td = n => `<td class="num" style="font-size:20px">${n ? fmt(n) : '<span class="muted">—</span>'}</td>`;
+    const cc = 'text-align:center;font-size:20px';
+    const dd = (a, b, al, ok) => !ok || !a || !b ? `<td class="num muted" style="${cc}">—</td>` : `<td class="num ${al ? (malo(a, b) ? 'd-bad' : 'd-ok') : ''}" style="${cc}">${a - b > 0 ? '+' : ''}${fmt(a - b)}</td>`;
+    const td = n => `<td class="num" style="${cc}">${n ? fmt(n) : '<span class="muted">—</span>'}</td>`;
+    const th = t => `<th style="text-align:center">${t}</th>`;
     return `<span class="lbl">Cuadre del camión · como el registro de litros contador</span>
-      <div style="overflow-x:auto"><table class="hist" style="width:100%"><thead><tr><th style="text-align:left">Cisterna</th><th>Litros contador</th><th>Litros cartilla</th><th>Dif. cont./cartilla</th><th>Litros cisterna</th><th>Dif. cont./cisterna</th></tr></thead><tbody>
-      ${F.map(f => `<tr class="${bgEsp(f.e)}"><td style="border-left:6px solid var(--cs)"><b>${esc(ESPS[f.e])}</b> <span class="small muted">${f.ids.map(esc).join(' · ')}</span></td>${td(f.cont)}${td(f.cart)}${dd(f.cont, f.cart, false)}${td(f.cist)}${dd(f.cont, f.cist, true)}</tr>`).join('')}
-      <tr><td><b>TOTAL</b></td>${td(T.cont)}${td(T.cart)}${dd(T.cont, T.cart, true)}${td(T.cist)}${dd(T.cont, T.cist, true)}</tr></tbody></table></div>
-      <p class="small muted" style="margin:0">Cartilla: lo recogido de cada especie, aunque el recogedor lo pusiera en otro compartimento. Cisterna: lo que el recogedor anotó en cada compartimento. En verde si la diferencia es pequeña (≤ 30 l o 1,5 %).</p>`;
+      <div style="overflow-x:auto"><table class="hist" style="width:100%"><thead><tr><th style="text-align:left">Cisterna</th>${['Litros contador', 'Litros cartilla', 'Dif. cont./cartilla', 'Litros cisterna', 'Dif. cont./cisterna'].map(th).join('')}</tr></thead><tbody>
+      ${F.map(f => `<tr class="${bgEsp(f.e)}"><td style="border-left:6px solid var(--cs)"><b>${esc(ESPS[f.e])}</b> <span class="small muted">${f.ids.map(esc).join(' · ')}</span></td>${td(f.cont)}${td(f.cart)}${dd(f.cont, f.cart, false, f.completa)}${td(f.cist)}${dd(f.cont, f.cist, true, true)}</tr>`).join('')}
+      <tr><td><b>TOTAL</b></td>${td(T.cont)}${td(T.cart)}${dd(T.cont, T.cart, true, T.completa)}${td(T.cist)}${dd(T.cont, T.cist, true, true)}</tr></tbody></table></div>
+      <p class="small muted" style="margin:0">Contador y cisterna: solo los compartimentos ya descargados. La diferencia con la cartilla sale cuando está descargada toda esa especie. En verde si la diferencia es pequeña (≤ 30 l o 1,5 %).</p>`;
   };
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
   v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px">
       <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
-      <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
+      <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
       ${x.otra ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
       <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:8px;padding:12px">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
         <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span>${x.unico && E.comps.length === 1 ? '' : `<button class="lnk" data-unord="${i}">${x.otra ? 'Quitar' : 'No era este'}</button>`}</span></div>
-      <div><span class="tiny">Parcial contador${c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div>
-        <div data-dif="${i}" class="small">${dif(c)}</div></div>
+      <div><span class="tiny">Parcial contador${ofi && c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
       <div class="mini"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
         <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label></div>
@@ -1445,11 +1572,11 @@ function recepRender() {
       ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
     </div>`).join('')}
-    ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:var(--mono)">${esc(c.id)}</b><span>${esc(ESPS[c.esp] || '')}${c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>
+    ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:var(--mono)">${esc(c.id)}</b><span>${esc(ESPS[c.esp] || '')}${ofi && c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
     ${x.otra ? `<div class="card stack pendc" style="cursor:default"><span class="tiny">Otro compartimento</span><div class="d5" style="grid-template-columns:repeat(4,1fr)">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small style="font-size:10px">${t}</small></button>`).join('')}</div></div>` : ''}</div>
     ${pend.length && !desc.length ? '<p class="small muted">Toca el compartimento que empiezas a descargar. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}
-    ${x.otra ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
+    ${x.otra || !ofi ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
     <div class="card stack">
       <div class="camgrid">
         <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>
@@ -1459,7 +1586,8 @@ function recepRender() {
         <div><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
       </div>
       <div id="reMsg" hidden></div>
-      <button class="btn" id="reGuardar">Guardar recepción</button>
+      ${ofi ? '' : `<div class="field" style="max-width:360px"><label class="lbl" for="reFirma">Firma: PIN de quien hace la recepción</label><input class="big" id="reFirma" type="password" inputmode="numeric" autocomplete="off" style="font-size:28px;letter-spacing:.3em" placeholder="••••"></div>`}
+      <button class="btn" id="reGuardar">${ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
       <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">
         <b>Anular la recepción de ${esc(x.matricula || '')} · ${esc(x.conductor)}</b>
@@ -1470,7 +1598,7 @@ function recepRender() {
       </div>` : ''}
     </div>`;
   const C = i => E.comps[+i];
-  v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const d = v.querySelector(`[data-dif="${inp.dataset.i}"]`); if (d) d.innerHTML = dif(c); const q = $('#reCuadre'); if (q) q.innerHTML = cuadreHtml(); } });
+  v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const q = $('#reCuadre'); if (q) q.innerHTML = cuadreHtml(); } });
   v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => recepRender());
   v.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { if (b.dataset.i !== '') C(b.dataset.i)[b.dataset.ci] = b.dataset.val; else E[b.dataset.ci] = b.dataset.val; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
@@ -1507,7 +1635,9 @@ function recepRender() {
       comps: usados.map(c => ({ id: c.id, esp: c.esp, decl: c.decl, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
         reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
     const b = $('#reGuardar'); ocupado(b, 'Guardando…');
-    try { const r = await api('guardarRecepcion', { recep }); toast('Recepción guardada · fichero ' + r.fichero); R.ed = null; recepcion(); }
+    const firma = ofi ? '' : ($('#reFirma').value || '').trim();
+    if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar la recepción.'); }
+    try { const r = await api('guardarRecepcion', { recep, firma }); toast('Recepción guardada' + (r.firmado ? ' · firmada por ' + r.firmado : '') + ' · fichero ' + r.fichero); R.ed = null; recepcion(); }
     catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
   };
   if ($('#reAnular')) {
@@ -1598,7 +1728,7 @@ function recepAgua(guardado) {
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 { const v = $('#ver'); if (v) { v.textContent = VERSION.split(' ')[0]; v.title = VERSION; } }
 if (!S.pin || !S.datos) pinView();
-else if (S.datos.recepcion) recepcion();
+else if (S.datos.recepcion || S.datos.calidad) recepcion();
 else if (S.datos.oficina) oficina();
 else if (S.viaje) (S.viaje.empezado ? lista : deca)();
 else rutas();

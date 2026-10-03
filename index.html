@@ -303,7 +303,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v37 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v38 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -491,7 +491,10 @@ function cargarDatos(d) {
 function estSel() { const seen = new Set(); let t = 0; S.sel.forEach(r => ganRuta(r).forEach(g => { if (seen.has(kg(g))) return; seen.add(kg(g)); t += g.ult || 0; })); return t; }
 function rutas() {
   const c = D().conductor, keys = misRutas(), v = $('#vRutas');
-  if (!T()) { v.innerHTML = `<div class="msg bad">No tienes ningún camión dado de alta. Avisa a la oficina o da de alta uno.</div><button class="btn" id="cambiarCam">Dar de alta camión</button>`; $('#cambiarCam').onclick = () => camion('inicio'); show('vRutas', 'Viaje de hoy', c.nombre); return; }
+  if (!T()) { v.innerHTML = `<div class="msg bad">No tienes ningún camión dado de alta. Avisa a la oficina o da de alta uno.</div><button class="btn" id="cambiarCam">Dar de alta camión</button><button class="btn ghost" id="salirSin">Salir · entrar con otro PIN</button>`;
+    $('#cambiarCam').onclick = () => camion('inicio');
+    $('#salirSin').onclick = () => { if (pendientes()) return toast('Hay datos sin enviar. Espera a tener cobertura.'); S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); persistir(); pinView(); };
+    show('vRutas', 'Viaje de hoy', c.nombre); return; }
   const seen = new Set(); const n = S.sel.reduce((a, r) => a + ganRuta(r).filter(g => !seen.has(kg(g)) && seen.add(kg(g))).length, 0);
   v.innerHTML = `<p class="muted" style="text-transform:capitalize">${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
   <div class="card stack">

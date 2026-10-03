@@ -261,7 +261,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v26 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v28 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1302,6 +1302,7 @@ function recepRender() {
   v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px">
       <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
       <p class="small muted">${x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}</b>: al guardar se rehace` : ''}</p>
+      ${x.otra ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
       <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:8px;padding:12px">
       <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
@@ -1318,7 +1319,7 @@ function recepRender() {
         <div class="d5">${silos.map(s => `<button class="dest" aria-pressed="${p.dep === s}" ${s === ppal(c) ? 'disabled style="opacity:.35"' : ''} data-xdep="${s}" data-i="${i}" data-j="${j}"><b>${s}</b></button>`).join('')}</div>
         <div class="xrow"><div class="unit"><input class="sm" style="font-size:22px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
           ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}<button class="lnk" data-xdel="${i}" data-j="${j}">✕</button></div></div>`).join('')}
-      <div class="row" style="gap:6px"><button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button><button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>
+      ${1 + extras(c).length < 3 ? `<div class="row" style="gap:6px"><button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button><button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>` : '<p class="small muted" style="margin:0">Máximo 3 depósitos por compartimento (como en el programa).</p>'}
       ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
     </div>`).join('')}
@@ -1371,6 +1372,11 @@ function recepRender() {
       if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
       if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
       if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin depósito o sin litros.`);
+      if (new Set([ppal(c)].concat(extras(c).map(p => p.dep))).size > 3) return err(`En ${c.id} hay más de 3 depósitos: el programa admite como máximo 3.`);
+    }
+    if (E.x.otra) for (const e of new Set(usados.map(c => c.esp))) {
+      const ds = new Set(); usados.filter(c => c.esp === e).forEach(c => { ds.add(ppal(c)); extras(c).forEach(p => ds.add(p.dep)); });
+      if (ds.size > 3) return err(`V${e} va a ${ds.size} depósitos entre todos sus compartimentos: el programa admite como máximo 3.`);
     }
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
@@ -1444,6 +1450,7 @@ function recepAgua(guardado) {
       return `<div class="card stack"><div class="route-head"><h2>${ses.cod}</h2><b class="num">${fmt(tot)} l</b></div>
         <p class="small muted">${A.manual[ses.cod] ? 'Ajustado a mano.' : esc(pr.txt) + ` (${d.arranque} + ${d.final} l por depósito)`}</p>
         <div class="tally">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>l</span></div></div>`).join('')}</div>
+        ${deps.filter(dp => (num(val(ses, dp, pr)) || 0) > 0).length > 3 ? `<div class="msg bad">${ses.cod} va a más de 3 depósitos y el programa solo admite 3: junta el agua de alguno (pon 0 en uno y súmalo a otro).</div>` : ''}
         ${A.manual[ses.cod] ? `<button class="btn ghost" data-rest="${ses.cod}">Volver a la propuesta</button>` : ''}</div>`; }).join('')}
     <div id="agMsg" hidden></div>
     ${cams.length ? '<button class="btn" id="agOk">Guardar agua del día</button>' : ''}`;

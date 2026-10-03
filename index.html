@@ -211,9 +211,49 @@ body{margin:0}
   table.hist td.num { text-align: right; font-weight: 700; white-space: nowrap; }
   table.hist td:last-child { white-space: nowrap; }
   tr.muted td { opacity: .55; }
+
+/* ═══ Escritorio: oficina y recepción en pantalla de ordenador (≥ 1100 px) ═══ */
+#side{display:none}
+body.esc #side{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:232px;background:var(--brand-deep);color:#fff;z-index:6;padding:18px 12px;gap:4px}
+body.esc .top{margin-left:232px}
+body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
+body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
+body.esc .solo-movil{display:none!important}
+.side-t{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1;padding:4px 10px 14px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px}
+.side-t small{display:block;font-family:var(--body);font-size:13px;font-weight:500;opacity:.75;margin-top:4px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button,.navb{display:block;width:100%;text-align:left;background:transparent;border:0;color:rgba(255,255,255,.82);padding:11px 12px;border-radius:10px;font-weight:600;font-size:15.5px}
+.nav button:hover,.navb:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav button.on{background:rgba(255,255,255,.15);color:#fff;box-shadow:inset 3px 0 0 var(--gold)}
+.nav button small{display:block;font-weight:500;font-size:12px;opacity:.7}
+.navb{border:1px solid rgba(255,255,255,.2);margin-top:6px;text-align:center}
+.ofi2{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
+.ofi2 .lista{position:sticky;top:96px;max-height:calc(100vh - 116px);overflow:auto;padding:10px}
+.vrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%;text-align:left;background:transparent;border:0;border-radius:10px;padding:9px 10px;align-items:center}
+.vrow:hover{background:var(--surface2)}.vrow.on{background:var(--brand-soft);box-shadow:inset 3px 0 0 var(--brand)}
+.vrow small{display:block;font-size:12.5px;color:var(--muted)}.vrow .num{text-align:right}
+.vrow .badge{font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px;background:var(--warn-soft);color:var(--warn)}
+.dia{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:12px 10px 4px}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}.kpi{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 14px;min-width:110px}
+.kpi span{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.kpi b{font-family:var(--display);font-size:28px;font-variant-numeric:tabular-nums}
+table.dt{width:100%;border-collapse:collapse;font-size:14.5px}
+table.dt th{position:sticky;top:88px;background:var(--surface2);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);z-index:1}
+table.dt td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.dt td.n,table.dt th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.dt tr[class*="bg-"] td:first-child{box-shadow:inset 4px 0 0 var(--cs,transparent)}
+table.dt tr.click{cursor:pointer}table.dt tr.click:hover td{background:var(--brand-soft)}
+table.dt tr.sin td{opacity:.5}
+.esc2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,1fr);gap:20px;align-items:start}
+table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child(3){min-width:200px}table.dt td:nth-child(4){white-space:nowrap}
+#vOfiE input:not([type=checkbox]):not(.big),#drawerIn input:not([type=checkbox]):not(.big){width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+#vOfiE label.row,#drawerIn label.row{justify-content:flex-start}#vOfiE label.row input,#drawerIn label.row input{flex:0 0 auto}
+.esc2 .tally{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.esc2 .dep-card>b:first-child{font-size:14px!important;white-space:nowrap}.esc2 .dep-card{padding:8px}
+#veil{position:fixed;inset:0;background:rgba(29,22,24,.35);z-index:8}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--bg);box-shadow:-10px 0 30px rgba(0,0,0,.2);z-index:9;overflow:auto;padding:22px 24px 40px}
 </style>
 </head>
 <body>
+<aside id="side" aria-label="Menú"></aside>
 <header class="top">
   <div class="top-in">
     <div class="brand">
@@ -254,6 +294,7 @@ body{margin:0}
   <div id="reader"></div>
   <button class="btn" id="scanCancel">Cancelar</button>
 </div>
+<div id="veil" hidden></div><aside id="drawer" hidden><div id="drawerIn" class="stack"></div></aside>
 <div id="toast" role="status"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -261,7 +302,7 @@ body{margin:0}
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v28 · 02/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v29 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -384,7 +425,7 @@ function show(v, title, sub) {
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
   $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
-  window.scrollTo(0, 0); syncPill();
+  window.scrollTo(0, 0); syncPill(); marcoEsc();
 }
 $('#decaBtn').onclick = () => { U.volver = U.view === 'vFicha' ? S.i : null; U.vistaPrev = U.view; deca(); };
 $('#back').onclick = () => {
@@ -1006,6 +1047,80 @@ function histRender() {
 /* 7. OFICINA (PIN con ROL OFICINA): rutas en directo y corrección de viajes cerrados.
    Cada corrección queda en la pestaña CAMBIOS (quién, cuándo, antes, después, motivo) y rehace el fichero del viaje. */
 const O = { viajes: null, hasta: '', off: false };
+/* ═══════════ Escritorio (oficina y recepción en el ordenador) ═══════════
+   Con pantalla de 1100 px o más y usuario de oficina o recepción: menú lateral, lista + detalle de viajes,
+   tabla completa de recogidas y la corrección en un panel lateral. En el móvil todo sigue igual. */
+const esEsc = () => !!(S.datos && (S.datos.oficina || S.datos.recepcion)) && innerWidth >= 1100;
+function salir() {
+  cerrarDrawer(); clearTimeout(U.ofiT);
+  S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); O.viajes = null; R.viajes = null; persistir();
+  document.body.classList.remove('esc'); pinView();
+}
+function marcoEsc() {
+  const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
+  const ofi = !!S.datos.oficina, v = U.view;
+  const it = [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+  $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' : 'Recepción'}</small></div>
+    <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
+    <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
+  const ir = { rec: () => oficina(), recep: () => recepcion(), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
+  $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { cerrarDrawer(); ir[b.dataset.nav](); });
+  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
+  $('#sideSalir').onclick = salir;
+  if (['vOfi', 'vRecep', 'vAgua'].includes(v)) $('#back').hidden = true;
+}
+function abrirDrawer() { $('#veil').hidden = false; $('#drawer').hidden = false; $('#drawer').scrollTop = 0; }
+function cerrarDrawer() { const d = $('#drawer'); if (!d || d.hidden) return; d.hidden = true; $('#veil').hidden = true; $('#drawerIn').innerHTML = ''; }
+$('#veil').onclick = cerrarDrawer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarDrawer(); });
+let escAntes = null;
+addEventListener('resize', () => { const on = esEsc(); if (on === escAntes) return; escAntes = on;
+  if (/^vOfi/.test(U.view) && O.viajes) oficina(true); else if (U.view === 'vRecep' && R.viajes) recepcion(true); else marcoEsc(); });
+const rutasTxt = x => String(x.rutas).split(',').map(r => +r).join(' y ');
+function ofiEsc(v) {
+  const tot = x => x.recs.reduce((a, r) => a + (r.sin ? 0 : r.l), 0);
+  if (!O.viajes.find(y => y.id === U.ofiSel)) U.ofiSel = (O.viajes.find(y => /CURSO/.test(y.estado)) || O.viajes[0] || {}).id;
+  const enCurso = O.viajes.filter(x => /CURSO/.test(x.estado)), dias = {};
+  O.viajes.filter(x => !/CURSO/.test(x.estado)).forEach(x => (dias[x.fecha] = dias[x.fecha] || []).push(x));
+  const fila = x => `<button class="vrow${x.id === U.ofiSel ? ' on' : ''}" data-v="${esc(x.id)}"><span><b>${esc(x.nombre)}</b> · ruta ${rutasTxt(x)}
+      <small><span class="mono">${esc(x.matricula)}</span> · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${x.recs.some(r => r.cor) ? ' · corregido' : ''}</small></span>
+    <span class="num"><b>${fmt(tot(x))} l</b>${/CURSO/.test(x.estado) ? '<small><span class="badge">en curso</span></small>' : ''}</span></button>`;
+  const x = O.viajes.find(y => y.id === U.ofiSel);
+  v.innerHTML = `${O.off ? `<div class="msg warn">Sin conexión: datos de las ${esc(O.hasta)}.</div>` : ''}
+    <div class="ofi2"><div class="card lista">
+      ${enCurso.length ? `<div class="dia">En curso ahora</div>${enCurso.map(fila).join('')}` : ''}
+      ${Object.keys(dias).map(f => `<div class="dia">${esc(diaTxt(f))}</div>${dias[f].map(fila).join('')}`).join('')}
+      ${O.viajes.length ? '' : '<p class="small muted">No hay viajes en los últimos 15 días.</p>'}
+      <p class="small muted" style="padding:8px 10px 0">Datos de las ${esc(O.hasta)} · últimos 15 días.</p></div>
+    <div class="stack">${x ? ofiDetalle(x) : '<div class="card"><p class="muted">Elige un viaje de la lista.</p></div>'}</div></div>`;
+  v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { U.ofiSel = b.dataset.v; ofiEsc(v); });
+  if (x) {
+    v.querySelectorAll('[data-r]').forEach(tr => tr.onclick = () => ofiEditar(x, x.recs[+tr.dataset.r], null));
+    v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => ofiEditar(x, null, x.falta[+b.dataset.f]));
+  }
+}
+function ofiDetalle(x) {
+  const cerrado = !/CURSO/.test(x.estado), k = totDia([x]);
+  const ult = x.recs.filter(r => r.hora && r.lat).sort((a, b) => a.hora < b.hora ? 1 : -1)[0];
+  const ordC = y => { const l = y.replace(/^\d+/, ''); return 'DOCV'.indexOf(l.toUpperCase()) * 2 + (l === l.toLowerCase() ? 1 : 0); };
+  const dests = r => [[r.d1, r.d2 ? r.l1 : r.l], [r.d2, r.l2], [r.d3, r.l3]].filter(z => z[0]);
+  return `<div class="card stack">
+      <div class="route-head"><h2 style="margin:0">${esc(x.nombre)} · ruta ${rutasTxt(x)}</h2>${ult ? `<a class="btn ghost" style="width:auto;text-decoration:none;min-height:40px;padding:6px 14px" target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(String(ult.lat).replace(',', '.') + ',' + String(ult.lon).replace(',', '.'))}">Mapa · última ${esc(ult.hora)}</a>` : ''}</div>
+      <p class="small muted" style="margin:0">${esc(diaTxt(x.fecha))} · DeCA <span class="mono">${esc(x.deca)}</span> · <span class="mono">${esc(x.matricula)}</span> · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${cerrado ? '' : ' · <b>en curso</b>'}${x.exportado && x.exportado !== 'NO' ? ' · fichero <span class="mono">' + esc(x.exportado) + '</span>' : ''}</p>
+      <div class="kpis"><div class="kpi"><span>Total</span><b>${fmt(k.total)} l</b></div><div class="kpi"><span>Ganaderos</span><b>${k.n}${x.falta.length ? `<small class="muted" style="font-size:15px"> · faltan ${x.falta.length}</small>` : ''}</b></div>
+        ${Object.keys(k.t).sort((a, b) => ordC(a) - ordC(b) || (a < b ? -1 : 1)).map(c => `<div class="kpi ${bgId(c)}" style="border-left:5px solid var(--cs)"><span>${esc(c)}</span><b>${fmt(k.t[c])}</b></div>`).join('')}</div>
+      <p class="small muted" style="margin:0">${cerrado ? 'Pulsa en una fila para corregirla. Cada cambio queda registrado con tu nombre y rehace el fichero para el programa.' : 'Viaje en curso: solo consulta. Se podrá corregir cuando esté cerrado.'}</p></div>
+    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Ruta/orden</th><th>Código</th><th>Ganadero</th><th>Especie</th><th class="n">Litros</th><th class="n">T ºC</th><th>Muestra</th><th>Destinos</th><th>Hora</th></tr></thead><tbody>
+      ${x.recs.map((r, i) => `<tr class="${bgEsp(r.esp)}${r.sin ? ' sin' : ''}${cerrado ? ' click' : ''}" ${cerrado ? `data-r="${i}"` : ''}>
+        <td class="mono">R${+r.ruta}/${esc(r.ord)}</td><td class="mono">${esc(r.cod)}</td><td><b>${esc(r.nom || '')}</b>${r.cor ? `<br><small style="color:var(--warn);font-weight:700">Corregido: ${esc(r.cor)}</small>` : ''}</td>
+        <td>${labelEsp(r.esp)}</td><td class="n"><b>${r.sin ? '—' : fmt(r.l)}</b></td><td class="n">${r.sin ? '' : esc(r.t)}</td><td class="mono small">${r.sin ? '' : esc(r.mue || '')}</td>
+        <td>${r.sin ? '<span class="small">No recogido</span>' : dests(r).map(z => tq(z[0]) + (dests(r).length > 1 ? ' <span class="small num">' + fmt(z[1]) + '</span>' : '')).join(' &nbsp;')}</td><td class="mono small">${esc(r.hora || '')}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${x.falta.length ? `<div class="card stack"><span class="lbl">${cerrado ? 'Sin apuntar en este viaje' : 'Faltan por recoger'}</span>
+      <table class="dt"><tbody>${x.falta.map((g, i) => `<tr class="${bgEsp(g.esp)}"><td class="mono">R${+g.ruta}/${esc(g.ord)}</td><td class="mono">${esc(g.cod)}</td><td><b>${esc(g.nom)}</b></td><td>${labelEsp(g.esp)}</td>
+        <td class="n">${cerrado ? `<button class="btn sec" data-f="${i}" style="width:auto;min-height:36px;padding:4px 14px">Añadir</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+}
+
 async function oficina(sinCargar) {
   const v = $('#vOfi'), u = D().usuario;
   if (!sinCargar || !O.viajes) {
@@ -1022,6 +1137,7 @@ async function oficina(sinCargar) {
     return `<button class="farm${/CURSO/.test(x.estado) ? ' next' : ''}" data-v="${esc(x.id)}"><span class="main"><span class="name">${esc(x.nombre)} · ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
       <span class="sub">${esc(x.matricula)} · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${/CURSO/.test(x.estado) ? ` · ${hechos} de ${total} · último ${ult ? esc(ult.hora) : '—'}` : ''}${x.recs.some(r => r.cor) ? ' · <b style="color:var(--warn)">corregido</b>' : ''}${/TRASVASE/.test(x.estado) ? ' · trasvase' : ''}</span></span>
       <span class="st num">${fmt(tot(x))} l</span></button>`; };
+  if (esEsc()) { ofiEsc(v); show('vOfi', 'Recogidas', u.nombre); clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi' && $('#drawer').hidden) oficina(); }, 60000); return; }
   v.innerHTML = `${O.off ? `<div class="msg warn">Sin cobertura: datos de las ${esc(O.hasta)}.</div>` : ''}
     <div class="row"><button class="btn sec" id="ofiAct">Actualizar</button><button class="btn ghost" id="ofiSalir">Salir</button></div>
     <button class="btn sec" id="ofiRecep">Recepción en fábrica</button>
@@ -1032,11 +1148,12 @@ async function oficina(sinCargar) {
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => ofiViaje(b.dataset.v));
   $('#ofiAct').onclick = () => oficina();
   $('#ofiRecep').onclick = () => recepcion();
-  $('#ofiSalir').onclick = () => { S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); O.viajes = null; persistir(); pinView(); };
+  $('#ofiSalir').onclick = salir;
   show('vOfi', 'Oficina', u.nombre);
   clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi') oficina(); }, 60000);
 }
 function ofiViaje(id) {
+  if (esEsc()) { U.ofiSel = id; cerrarDrawer(); return oficina(true); }
   U.ofiV = id; const x = O.viajes.find(y => y.id === id), v = $('#vOfiV'); if (!x) return oficina();
   const cerrado = !/CURSO/.test(x.estado), k = totDia([x]);
   const ult = x.recs.filter(r => r.hora && r.lat).sort((a, b) => a.hora < b.hora ? 1 : -1)[0];
@@ -1057,7 +1174,8 @@ function ofiViaje(id) {
   show('vOfiV', 'Viaje', x.nombre);
 }
 function ofiEditar(x, r, nuevo) {
-  const v = $('#vOfiE'), g = r || nuevo, comps = x.comps.length ? x.comps : Array.from(new Set(x.recs.flatMap(y => [y.d1, y.d2, y.d3]).filter(Boolean)));
+  const enDrawer = esEsc(); if (enDrawer) $('#vOfiE').innerHTML = '';
+  const v = enDrawer ? $('#drawerIn') : $('#vOfiE'), g = r || nuevo, comps = x.comps.length ? x.comps : Array.from(new Set(x.recs.flatMap(y => [y.d1, y.d2, y.d3]).filter(Boolean)));
   let d1 = r ? r.d1 : (comps[0] || ''), d2 = r ? r.d2 : '', d3 = r ? r.d3 : '';
   const chips = (id, sel) => `<div class="dests" id="${id}">${comps.map(c => `<button class="dest ${bgId(c)}" aria-pressed="${c === sel}" data-c="${esc(c)}"><b class="sp-${esc(letraDe(c))}">${esc(c)}</b></button>`).join('')}</div>`;
   v.innerHTML = `<div class="card stack ${bgEsp(g.esp)}"><h3 class="fname">${esc(g.nom || g.cod)}</h3>
@@ -1091,7 +1209,7 @@ function ofiEditar(x, r, nuevo) {
   ['1', '2', '3'].forEach(n => { v.querySelectorAll('#eD' + n + ' [data-c]').forEach(b => b.onclick = () => { const t = $('#eD' + n + 't'); t.value = t.value.trim() === b.dataset.c && n !== '1' ? '' : b.dataset.c; sync(); }); $('#eD' + n + 't').oninput = sync; });
   ['eL', 'eL2', 'eL3'].forEach(id => $('#' + id).oninput = sync); $('#eSin').onchange = sync;
   $('#eMq').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { $('#eMot').value = b.dataset.m; });
-  $('#eNo').onclick = () => ofiViaje(x.id);
+  $('#eNo').onclick = () => enDrawer ? cerrarDrawer() : ofiViaje(x.id);
   $('#eOk').onclick = async () => {
     if (U.ocupado) return; const b = $('#eOk'), e = $('#eErr'); e.hidden = true;
     const datos = { sin: $('#eSin').checked, litros: $('#eL').value, temp: $('#eT').value.trim(), muestra: $('#eM').value.trim(),
@@ -1104,6 +1222,7 @@ function ofiEditar(x, r, nuevo) {
     } catch (err) { libre(b); e.hidden = false; e.textContent = esRed(err) ? 'Sin cobertura: la corrección necesita conexión.' : err.message; }
   };
   sync();
+  if (enDrawer) { abrirDrawer(); setTimeout(() => { const i = $('#eL'); if (i && !$('#eSin').checked) i.focus({ preventScroll: true }); }, 30); return; }
   show('vOfiE', r ? 'Corregir' : 'Añadir ganadero', x.nombre);
 }
 
@@ -1214,23 +1333,26 @@ async function recepcion(sinCargar) {
       <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}</span>
       <span class="comps">${(x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
       <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
-  v.innerHTML = `<div class="row"><button class="btn sec" id="reAct">Actualizar</button><button class="btn ghost" id="reSalir">${D().oficina ? 'Volver a oficina' : 'Salir'}</button></div>
-    <div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
+  const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}${d.letraQ ? ' · Q ' + esc(d.letraQ) : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div>
-      <p class="small muted">Toca un depósito para ver lo que ha entrado. Solo lo recibido hoy con esta app, agua incluida.</p></div>
-    <span class="lbl">Por recibir</span>
-    <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>
-    <button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
-    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>
-    ${hechos.length ? `<span class="lbl">Recibidos</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : ''}
-    <p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
+      <p class="small muted">Toca un depósito para ver lo que ha entrado. Solo lo recibido hoy con esta app, agua incluida.</p></div>`;
+  const pendHtml = `<span class="lbl">Por recibir</span>
+    <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>`;
+  const botones = `<button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
+    <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>`;
+  const hechosHtml = hechos.length ? `<span class="lbl">Recibidos</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : '';
+  const pie = `<p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
+  const cab = `<div class="row solo-movil"><button class="btn sec" id="reAct">Actualizar</button><button class="btn ghost" id="reSalir">${D().oficina ? 'Volver a oficina' : 'Salir'}</button></div>`;
+  v.innerHTML = esEsc()
+    ? `${cab}<div class="esc2"><div class="stack">${pendHtml}${hechosHtml}${pie}</div><div class="stack">${depHtml}${botones}</div></div>`
+    : `${cab}${depHtml}${pendHtml}${botones}${hechosHtml}${pie}`;
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
   $('#reAct').onclick = () => recepcion();
   $('#reOtra').onclick = () => recepOtra();
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
   $('#reAgua').onclick = () => { U.ag = null; recepAgua(); };
-  $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); S = Object.assign({}, S0, { cola: { recs: {}, cierres: [] }, dev: S.dev }); R.viajes = null; persistir(); pinView(); };
+  $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); salir(); };
   show('vRecep', 'Recepción de leche', u.nombre);
 }
 function recepOtra() {

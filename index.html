@@ -303,7 +303,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v38 · 03/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v39 · 04/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1350,9 +1350,10 @@ async function recepcion(sinCargar) {
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}${d.letraQ ? ' · Q ' + esc(d.letraQ) : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div>
       <p class="small muted">Toca un depósito para ver lo que ha entrado. Solo lo recibido hoy con esta app, agua incluida.</p></div>`;
   const cal = !!D().calidad, ofi = !!D().oficina, editable = !cal || ofi;
-  const pendHtml = R.esHoy && editable ? `<span class="lbl">Por recibir</span>
+  const atras = !R.esHoy && ofi;   // oficina registrando un día anterior que se quedó a medias
+  const pendHtml = (R.esHoy || atras) && editable ? `<span class="lbl">Por recibir</span>
     <div class="stack">${pend.length ? pend.map(tarjeta).join('') : '<p class="small muted">No hay camiones pendientes.</p>'}</div>` : '';
-  const botones = R.esHoy && editable ? `<button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
+  const botones = (R.esHoy || atras) && editable ? `<button class="btn sec" id="reAgua">Agua de arrastre del día (AG1 / AG2)${(R.agua || []).length ? ' · guardada' : ''}</button>
     <button class="btn ghost" id="reOtra">+ Otra entrada (cisterna de otro proveedor)</button>` : '';
   const hechosHtml = hechos.length ? `<span class="lbl">Recibidos${R.esHoy ? '' : ' el ' + esc(R.dia)}</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay recepciones guardadas con la app.</p>');
   const pie = `<p class="small muted">Datos de las ${esc(R.hasta)}.</p>`;
@@ -1362,9 +1363,10 @@ async function recepcion(sinCargar) {
       <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}</div>` : '';
   // El parte del día es cosa de calidad (y oficina). Quien descarga solo ve depósitos, camiones, agua y otra entrada.
   const parte = cal || ofi ? parteHtml() : '';
+  const aviso = atras ? `<div class="msg warn" style="margin:0"><b>Estás en el ${esc(diaTxt(R.dia))}.</b> Lo que recibas o guardes aquí (camiones, otra entrada, agua) queda con esa fecha. Úsalo para terminar un día que se quedó a medias.</div>` : '';
   const html = esEsc() && (cal || ofi)
-    ? `${cab}${diaNav}<div class="esc2"><div class="stack">${cal ? calidadHtml() : ''}${pendHtml}${hechosHtml}${pie}</div><div class="stack">${parte}${depHtml}${botones}</div></div>`
-    : `${cab}${diaNav}${cal ? calidadHtml() : ''}${depHtml}${pendHtml}${botones}${hechosHtml}${parte}${pie}`;
+    ? `${cab}${diaNav}${aviso}<div class="esc2"><div class="stack">${cal ? calidadHtml() : ''}${pendHtml}${hechosHtml}${pie}</div><div class="stack">${parte}${depHtml}${botones}</div></div>`
+    : `${cab}${diaNav}${aviso}${cal ? calidadHtml() : ''}${depHtml}${pendHtml}${botones}${hechosHtml}${parte}${pie}`;
   v.innerHTML = html;
   if (editable) v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
   else v.querySelectorAll('.farm[data-v]').forEach(b => { b.style.cursor = 'default'; });
@@ -1639,7 +1641,7 @@ function recepRender() {
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
     if (Math.round(tot) !== Math.round(suma) && !m.dataset.ok) { m.dataset.ok = '1'; m.hidden = false; m.className = 'msg warn'; m.textContent = `El total (${fmt(tot)} l) no cuadra con la suma de parciales (${fmt(suma)} l). Revisa; si es correcto, pulsa otra vez Guardar.`; return; }
-    const cq = cuadreDatos().T, recep = { viajeId: E.x.id, total: tot, cuadre: E.x.otra ? null : { cartilla: cq.cart, cisterna: cq.cist }, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
+    const cq = cuadreDatos().T, recep = { viajeId: E.x.id, fecha: R.esHoy ? '' : R.dia, total: tot, cuadre: E.x.otra ? null : { cartilla: cq.cart, cisterna: cq.cist }, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, proveedor: E.x.otra ? E.x.conductor : '', ruta: E.x.ruta,
       comps: usados.map(c => ({ id: c.id, esp: c.esp, decl: c.decl, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
         reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
     const b = $('#reGuardar'); ocupado(b, 'Guardando…');
@@ -1662,7 +1664,7 @@ function recepRender() {
       } catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha anulado.' : e.message; }
     };
   }
-  show('vRecepC', 'Recepción', (x.matricula || '') + ' · ' + x.conductor);
+  show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor);
 }
 
 
@@ -1726,10 +1728,10 @@ function recepAgua(guardado) {
     const filas = [];
     sesiones.filter(ses => ses.cams.length).forEach(ses => { const pr = propuesta(ses); deps.forEach(dp => { const l = Math.round(num(val(ses, dp, pr)) || 0); if (l > 0) filas.push({ cod: ses.cod, dep: dp, l, desde: ses.desde || '' }); }); });
     const b = $('#agOk'); ocupado(b, 'Guardando…');
-    try { const r = await api('guardarAgua', { agua: filas }); R.agua = filas; U.ag = null; toast('Agua guardada' + (r.fichero ? ' · fichero ' + r.fichero : '')); recepcion(true); }
+    try { const r = await api('guardarAgua', { agua: filas, fecha: R.esHoy ? '' : R.dia }); R.agua = filas; U.ag = null; toast('Agua guardada' + (r.fichero ? ' · fichero ' + r.fichero : '')); recepcion(true); }
     catch (e) { libre(b); const m = $('#agMsg'); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha guardado.' : e.message; }
   };
-  show('vAgua', 'Agua de arrastre', D().usuario.nombre);
+  show('vAgua', 'Agua de arrastre' + (R.esHoy === false ? ' · ' + R.dia : ''), D().usuario.nombre);
 }
 
 /* ═══════════ ARRANQUE ═══════════ */

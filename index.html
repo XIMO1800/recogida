@@ -303,7 +303,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v39 · 04/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v40 · 04/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1382,6 +1382,22 @@ async function recepcion(sinCargar) {
   enlazarParte(v);
   show('vRecep', 'Recepción de leche', u.nombre);
 }
+/* Repintar una pantalla al salir de una casilla sin perder el sitio: si se ha pulsado otra casilla o un botón,
+   se espera a que termine ese clic y, tras repintar, el cursor vuelve a la casilla a la que se fue (con ratón o con Tab). */
+let pulsando = false, repintar = null;
+document.addEventListener('pointerdown', () => { pulsando = true; }, true);
+document.addEventListener('pointerup', () => setTimeout(() => { pulsando = false; if (repintar) { const f = repintar; repintar = null; conFoco(f); } }, 0), true);
+function rehacer(fn) { if (pulsando) { repintar = fn; return; } setTimeout(() => conFoco(fn), 0); }
+function conFoco(fn) {
+  const a = document.activeElement, attrs = ['id', 'data-f', 'data-i', 'data-xl', 'data-j', 'data-ag', 'data-dep'];
+  const clave = a && a.tagName === 'INPUT' ? attrs.filter(k => a.hasAttribute(k)).map(k => k === 'id' ? '#' + CSS.escape(a.id) : `[${k}="${CSS.escape(a.getAttribute(k))}"]`).join('') : '';
+  const y = scrollY;
+  fn();
+  scrollTo(0, y);   // repintar no debe subir la página arriba
+  if (!clave) return;
+  const b = document.querySelector('input' + clave);
+  if (b) { b.focus({ preventScroll: true }); try { const n = b.value.length; b.setSelectionRange(n, n); } catch (e) {} }
+}
 /* ═══════════ Parte del día (FOR PR 7.-02), verificación de calidad y leche vendida ═══════════ */
 const ORD_ESP = ['D', 'O', 'V', 'C'];
 const espDe = c => String(c.esp || '').toUpperCase();
@@ -1609,12 +1625,12 @@ function recepRender() {
     </div>`;
   const C = i => E.comps[+i];
   v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const q = $('#reCuadre'); if (q) q.innerHTML = cuadreHtml(); } });
-  v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => recepRender());
+  v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => rehacer(recepRender));
   v.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { if (b.dataset.i !== '') C(b.dataset.i)[b.dataset.ci] = b.dataset.val; else E[b.dataset.ci] = b.dataset.val; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
   v.querySelectorAll('[data-xadd]').forEach(b => b.onclick = () => { const c = C(b.dataset.xadd); const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== ppal(c)); c.reps.push({ dep: b.dataset.t === 'ARRASTRE' && mez ? mez.id : '', l: b.dataset.t === 'ARRASTRE' ? '100' : '', tipo: b.dataset.t === 'ARRASTRE' ? 'ARRASTRE' : 'OTRO' }); recepRender(); });
   v.querySelectorAll('[data-xdep]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].dep = b.dataset.xdep; recepRender(); });
-  v.querySelectorAll('[data-xl]').forEach(inp => { inp.oninput = () => { extras(C(inp.dataset.xl))[+inp.dataset.j].l = inp.value.replace(/\D/g, ''); }; inp.onchange = () => recepRender(); });
+  v.querySelectorAll('[data-xl]').forEach(inp => { inp.oninput = () => { extras(C(inp.dataset.xl))[+inp.dataset.j].l = inp.value.replace(/\D/g, ''); }; inp.onchange = () => rehacer(recepRender); });
   v.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].l = b.dataset.q; recepRender(); });
   v.querySelectorAll('[data-xdel]').forEach(b => b.onclick = () => { const c = C(b.dataset.xdel), p = extras(c)[+b.dataset.j]; c.reps = c.reps.filter(r => r !== p); recepRender(); });
   v.querySelectorAll('[data-addc]').forEach(b => b.onclick = () => { const e = b.dataset.addc, n = E.comps.filter(c => c.esp === e).length;
@@ -1622,7 +1638,7 @@ function recepRender() {
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
   v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; }); if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
-  $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => recepRender();
+  $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => rehacer(recepRender);
   $('#reObs').oninput = e => { E.obs = e.target.value; };
   $('#reGuardar').onclick = async () => {
     const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
@@ -1722,7 +1738,7 @@ function recepAgua(guardado) {
     if (!A.manual[ses.cod]) { deps.forEach(dp => { A.l[ses.cod + '|' + dp] = pr.m[dp] ? String(pr.m[dp]) : ''; }); A.manual[ses.cod] = true; }
     A.l[ses.cod + '|' + inp.dataset.dep] = inp.value.replace(/\D/g, '');
   });
-  v.querySelectorAll('[data-ag]').forEach(inp => inp.onchange = () => recepAgua());
+  v.querySelectorAll('[data-ag]').forEach(inp => inp.onchange = () => rehacer(() => recepAgua()));
   v.querySelectorAll('[data-rest]').forEach(b => b.onclick = () => { delete A.manual[b.dataset.rest]; recepAgua(); });
   if ($('#agOk')) $('#agOk').onclick = async () => {
     const filas = [];

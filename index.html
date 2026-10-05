@@ -288,6 +288,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
     <section id="vRecepC" class="stack" hidden></section>
     <section id="vAgua" class="stack" hidden></section>
     <section id="vDep" class="stack" hidden></section>
+    <section id="vHisto" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -303,7 +304,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v41 · 05/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v42 · 05/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -419,7 +420,7 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vDep', 'vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
+const VIEWS = ['vHisto', 'vDep', 'vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
 function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   document.body.classList.toggle('ancho', ['vRecep', 'vRecepC', 'vAgua', 'vDep'].includes(v));
@@ -435,6 +436,7 @@ $('#back').onclick = () => {
   if (U.view === 'vFicha' || U.view === 'vFin') return lista();
   if (U.view === 'vOfiE') return ofiViaje(U.ofiV);
   if (U.view === 'vOfiV') return oficina(true);
+  if (U.view === 'vHisto') return oficina(true);
   if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
   if (U.view === 'vAgua' || U.view === 'vDep') return recepcion(true);
   if (U.view === 'vRecep' && D().oficina) return oficina(true);
@@ -1070,15 +1072,15 @@ function marcoEsc() {
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
   const it = cal ? [['recep', 'Recepción', 'Verificación de calidad', ['vRecep', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
   $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
     <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
-  const ir = { rec: () => oficina(), recep: () => recepcion(), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
+  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => recepcion(), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { cerrarDrawer(); ir[b.dataset.nav](); });
-  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
+  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
   $('#sideSalir').onclick = salir;
-  if (['vOfi', 'vRecep', 'vAgua'].includes(v)) $('#back').hidden = true;
+  if (['vOfi', 'vRecep', 'vAgua', 'vHisto'].includes(v)) $('#back').hidden = true;
 }
 function abrirDrawer() { $('#veil').hidden = false; $('#drawer').hidden = false; $('#drawer').scrollTop = 0; }
 function cerrarDrawer() { const d = $('#drawer'); if (!d || d.hidden) return; d.hidden = true; $('#veil').hidden = true; $('#drawerIn').innerHTML = ''; }
@@ -1154,6 +1156,7 @@ async function oficina(sinCargar) {
   v.innerHTML = `${O.off ? `<div class="msg warn">Sin cobertura: datos de las ${esc(O.hasta)}.</div>` : ''}
     <div class="row"><button class="btn sec" id="ofiAct">Actualizar</button><button class="btn ghost" id="ofiSalir">Salir</button></div>
     <button class="btn sec" id="ofiRecep">Recepción en fábrica</button>
+    <button class="btn ghost" id="ofiHisto">Histórico de viajes y DeCA</button>
     <span class="lbl">En curso ahora</span>
     <div class="stack">${enCurso.length ? enCurso.map(tarjeta).join('') : '<p class="small muted">Ningún camión en ruta.</p>'}</div>
     ${Object.keys(dias).map(f => `<span class="lbl" style="text-transform:capitalize">${esc(diaTxt(f))}</span><div class="stack">${dias[f].map(tarjeta).join('')}</div>`).join('')}
@@ -1161,6 +1164,7 @@ async function oficina(sinCargar) {
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => ofiViaje(b.dataset.v));
   $('#ofiAct').onclick = () => oficina();
   $('#ofiRecep').onclick = () => recepcion();
+  $('#ofiHisto').onclick = () => historico();
   $('#ofiSalir').onclick = salir;
   show('vOfi', 'Oficina', u.nombre);
   clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi') oficina(); }, 60000);
@@ -1384,6 +1388,51 @@ async function recepcion(sinCargar) {
   if ($('#diaHoy')) $('#diaHoy').onclick = () => { R.fecha = ''; recepcion(); };
   enlazarParte(v);
   show('vRecep', 'Recepción de leche', u.nombre);
+}
+/* ═══════════ Histórico de viajes y DeCA (oficina): todo lo guardado, por fechas ═══════════ */
+const Hh = { desde: '', hasta: '', lista: null, cond: '', q: '' };
+const isoAes = iso => iso ? iso.split('-').reverse().join('/') : '';
+const esAiso = d => { const m = String(d || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+async function historico(recargar) {
+  const v = $('#vHisto');
+  if (!Hh.desde) { const h = new Date(), d = new Date(); d.setFullYear(h.getFullYear() - 1); const f = x => x.toISOString().slice(0, 10); Hh.desde = f(d); Hh.hasta = f(h); }
+  if (recargar || !Hh.lista) {
+    v.innerHTML = '<div class="card"><p class="muted">Cargando viajes…</p></div>'; show('vHisto', 'Histórico y DeCA', D().usuario.nombre);
+    try { Hh.lista = (await api('historicoViajes', { desde: isoAes(Hh.desde), hasta: isoAes(Hh.hasta) })).viajes; }
+    catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="hRe">Reintentar</button>`; $('#hRe').onclick = () => historico(true); return; }
+  }
+  const conds = [...new Set(Hh.lista.map(x => x.nombre))].sort();
+  const q = Hh.q.trim().toLowerCase();
+  const fil = Hh.lista.filter(x => (!Hh.cond || x.nombre === Hh.cond) && (!q || [x.deca, x.matricula, x.rutas, x.fecha, x.nombre].join(' ').toLowerCase().includes(q)));
+  const tot = fil.filter(x => !/ANULADO/.test(x.estado)).reduce((a, x) => a + (x.litros || 0), 0);
+  v.innerHTML = `<div class="card stack">
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field"><label class="lbl" for="hDes">Desde</label><input type="date" id="hDes" class="sm" value="${Hh.desde}"></div>
+        <div class="field"><label class="lbl" for="hHas">Hasta</label><input type="date" id="hHas" class="sm" value="${Hh.hasta}"></div>
+        <button class="btn sec" id="hBus" style="width:auto;padding:8px 18px">Buscar</button>
+        <div class="field"><label class="lbl" for="hCond">Conductor</label><select id="hCond" class="sm"><option value="">Todos</option>${conds.map(n => `<option ${n === Hh.cond ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1;min-width:200px"><label class="lbl" for="hQ">Buscar DeCA, matrícula, ruta…</label><input id="hQ" class="sm" style="font-family:var(--body)" value="${esc(Hh.q)}"></div>
+      </div>
+      <p class="small muted" style="margin:0">${fil.length} viajes · ${fmt(tot)} l. Los DeCA se guardan en Drive y hay que conservarlos al menos un año.</p></div>
+    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Conductor</th><th>Rutas</th><th>Matrícula</th><th>DeCA</th><th>Horario</th><th class="n">Litros</th><th>Estado</th><th></th></tr></thead><tbody>
+      ${fil.map(x => `<tr class="${/ANULADO/.test(x.estado) ? 'sin' : ''}"><td class="mono">${esc(x.fecha)}</td><td><b>${esc(x.nombre)}</b></td><td>${esc(String(x.rutas).split(',').map(r => +r).join(' y '))}</td>
+        <td class="mono">${esc(x.matricula)}</td><td class="mono small">${esc(x.deca)}</td><td class="mono small">${esc(x.ini || '')}${x.fin ? '–' + esc(x.fin) : ''}</td><td class="n"><b>${x.litros ? fmt(x.litros) : '—'}</b></td>
+        <td class="small">${/ANULADO/.test(x.estado) ? 'Anulado' : /CURSO/.test(x.estado) ? 'En curso' : /TRASVASE/.test(x.estado) ? 'Trasvase' : 'Cerrado'}</td>
+        <td style="white-space:nowrap">${x.decaUrl ? `<a class="btn sec" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px;text-decoration:none" target="_blank" rel="noopener" href="${esc(decaVer(x.decaUrl))}">DeCA</a>` : ''}
+          ${/ANULADO/.test(x.estado) ? '' : `<button class="btn ghost" data-hv="${esc(x.id)}" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Ver viaje</button>`}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No hay viajes en esas fechas.</td></tr>'}
+    </tbody></table></div>`;
+  $('#hDes').onchange = e => { Hh.desde = e.target.value; }; $('#hHas').onchange = e => { Hh.hasta = e.target.value; };
+  $('#hBus').onclick = () => historico(true);
+  $('#hCond').onchange = e => { Hh.cond = e.target.value; historico(); };
+  $('#hQ').oninput = e => { Hh.q = e.target.value; clearTimeout(Hh.t); Hh.t = setTimeout(() => { historico(); const i = $('#hQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
+  v.querySelectorAll('[data-hv]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.hv; ocupado(b, '…');
+    try { const r = await api('oficinaViajes', { ids: [id] }); O.viajes = O.viajes || [];
+      r.viajes.forEach(x => { const i = O.viajes.findIndex(y => y.id === x.id); if (i >= 0) O.viajes[i] = x; else O.viajes.push(x); });
+      O.hasta = O.hasta || r.hasta; ofiViaje(id); }
+    catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); }
+  });
+  show('vHisto', 'Histórico y DeCA', D().usuario.nombre);
 }
 /* Repintar una pantalla al salir de una casilla sin perder el sitio: si se ha pulsado otra casilla o un botón,
    se espera a que termine ese clic y, tras repintar, el cursor vuelve a la casilla a la que se fue (con ratón o con Tab). */

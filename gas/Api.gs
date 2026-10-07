@@ -907,7 +907,7 @@ function guardarAgua(req, c) {
     return { ok: true, fichero: nombre };
   } finally { lock.releaseLock(); }
 }
-/** UN SOLO FICHERO POR DÍA para el programa: D + aammdd + .TXT (p. ej. D261007.TXT), con todos los camiones recibidos ese día
+/** UN SOLO FICHERO POR DÍA para el programa: D + aammdd + 0 + .TXT (p. ej. D2610070.TXT), con todos los camiones recibidos ese día
  *  (por orden de llegada) y al final el agua de arranque/arrastre (AG1, AG2) como un compartimento más. Se rehace entero cada
  *  vez que se guarda o anula una recepción o se guarda el agua de ese día, así que el programa siempre lo machaca.
  *  Formato de cada línea:
@@ -916,7 +916,12 @@ function guardarAgua(req, c) {
  *  Si el día se queda vacío (todo anulado) lleva una sola línea ANULADA. */
 function nombreDia_(fecha) {
   const p = String(fecha).split('/');
-  return 'D' + p[2].slice(-2) + ('0' + p[1]).slice(-2) + ('0' + p[0]).slice(-2) + '.TXT';
+  return 'D' + p[2].slice(-2) + ('0' + p[1]).slice(-2) + ('0' + p[0]).slice(-2) + '0.TXT';   // el 0 final: 8 caracteres, como espera la copia al servidor
+}
+/** Rehace el fichero del día de hoy (o de la fecha dd/MM/yyyy que se ponga). Para ejecutarlo a mano desde el editor. */
+function rehacerFicheroDia(fecha) {
+  const f = fecha || ahora_('dd/MM/yyyy'), n = exportarDia_(f);
+  Logger.log('Fichero rehecho: ' + n); return n;
 }
 function exportarDia_(fecha) {
   const nombre = nombreDia_(fecha);
@@ -933,7 +938,10 @@ function exportarDia_(fecha) {
   lineas = lineas.concat(lineasAgua_(tabla_('AGUA').filas.filter(function (a) { return String(a.FECHA) === String(fecha); })
     .map(function (a) { return { cod: String(a.CODIGO), dep: String(a.DEPOSITO), l: a.LITROS }; }), fecha));
   if (!lineas.length) lineas = [[fecha, '', 0, 'ANULADA', '', 0, '', '', '', '', '', '', '', '', '', '', '', ''].join(';')];
-  escribirD_(DriveApp.getFolderById(cfg.CARPETA_EXPORTACION_ID), nombre, lineas.join('\r\n') + '\r\n');
+  const carpeta = DriveApp.getFolderById(cfg.CARPETA_EXPORTACION_ID);
+  escribirD_(carpeta, nombre, lineas.join('\r\n') + '\r\n');
+  // Quita el fichero con el nombre corto que se usó el 07/10/2026 (D261007.TXT), que la copia al servidor no recoge
+  const corto = carpeta.getFilesByName(nombre.replace('0.TXT', '.TXT')); while (corto.hasNext()) corto.next().setTrashed(true);
   return nombre;
 }
 /** Líneas del agua: una por código (AG1/AG2) con hasta 3 depósitos. */

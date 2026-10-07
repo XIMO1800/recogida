@@ -36,7 +36,7 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .recgrid{display:grid;gap:12px}
 @media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
 .ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.tl{display:grid;grid-template-columns:auto auto 1fr auto;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
+.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
 .rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -168,6 +168,7 @@ body.kb .back{width:38px}
 .big{font-family:var(--display);font-size:46px;font-weight:700;width:100%;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:6px 16px;font-variant-numeric:tabular-nums}
 .big:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--brand-soft)}
 .unit{position:relative}
+.tally .unit{padding:0;border:0;background:none}.tally input[data-ag]{padding:6px 24px 6px 8px}.tally .unit:has(input[data-ag]) span{right:8px;font-size:16px}
 .unit span{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:20px}
 .msg{font-size:15px;font-weight:600;border-radius:12px;padding:10px 12px;border-left:5px solid currentColor}
 .msg.warn{background:var(--warn-soft);color:var(--warn)}
@@ -219,6 +220,12 @@ body.esc .top{margin-left:232px}
 body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
 body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
 body.esc .solo-movil{display:none!important}
+body.esc .agGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+body.esc .agGrid .agDer{position:sticky;top:12px}
+body.esc .agGrid .tally{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+body.esc .agGrid .tally div{padding:6px}body.esc .agGrid .tally input{font-size:20px!important;padding:4px 22px 4px 8px;border-radius:10px}body.esc .agGrid .tally .unit span{right:8px;font-size:15px}
+body.esc .agGrid .tally b{font-size:15px!important}
+body.esc .agGrid .agDer .card{padding:14px 16px}
 .side-t{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1;padding:4px 10px 14px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px}
 .side-t small{display:block;font-family:var(--body);font-size:13px;font-weight:500;opacity:.75;margin-top:4px}
 .nav{display:flex;flex-direction:column;gap:2px}
@@ -304,7 +311,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v42 · 05/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v43 · 07/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1763,19 +1770,18 @@ function recepAgua(guardado) {
     return { m, txt: `Arranque → dep. ${ini} · Arrastre final → dep. ${fin.sort((a, b) => a - b).join(', ')}` };
   };
   const val = (ses, dep, pr) => A.manual[ses.cod] ? (A.l[ses.cod + '|' + dep] || '') : (pr.m[dep] ? String(pr.m[dep]) : '');
-  v.innerHTML = `<div class="card stack"><h2>Agua de arrastre del día</h2>
+  v.innerHTML = `<div class="agGrid"><div class="agIzq"><div class="card stack"><h2>Agua de arrastre del día</h2>
       <p class="small muted">Es el agua que entra a los depósitos al arrancar el contador y al arrastrar la leche al final. La app la propone según el orden de descarga; ajústala si hoy ha sido distinto. No cuenta en el total de ningún camión.</p>
       ${cams.length ? `<span class="lbl">Orden de descarga de hoy</span>
       ${sesiones.filter(z => z.cams.length).map(ses => { let n = 0; const filas = ses.cams.flatMap(x => x.recep.comps.map((c, k) => ({ x, c, k }))); return `${sesiones.length > 1 ? `<span class="lbl" style="margin-top:6px">${ses.cod}</span>` : ''}
         <div class="tl">${filas.map((f, j) => { n++; const reps = f.c.reps; return `<span class="n">${n}</span>
           <span>${f.k === 0 ? `<b class="mono small">${esc(f.x.recep.hora)}</b> <span class="small">${esc(f.x.conductor)}</span>` : ''}</span>
-          <span>${tq(f.c.id)} → ${reps.map(r => `<b>dep. ${esc(r.dep)}</b>${reps.length > 1 ? ' <span class="small muted">' + fmt(r.l) + ' l</span>' : ''}`).join(' + ')}</span>
-          <span>${j === 0 ? '<span class="tag ini">arranque</span>' : ''}${j === filas.length - 1 ? '<span class="tag fin">último · arrastre final</span>' : ''}</span>`; }).join('')}</div>`; }).join('')}
+          <span>${tq(f.c.id)} → ${reps.map(r => `<b>dep. ${esc(r.dep)}</b>${reps.length > 1 ? ' <span class="small muted">' + fmt(r.l) + ' l</span>' : ''}`).join(' + ')}${j === 0 ? '<span class="tag ini">arranque</span>' : ''}${j === filas.length - 1 ? '<span class="tag fin">último · arrastre final</span>' : ''}</span>`; }).join('')}</div>`; }).join('')}
       <p class="small muted">Si el orden no es el real, abre ese camión desde la lista de recepción: con «No era este» lo quitas y lo vuelves a tocar en su sitio.</p>
       ${cams.length > 1 ? `<div class="field"><label class="lbl" for="agCorte">¿Hubo limpieza y una segunda descarga (AG2)? Empieza en:</label>
         <select id="agCorte" class="big" style="font-size:20px"><option value="">No, todo es una descarga (solo AG1)</option>${cams.slice(1).map(x => `<option value="${esc(x.id)}" ${A.corte === x.id ? 'selected' : ''}>${esc(x.recep.hora)} · ${esc(x.matricula)} · ${esc(x.conductor)}</option>`).join('')}</select></div>` : ''}`
       : '<div class="msg warn">Todavía no hay ningún camión recibido hoy.</div>'}
-    </div>
+    </div></div><div class="agDer stack">
     ${sesiones.filter(ses => ses.cams.length).map(ses => { const pr = propuesta(ses); const tot = deps.reduce((a, dp) => a + (num(val(ses, dp, pr)) || 0), 0);
       return `<div class="card stack"><div class="route-head"><h2>${ses.cod}</h2><b class="num">${fmt(tot)} l</b></div>
         <p class="small muted">${A.manual[ses.cod] ? 'Ajustado a mano.' : esc(pr.txt) + ` (${d.arranque} + ${d.final} l por depósito)`}</p>
@@ -1783,7 +1789,7 @@ function recepAgua(guardado) {
         ${deps.filter(dp => (num(val(ses, dp, pr)) || 0) > 0).length > 3 ? `<div class="msg bad">${ses.cod} va a más de 3 depósitos y el programa solo admite 3: junta el agua de alguno (pon 0 en uno y súmalo a otro).</div>` : ''}
         ${A.manual[ses.cod] ? `<button class="btn ghost" data-rest="${ses.cod}">Volver a la propuesta</button>` : ''}</div>`; }).join('')}
     <div id="agMsg" hidden></div>
-    ${cams.length ? '<button class="btn" id="agOk">Guardar agua del día</button>' : ''}`;
+    ${cams.length ? '<button class="btn" id="agOk">Guardar agua del día</button>' : ''}</div></div>`;
   const sel = $('#agCorte'); if (sel) sel.onchange = () => { A.corte = sel.value; delete A.manual.AG2; recepAgua(); };
   v.querySelectorAll('[data-ag]').forEach(inp => inp.oninput = () => {
     const ses = sesiones.find(z => z.cod === inp.dataset.ag), pr = propuesta(ses);

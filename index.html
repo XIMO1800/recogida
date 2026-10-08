@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v67 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v68 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1693,7 +1693,9 @@ function recepCamion2(x) {
   const comps = x.comps.map(k => { const p = prev && prev.comps.find(c => String(c.nComp) === String(k.n));
     return p ? Object.assign({}, p, { id: k.id, n: k.n, nComp: String(k.n), contador: String(p.contador), reps: p.reps.map(r => Object.assign({}, r, { l: String(r.l) })) })
       : { id: k.id, n: k.n, nComp: String(k.n), esp: '', ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }; });
-  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  // Litros propuestos: los de la cartilla del viaje de hoy de ese camión (si hay dos viajes, el último), por especie
+  const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
+  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj ? vj.cart || {} : {}, viajeRef: vj ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepCamion(x) {
@@ -1781,7 +1783,7 @@ function recepRender() {
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
   v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px">
       <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
-      <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
+      <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) + (E.viajeRef ? ` · litros propuestos (en gris) de la cartilla del viaje de las ${esc(E.viajeRef)}` : '') : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
       ${x.otra && !E.porComp ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
       <p class="small muted">${E.porComp ? 'Di qué leche lleva cada compartimento y rellena sus datos. Si alguno viene vacío o no se descarga en este viaje, déjalo sin tocar.</p>' : ''}<p class="small muted" ${E.porComp ? 'hidden' : ''}>Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
@@ -1862,7 +1864,14 @@ function recepRender() {
     const id = 'V' + e + (n ? n + 1 : ''); E.comps.push({ id, esp: e, decl: 0, nComp: '', ord: desc.length + 1, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }); recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-pesp]').forEach(b => b.onclick = () => { const c = C(b.dataset.pesp), e = b.dataset.e, DEP = { D: '3', O: '4', V: '2', C: '1' };
-    c.esp = e; c.ord = desc.length + 1; if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
+    c.esp = e; c.ord = desc.length + 1;
+    if (!c.contador && (E.cart || {})[e]) {
+      // Reparto de lo de la cartilla entre los compartimentos de esa especie: se llena cada uno hasta su capacidad y el resto al último
+      const fijos = desc.filter(z => z !== c && z.esp === e && !z.auto), grupo = desc.filter(z => z !== c && z.esp === e && z.auto).concat(c);
+      let resto = Math.round(E.cart[e]) - fijos.reduce((a, z) => a + (num(z.contador) || 0), 0);
+      grupo.forEach((z, k) => { const cap = capN[z.n] || 0, l = k === grupo.length - 1 || !cap ? resto : Math.min(cap, resto); z.contador = l > 0 ? String(l) : ''; z.auto = l > 0; resto -= Math.max(l, 0); });
+    }
+    if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; });

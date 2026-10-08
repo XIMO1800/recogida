@@ -319,7 +319,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v72 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v73 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1518,8 +1518,8 @@ function parteHtml() {
     <p class="small muted" style="margin:0">Total de leche recepcionada por especie (contador, sin agua), incluidas las cisternas de otros proveedores.</p>
     <span class="lbl">Leche vendida</span>
     ${ve.length ? `<table class="hist"><tbody>${ve.map(x => `<tr class="${bgEsp(x.esp)}"><td><b>${esc(ESPS[x.esp] || x.esp)}</b>${x.dep ? ' · dep. ' + esc(x.dep) : ''}</td><td class="num">${fmt(x.l)} l</td><td>${esc(x.cliente)}</td><td><button class="lnk" style="flex:0" data-vdel="${esc(x.id)}">✕</button></td></tr>`).join('')}</tbody></table>` : '<p class="small muted" style="margin:0">Ninguna.</p>'}
-    ${`<button class="btn ghost" id="vtNueva">+ Venta de leche</button>
-      <div id="vtForm" class="stack" hidden><div class="tg">${ORD_ESP.map(e => `<button data-vesp="${e}">${esc(ESPS[e])}</button>`).join('')}</div>
+    ${`<button class="btn ghost" id="vtNueva" ${R2() ? 'hidden' : ''}>+ Venta de leche</button>
+      <div id="vtForm" class="stack" ${R2() ? '' : 'hidden'}><div class="tg">${ORD_ESP.map(e => `<button data-vesp="${e}">${esc(ESPS[e])}</button>`).join('')}</div>
         <div class="pair"><div class="field"><label class="lbl" for="vtDep">Depósito</label><select id="vtDep" class="big" style="font-size:20px"><option value="">—</option>${R.deps.map(d => `<option>${esc(d.id)}</option>`).join('')}</select></div>
           <div class="field"><label class="lbl" for="vtL">Litros</label><input class="sm" id="vtL" inputmode="numeric"></div></div>
         <div class="field"><label class="lbl" for="vtCli">Vendida a</label><input class="sm" id="vtCli" style="font-family:var(--body)"></div>
@@ -1651,10 +1651,10 @@ function recep2Lista(v, u) {
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado ${R.esHoy ? 'hoy' : 'el ' + esc(R.dia)} (registro de calidad)</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div></div>`;
-  const diaNav = ofi || cal ? `<div class="row" style="align-items:center;gap:8px"><button class="btn sec" id="diaAnt" style="width:auto;padding:6px 14px">‹</button>
-      <b style="font-size:18px;flex:1;text-align:center">${R.esHoy ? 'Hoy · ' : ''}${esc(diaTxt(R.dia))}</b>
-      <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}
-      <input type="date" id="diaFecha" class="sm" style="width:auto;font-family:var(--body)" value="${esAiso(R.dia)}" max="${new Date().toISOString().slice(0, 10)}" title="Ir a una fecha"></div>` : '';
+  const diaNav = ofi || cal ? `<div class="row" style="align-items:center;gap:8px"><button class="btn sec" id="diaAnt" style="flex:0 0 auto;width:52px;min-height:40px;padding:4px">‹</button>
+      <b style="font-size:18px;flex:0 1 auto;text-align:center;padding:0 10px">${R.esHoy ? 'Hoy · ' : ''}${esc(diaTxt(R.dia))}</b>
+      <button class="btn sec" id="diaSig" style="flex:0 0 auto;width:52px;min-height:40px;padding:4px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="flex:0 0 auto;width:auto;min-height:40px;padding:4px 14px">Hoy</button>'}
+      <input type="date" id="diaFecha" class="sm" style="flex:0 0 auto;width:190px;margin-left:auto;font-family:var(--body)" value="${esAiso(R.dia)}" max="${new Date().toISOString().slice(0, 10)}" title="Ir a una fecha"></div>` : '';
   const pend = l.filter(x => !x.cal), hechos = l.filter(x => x.cal);
   const puede = (R.esHoy || ofi) && editable;
   const camHtml = `${puede ? `<span class="lbl">Camiones</span><div class="g2">${pend.map(tarjeta).join('')}
@@ -1662,7 +1662,7 @@ function recep2Lista(v, u) {
     ${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}`;
   const parte = cal || ofi ? parteHtml() : '';
   v.innerHTML = esEsc() && (cal || ofi)
-    ? `${diaNav}<div class="esc2"><div class="stack">${camHtml}</div><div class="stack">${parte}${depHtml}</div></div>`
+    ? `${diaNav}<div class="esc2"><div class="stack">${depHtml}${camHtml}</div><div class="stack">${parte}</div></div>`
     : `${diaNav}${depHtml}${camHtml}${parte}`;
   v.querySelectorAll('[data-v2]').forEach(b => { const x = l.find(z => z.id === b.dataset.v2); if (puede || x.cal) b.onclick = () => recepCamion2(x); else b.style.cursor = 'default'; });
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));

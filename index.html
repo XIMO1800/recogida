@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v53 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v54 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1791,6 +1791,10 @@ function recepRender() {
         R.ed = null; U.ag = null; recepcion();
       } catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha anulado.' : e.message; }
     };
+  }
+  if (E.porEsp) {   // RECEPCIÓN 2: solo para ver la misma información agrupada por especie. No guarda nada.
+    v.querySelectorAll('#reGuardar, #reAnular, #reAnu, .field:has(#reFirma)').forEach(el => { el.hidden = true; });
+    v.insertAdjacentHTML('afterbegin', '<div class="msg warn" style="margin:0"><b>Recepción 2 · vista de prueba por especie.</b> Aquí no se guarda nada: para guardar, usa <b>Recepción</b>. Los datos y el fichero para el programa no cambian.</div>');
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });

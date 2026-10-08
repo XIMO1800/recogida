@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v52 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v53 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1084,11 +1084,11 @@ function marcoEsc() {
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
   const it = cal ? [['recep', 'Recepción', 'Verificación de calidad', ['vRecep', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['recep2', 'Recepción 2', 'Una tarjeta por especie (prueba)', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
   $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
-    <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
+    <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!/^recep/.test(k) || (k === 'recep2') === (R.modo === 'esp')) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
-  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => recepcion(), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
+  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { cerrarDrawer(); ir[b.dataset.nav](); });
   $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
   $('#sideSalir').onclick = salir;
@@ -1349,7 +1349,7 @@ async function recepcion(sinCargar) {
   const v = $('#vRecep'), u = D().usuario;
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
-    show('vRecep', 'Recepción de leche', u.nombre);
+    show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
       R.dia = r.fecha; R.esHoy = r.hoy !== false; R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
@@ -1401,7 +1401,7 @@ async function recepcion(sinCargar) {
   if ($('#diaSig')) $('#diaSig').onclick = () => mover(1);
   if ($('#diaHoy')) $('#diaHoy').onclick = () => { R.fecha = ''; recepcion(); };
   enlazarParte(v);
-  show('vRecep', 'Recepción de leche', u.nombre);
+  show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
 }
 /* ═══════════ Histórico de viajes y DeCA (oficina): todo lo guardado, por fechas ═══════════ */
 const Hh = { desde: '', hasta: '', lista: null, cond: '', q: '' };
@@ -1598,19 +1598,37 @@ function recepOtra() {
 }
 function recepCamion(x) {
   // Borrador de la recepción: se parte de lo guardado o de los compartimentos del camión (en su orden)
-  const prev = x.recep;
-  const base = x.comps.map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, cap: c.cap || 0, n: c.n || 0 }));
+  let prev = x.recep;
+  const base0 = x.comps.map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, cap: c.cap || 0, n: c.n || 0 }));
+  let base = base0;
+  // RECEPCIÓN 2 (prueba): una tarjeta por especie en vez de por destino. Id = prefijo de ruta + especie (2O, 2D, 2C, 2V);
+  // la D.O. que viene en dos destinos (2D y 2d) es una sola tarjeta, con sus compartimentos de cisterna marcados (p. ej. 3,4).
+  const porEsp = R.modo === 'esp' && !x.otra;
+  if (porEsp) {
+    const pref = (x.comps[0] ? String(x.comps[0].id).slice(0, -1) : ''), g = {};
+    base0.forEach(b => { const e = b.esp || '?'; const z = g[e] = g[e] || { id: pref + e, esp: e, decl: 0, cap: 0, ns: [] }; z.decl += b.decl; z.cap += b.cap; if (b.n) z.ns.push(b.n); });
+    base = ORD_ESP.concat(Object.keys(g).filter(e => !ORD_ESP.includes(e))).filter(e => g[e]).map(e => Object.assign(g[e], { n: g[e].ns.sort((a, b) => a - b).join(',') }));
+    if (prev && prev.comps.some(c => !base.find(b => b.id === c.id))) {   // guardada por destinos: se junta por especie para verla aquí
+      const j = {}; prev.comps.forEach(c => { const e = espDe(c), b = base.find(z => z.esp === e) || { id: pref + e };
+        const z = j[e] = j[e] || { id: b.id, esp: e, ord: c.ord, contador: 0, temp: c.temp, ph: c.ph, dornic: c.dornic, visual: c.visual, nComp: '', reps: [] };
+        z.contador += Number(c.contador) || 0; if (c.visual === 'I') z.visual = 'I'; ['temp', 'ph', 'dornic'].forEach(k => { if (z[k] === '' || z[k] == null) z[k] = c[k]; });
+        z.nComp = [...new Set((z.nComp ? z.nComp.split(',') : []).concat(String(c.nComp || '').split(',').filter(Boolean)))].sort().join(',');
+        c.reps.forEach(r => { const y = z.reps.find(q => q.dep === r.dep && q.tipo === r.tipo); if (y) y.l += r.l; else z.reps.push(Object.assign({}, r)); }); });
+      prev = Object.assign({}, prev, { comps: Object.values(j).sort((a, b) => a.ord - b.ord) });
+    }
+  }
   const nBase = id => String((base.find(b => b.id === id) || {}).n || '');
   const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { nComp: c.nComp || nBase(c.id), ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
   base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
-  R.ed = { x, comps, nMax: Math.min(4, x.otra ? 4 : (x.nCompCam || Math.max(0, ...base.map(b => b.n)) || comps.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
+  R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepRender() {
   const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
-  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!x.recep;   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
+  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!x.recep;
+  const nums = c => String(c.nComp || '').split(',').filter(Boolean), choca = (c, k) => desc.some(z => z !== c && nums(z).includes(k));   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
   const silos = R.deps.map(d => d.id);
   const ppal = c => { const p = c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL'); return p ? p.dep : ''; };
   const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
@@ -1658,10 +1676,10 @@ function recepRender() {
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         <span class="ordd" title="Orden de descarga">${c.ord}º</span>
-        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b> ${tq(c.id)}</div>
-        <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${c.nComp === k ? 'on' + (desc.some(z => z !== c && z.nComp === k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)">${k}</button>`).join('')}</div></div>
+        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
+        <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
-      ${c.nComp && desc.some(z => z !== c && z.nComp === c.nComp) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${c.nComp} de la cisterna está puesto también en ${desc.filter(z => z !== c && z.nComp === c.nComp).map(z => z.id).join(', ')}.</div>` : ''}
+      ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
       <div><span class="tiny">Parcial contador${ofi && c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
       </div><div class="cmid stack">
       <div class="mini5"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
@@ -1682,7 +1700,7 @@ function recepRender() {
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
       ${x.unico && E.comps.length === 1 ? '' : `<div style="text-align:right"><button class="lnk" data-unord="${i}" style="flex:0">${x.otra ? 'Quitar este compartimento' : 'No era este (quitar del orden)'}</button></div>`}
     </div></div>`).join('')}
-    ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:var(--mono)">${esc(c.id)}</b><span>${esc(ESPS[c.esp] || '')}${ofi && c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>${c.nComp ? `<span class="small muted">suele ir en el comp. ${esc(c.nComp)} de la cisterna</span>` : ''}
+    ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:${E.porEsp ? 'var(--display)' : 'var(--mono)'}">${esc(E.porEsp ? ESPS[c.esp] || c.esp : c.id)}</b><span>${E.porEsp ? '' : esc(ESPS[c.esp] || '')}${ofi && c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>${c.nComp ? `<span class="small muted">suele ir en el comp. ${esc(c.nComp)} de la cisterna</span>` : ''}
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
     ${x.otra ? `<div class="card stack pendc" style="cursor:default"><span class="tiny">Otro compartimento</span><div class="d5" style="grid-template-columns:repeat(4,1fr)">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small style="font-size:10px">${t}</small></button>`).join('')}</div></div>` : ''}</div>
     ${pend.length && !desc.length ? '<p class="small muted">Toca el compartimento que empiezas a descargar. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}
@@ -1717,7 +1735,8 @@ function recepRender() {
     try { await api('guardarMezcla', { viajeId: x.id, comp, mezcla: val }); R.mezclas[k] = val; toast(val ? `Mezcla ${comp}: ${val === 'C' ? 'correcta' : 'INCORRECTA'}` : `Mezcla ${comp} sin marcar`); conFoco(recepRender); }
     catch (e) { b.disabled = false; toast(esRed(e) ? 'Sin conexión: no se ha guardado' : e.message); }
   });
-  v.querySelectorAll('[data-nc]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.nComp = c.nComp === b.dataset.nc ? '' : b.dataset.nc; recepRender(); });
+  v.querySelectorAll('[data-nc]').forEach(b => b.onclick = () => { const c = C(b.dataset.i), k = b.dataset.nc;
+    if (E.porEsp) { const l = nums(c); c.nComp = (l.includes(k) ? l.filter(z => z !== k) : l.concat(k)).sort().join(','); } else c.nComp = c.nComp === k ? '' : k; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
   v.querySelectorAll('[data-xadd]').forEach(b => b.onclick = () => { const c = C(b.dataset.xadd); const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== ppal(c)); c.reps.push({ dep: b.dataset.t === 'ARRASTRE' && mez ? mez.id : '', l: b.dataset.t === 'ARRASTRE' ? '100' : '', tipo: b.dataset.t === 'ARRASTRE' ? 'ARRASTRE' : 'OTRO' }); recepRender(); });
   v.querySelectorAll('[data-xdep]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].dep = b.dataset.xdep; recepRender(); });
@@ -1738,7 +1757,7 @@ function recepRender() {
     for (const c of usados) {
       if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
       if (!c.nComp) return err(`Marca en qué compartimento de la cisterna venía ${c.id} (1 = junto a la cabina).`);
-      if (usados.some(z => z !== c && z.nComp === c.nComp)) return err(`El compartimento ${c.nComp} de la cisterna está puesto en más de una leche.`);
+      if (nums(c).some(k => usados.some(z => z !== c && nums(z).includes(k)))) return err(`Un compartimento de la cisterna está puesto en más de una leche (${c.id}).`);
       if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
       if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin depósito o sin litros.`);
       if (new Set([ppal(c)].concat(extras(c).map(p => p.dep))).size > 3) return err(`En ${c.id} hay más de 3 depósitos: el programa admite como máximo 3.`);

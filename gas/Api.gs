@@ -804,9 +804,10 @@ function guardarRecepcion(req, c) {
     columnas_('RECEPCION_CAMION', ['LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'], 'FICHERO');
     columnas_('RECEPCIONES', ['N_COMP_CISTERNA'], 'USUARIO');
     // Nº de compartimento de la cisterna (posición física: 1 junto a la cabina). Distinto del orden de descarga. No va al fichero.
-    const nUsados = {}; comps.forEach(function (x) { const n = String(x.nComp || '').trim(); if (!n) return;
-      if (!/^\d{1,2}$/.test(n)) throw new Error('Nº de compartimento de la cisterna no válido en ' + x.id + '.');
-      if (nUsados[n]) throw new Error('El compartimento nº ' + n + ' de la cisterna está puesto en ' + nUsados[n] + ' y en ' + x.id + '.'); nUsados[n] = x.id; });
+    // (en la recepción por especie una leche puede venir en varios compartimentos: «3,4»)
+    const nUsados = {}; comps.forEach(function (x) { const t = String(x.nComp || '').replace(/\s/g, ''); if (!t) return;
+      if (!/^\d{1,2}(,\d{1,2})*$/.test(t)) throw new Error('Nº de compartimento de la cisterna no válido en ' + x.id + '.');
+      t.split(',').forEach(function (n) { if (nUsados[n]) throw new Error('El compartimento nº ' + n + ' de la cisterna está puesto en ' + nUsados[n] + ' y en ' + x.id + '.'); nUsados[n] = x.id; }); });
     const cabR = tabla_('RECEPCIONES').cab;
     let v = buscar_('VIAJES', 'VIAJE_ID', r.viajeId);
     const otra = !v;
@@ -829,7 +830,7 @@ function guardarRecepcion(req, c) {
           CONDUCTOR: conductor, RUTA: pad2_(v.PREFIJO_DESTINO), ORDEN_DESCARGA: i + 1, COMPARTIMENTO: x.id, ESPECIE: x.esp,
           LITROS_DECLARADOS: x.decl || '', LITROS_CONTADOR: x.contador, DEPOSITO: p.dep, LITROS_DEPOSITO: p.l, TIPO: p.tipo || 'PRINCIPAL',
           TEMPERATURA: x.temp === '' || x.temp == null ? '' : x.temp, PH: x.ph || '', DORNIC: x.dornic || '', VISUAL: x.visual || '', USUARIO: String(c.NOMBRE),
-          N_COMP_CISTERNA: String(x.nComp || '').trim() };
+          N_COMP_CISTERNA: String(x.nComp || '').replace(/\s/g, '') };
         filas.push(cabR.map(function (h) { return o[h] !== undefined ? o[h] : ''; }));
       });
     });

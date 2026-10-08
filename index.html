@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v63 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v64 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1358,7 +1358,12 @@ async function recepcion(sinCargar) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
-      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || []; R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
+      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
+      // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
+      R.viajes.filter(x => !x.otra && x.matricula && !R.camiones.some(t => normMat(t.matricula) === normMat(x.matricula))).forEach(x => {
+        const porN = {}; (x.comps || []).forEach(k => { if (k.n) porN[k.n] = Math.max(porN[k.n] || 0, k.cap || 0); });
+        const n = Math.max(x.nCompCam || 0, ...Object.keys(porN).map(Number), 0) || (x.comps || []).length;
+        R.camiones.push({ id: 'M' + normMat(x.matricula), matricula: x.matricula, conductor: x.conductor, desc: n + ' compartimentos', nComp: n, comps: Array.from({ length: n }, (_, i) => ({ n: i + 1, cap: porN[i + 1] || 0 })) }); }); R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   if (R2()) return recep2Lista(v, u);

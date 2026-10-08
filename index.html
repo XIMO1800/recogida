@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v64 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v65 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1616,23 +1616,25 @@ function recepOtra() {
 const yymmdd = f => { const p = String(f || '').split('/'); return p.length === 3 ? p[2].slice(-2) + p[1] + p[0] : ''; };
 const normMat = m => String(m || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 function recep2Lista(v, u) {
-  const regs = Object.entries(R.calDia || {}).filter(([id, r]) => /^Q/.test(id) && r.fecha === R.dia);
-  const usados = new Set();
-  const l = R.camiones.map(t => {
-    const reg = regs.find(([id, r]) => normMat(r.matricula) === normMat(t.matricula) && !usados.has(id));
-    if (reg) usados.add(reg[0]);
-    return { id: reg ? reg[0] : 'Q' + yymmdd(R.dia) + '-' + t.id, r2: true, matricula: t.matricula, conductor: t.conductor, desc: t.desc,
-      comps: t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })), cal: reg ? reg[1] : null };
-  });
-  regs.filter(([id]) => !usados.has(id)).forEach(([id, r]) => {   // otras entradas (cisternas de otros proveedores) ya registradas
+  const regs = Object.entries(R.calDia || {}).filter(([id, r]) => /^Q/.test(id) && r.fecha === R.dia).sort((a, b) => String(a[1].hora) < String(b[1].hora) ? -1 : 1);
+  // Cada camión activo se puede registrar siempre (también un 2º o 3º viaje en el día: descargas parciales, primavera…)
+  const nuevoId = t => { const base = 'Q' + yymmdd(R.dia) + '-' + t.id; let id = base, k = 1; while ((R.calDia || {})[id]) id = base + '-' + (++k); return id; };
+  const l = R.camiones.map(t => ({ id: nuevoId(t), r2: true, matricula: t.matricula, conductor: t.conductor, desc: t.desc,
+    comps: t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })), cal: null,
+    veces: regs.filter(([, r]) => normMat(r.matricula) === normMat(t.matricula)).length }));
+  const cuenta = {};
+  regs.forEach(([id, r]) => {   // cada registro guardado, con los compartimentos de su camión (o los que trajo, si es de otro proveedor)
+    const t = R.camiones.find(z => normMat(z.matricula) === normMat(r.matricula)), m = normMat(r.matricula) || id;
+    cuenta[m] = (cuenta[m] || 0) + 1;
     const n = Math.max(1, ...r.comps.map(c => +c.nComp || 0));
-    l.push({ id, r2: true, otra: true, matricula: r.matricula, conductor: r.conductor, comps: Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: r });
+    l.push({ id, r2: true, otra: !t, matricula: r.matricula, conductor: r.conductor, desc: t ? t.desc : '', viaje: cuenta[m],
+      comps: t ? t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })) : Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: r });
   });
   R.l2 = l;
   const cal = !!D().calidad, ofi = !!D().oficina, editable = !cal || ofi || !!D().recepcion;
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
-      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>ya registrado ${x.veces === 1 ? 'una vez' : x.veces + ' veces'} hoy: toca para otro viaje</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
       <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l<br><span class="small">${esc(x.cal.hora)}</span>` : 'Registrar'}</span></button>`;
@@ -1774,10 +1776,10 @@ function recepRender() {
       <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
       <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
       ${x.otra && !E.porComp ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
-      <p class="small muted">${E.porComp ? 'Toca cada compartimento <b>cuando empieces a descargarlo</b> y di qué leche lleva. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}<p class="small muted" ${E.porComp ? 'hidden' : ''}>Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
+      <p class="small muted">${E.porComp ? 'Di qué leche lleva cada compartimento y rellena sus datos. Si alguno viene vacío o no se descarga en este viaje, déjalo sin tocar.</p>' : ''}<p class="small muted" ${E.porComp ? 'hidden' : ''}>Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
-        <span class="ordd" title="Orden de descarga">${c.ord}º</span>
+        ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
         <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
         ${E.porComp ? `<div class="cel ncel" style="align-items:center"><span class="tiny">Comp. cisterna</span><b style="font-size:24px">${c.n}</b></div>` : ''}<div class="cel ncel" ${E.porComp ? 'hidden' : ''}><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
@@ -1804,7 +1806,7 @@ function recepRender() {
       ${x.unico && E.comps.length === 1 ? '' : `<div style="text-align:right"><button class="lnk" data-unord="${i}" style="flex:0">${x.otra ? 'Quitar este compartimento' : E.porComp ? 'Quitar (vacío o equivocado)' : 'No era este (quitar del orden)'}</button></div>`}
     </div></div>`).join('')}
     ${E.porComp ? pend.map(c => `<div class="card pendc stack" style="cursor:default;gap:10px"><b style="font-size:26px;font-family:var(--display)">Compartimento ${c.n}</b>
-      <span class="small muted">${desc.length ? `será el ${desc.length + 1}º en descargarse` : 'el primero en descargarse'} · ¿qué leche lleva?</span>
+      <span class="small muted">¿Qué leche lleva?</span>
       <div class="d5" style="grid-template-columns:repeat(2,1fr);width:100%">${['D', 'O', 'V', 'C'].map(e => `<button class="dest ${bgEsp(e)}" data-pesp="${E.comps.indexOf(c)}" data-e="${e}" style="min-height:52px"><b class="sp-${e}" style="font-size:17px">${esc(ESPS[e])}</b></button>`).join('')}</div></div>`).join('') : ''}
     ${(E.porComp ? [] : pend).map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:${E.porEsp ? 'var(--display)' : 'var(--mono)'}">${esc(E.porEsp ? ESPS[c.esp] || c.esp : c.id)}</b><span>${E.porEsp ? '' : esc(ESPS[c.esp] || '')}${ofi && c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>${c.nComp ? `<span class="small muted">suele ir en el comp. ${esc(c.nComp)} de la cisterna</span>` : ''}
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}

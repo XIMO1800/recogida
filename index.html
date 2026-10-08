@@ -36,7 +36,7 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .recgrid{display:grid;gap:12px}
 @media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
 .ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
+.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.vm{display:grid;grid-template-columns:1fr 1fr;gap:8px}.vm [data-mz]:disabled{opacity:.4;cursor:not-allowed}.vm .tg .tiny{min-width:0!important;margin-right:4px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
 .rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -311,7 +311,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v44 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v45 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -476,7 +476,7 @@ function pinView(msg) {
         S.pin = null; libre(b);
         pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
       }
-      if (d.rol === 'RECEPCION') { S.datos = { recepcion: true, usuario: d.usuario }; persistir(); recepcion(); return; }
+      if (d.rol === 'RECEPCION') { S.datos = { recepcion: true, calidad: (d.roles || []).includes('CALIDAD'), usuario: d.usuario }; persistir(); recepcion(); return; }
       if (d.rol === 'CALIDAD') { S.datos = { calidad: true, usuario: d.usuario }; persistir(); R.fecha = ''; recepcion(); return; }
       if (d.rol === 'OFICINA') { S.datos = { oficina: true, calidad: (d.roles || []).includes('CALIDAD'), usuario: d.usuario, config: d.config }; persistir(); oficina(); return; }
       cargarDatos(d);
@@ -1356,7 +1356,7 @@ async function recepcion(sinCargar) {
   const pend = R.viajes.filter(x => !x.recep), hechos = R.viajes.filter(x => x.recep);
   const tarjeta = x => `<button class="farm${x.recep ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
-      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}</span>
+      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${x.recep && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${(x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
       <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
@@ -1377,13 +1377,15 @@ async function recepcion(sinCargar) {
       <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}</div>` : '';
   // El parte del día es cosa de calidad (y oficina). Quien descarga solo ve depósitos, camiones, agua y otra entrada.
   const parte = cal || ofi ? parteHtml() : '';
+  const avisoCal = '<div class="msg warn" style="margin:0">Calidad: abre cada camión recibido y marca la <b>mezcla</b> de cada leche (C / I) cuando tengas la analítica.</div>';
   const aviso = atras ? `<div class="msg warn" style="margin:0"><b>Estás en el ${esc(diaTxt(R.dia))}.</b> Lo que recibas o guardes aquí (camiones, otra entrada, agua) queda con esa fecha. Úsalo para terminar un día que se quedó a medias.</div>` : '';
   const html = esEsc() && (cal || ofi)
-    ? `${cab}${diaNav}${aviso}<div class="esc2"><div class="stack">${cal ? calidadHtml() : ''}${pendHtml}${hechosHtml}${pie}</div><div class="stack">${parte}${depHtml}${botones}</div></div>`
-    : `${cab}${diaNav}${aviso}${cal ? calidadHtml() : ''}${depHtml}${pendHtml}${botones}${hechosHtml}${parte}${pie}`;
+    ? `${cab}${diaNav}${aviso}<div class="esc2"><div class="stack">${cal && !ofi ? avisoCal : ''}${pendHtml}${hechosHtml}${pie}</div><div class="stack">${parte}${depHtml}${botones}</div></div>`
+    : `${cab}${diaNav}${aviso}${cal && !ofi ? avisoCal : ''}${depHtml}${pendHtml}${botones}${hechosHtml}${parte}${pie}`;
   v.innerHTML = html;
-  if (editable) v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => recepCamion(R.viajes.find(x => x.id === b.dataset.v)));
-  else v.querySelectorAll('.farm[data-v]').forEach(b => { b.style.cursor = 'default'; });
+  // Recepción y oficina abren cualquier camión; calidad abre los ya recibidos (el mismo parte) para poner la mezcla
+  v.querySelectorAll('[data-v]').forEach(b => { const x = R.viajes.find(z => z.id === b.dataset.v);
+    if (editable || (x && x.recep)) b.onclick = () => recepCamion(x); else b.style.cursor = 'default'; });
   $('#reAct').onclick = () => recepcion();
   if ($('#reOtra')) $('#reOtra').onclick = () => recepOtra();
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
@@ -1464,6 +1466,12 @@ function totEsp() {
   const t = { D: 0, O: 0, V: 0, C: 0 };
   R.viajes.filter(x => x.recep).forEach(x => x.recep.comps.forEach(c => { const e = espDe(c); if (e in t) t[e] += Number(c.contador) || 0; }));
   return t;
+}
+/** Mezcla pendiente/hecha de un camión (D.O., oveja y cabra; la vaca no se verifica). */
+function mezclaEstado(x) {
+  const cs = x.recep.comps.filter(c => 'DOC'.includes(espDe(c))); if (!cs.length) return '';
+  const m = cs.map(c => (R.mezclas || {})[x.id + '|' + c.id] || ''), falta = m.filter(z => !z).length, mal = m.filter(z => z === 'I').length;
+  return mal ? ` · <b style="color:var(--bad)">mezcla incorrecta</b>` : falta ? ` · <b style="color:var(--warn)">mezcla: faltan ${falta}</b>` : ' · <b style="color:var(--ok)">mezcla ✓</b>';
 }
 function calidadHtml() {
   const hs = R.viajes.filter(x => x.recep && x.recep.comps.length);
@@ -1595,7 +1603,9 @@ function recepCamion(x) {
   recepRender();
 }
 function recepRender() {
-  const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
+  const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
+  // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
+  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!x.recep;   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
   const silos = R.deps.map(d => d.id);
   const ppal = c => { const p = c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL'); return p ? p.dep : ''; };
   const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
@@ -1649,7 +1659,9 @@ function recepRender() {
       <div class="mini"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
         <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label></div>
-      <div class="tg"><span class="tiny" style="align-self:center;min-width:52px">Visual</span>${['C', 'I'].map(k => `<button class="${c.visual === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="visual" data-i="${i}" data-val="${k}" title="${k === 'C' ? 'Correcto' : 'Incorrecto'}">${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>
+      <div class="vm"><div class="tg"><span class="tiny" style="align-self:center;min-width:52px">Visual</span>${['C', 'I'].map(k => `<button class="${c.visual === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="visual" data-i="${i}" data-val="${k}" title="${k === 'C' ? 'Correcto' : 'Incorrecto'}">${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>
+        ${'DOC'.includes(espDe(c)) ? (() => { const m = (R.mezclas || {})[x.id + '|' + c.id] || ''; return `<div class="tg" title="${mzOk ? 'Mezcla según la analítica' : 'La pone Calidad con la analítica'}"><span class="tiny" style="align-self:center;min-width:52px">Mezcla</span>${['C', 'I'].map(k => `<button class="${m === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-mz="${esc(x.id + '|' + c.id)}" data-val="${k}" ${mzOk ? '' : 'disabled'}>${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>`; })()
+          : '<div class="tg"><span class="tiny" style="align-self:center">Mezcla</span><span class="small muted" style="align-self:center">vaca: no se verifica</span></div>'}</div>
       <div><span class="tiny">Depósito</span><div class="d5">${silos.map(s => { const k = contenidoDep(s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b style="font-size:20px">${s}</b><small style="font-size:10px">${esc(k.tipo || '')}</small></button>`; }).join('')}</div></div>
       ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad" style="padding:6px 10px">¡Atención! ${esc(ESPS[c.esp])} al ${ppal(c)}, que lleva oveja/D.O.: pasaría a mezcla.</div>` : ''}
       ${extras(c).map((p, j) => `<div class="xbox"><span class="tiny">${p.tipo === 'ARRASTRE' ? 'Arrastre a' : 'Parte a'}</span>
@@ -1689,6 +1701,12 @@ function recepRender() {
   v.querySelectorAll('[data-f]').forEach(inp => inp.oninput = () => { const c = C(inp.dataset.i); c[inp.dataset.f] = inp.value.replace(inp.dataset.f === 'contador' ? /\D/g : /[^\d,.]/g, ''); if (inp.dataset.f === 'contador') { const q = $('#reCuadre'); if (q) q.innerHTML = cuadreHtml(); } });
   v.querySelectorAll('[data-f="contador"]').forEach(inp => inp.onchange = () => rehacer(recepRender));
   v.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => { if (b.dataset.i !== '') C(b.dataset.i)[b.dataset.ci] = b.dataset.val; else E[b.dataset.ci] = b.dataset.val; recepRender(); });
+  v.querySelectorAll('[data-mz]').forEach(b => b.onclick = async () => {
+    const k = b.dataset.mz, comp = k.split('|')[1], val = (R.mezclas[k] || '') === b.dataset.val ? '' : b.dataset.val;
+    b.disabled = true;
+    try { await api('guardarMezcla', { viajeId: x.id, comp, mezcla: val }); R.mezclas[k] = val; toast(val ? `Mezcla ${comp}: ${val === 'C' ? 'correcta' : 'INCORRECTA'}` : `Mezcla ${comp} sin marcar`); conFoco(recepRender); }
+    catch (e) { b.disabled = false; toast(esRed(e) ? 'Sin conexión: no se ha guardado' : e.message); }
+  });
   v.querySelectorAll('[data-nc]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.nComp = c.nComp === b.dataset.nc ? '' : b.dataset.nc; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
   v.querySelectorAll('[data-xadd]').forEach(b => b.onclick = () => { const c = C(b.dataset.xadd); const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== ppal(c)); c.reps.push({ dep: b.dataset.t === 'ARRASTRE' && mez ? mez.id : '', l: b.dataset.t === 'ARRASTRE' ? '100' : '', tipo: b.dataset.t === 'ARRASTRE' ? 'ARRASTRE' : 'OTRO' }); recepRender(); });
@@ -1744,6 +1762,13 @@ function recepRender() {
         R.ed = null; U.ag = null; recepcion();
       } catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha anulado.' : e.message; }
     };
+  }
+  if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
+    v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });
+    v.querySelectorAll('.pendc, #reGuardar, #reAnular, #reAnu, [data-unord], .field:has(#reFirma)').forEach(el => { el.hidden = true; });
+    v.insertAdjacentHTML('afterbegin', '<div class="msg warn" style="margin:0">Calidad: aquí solo se marca la <b>mezcla</b> de cada leche (se guarda al pulsar). Lo demás es de recepción.</div>');
+    v.insertAdjacentHTML('beforeend', '<button class="btn sec" id="calVolver">Volver a la lista</button>');
+    $('#calVolver').onclick = () => recepcion(true);
   }
   show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor);
 }

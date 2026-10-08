@@ -177,11 +177,11 @@ body.kb .back{width:38px}
 .big:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--brand-soft)}
 .unit{position:relative}
 .tally .unit{padding:0;border:0;background:none}
-.tally .agu{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);padding:4px 6px}
+.tally .agu{display:flex;flex-direction:row;align-items:baseline;justify-content:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);padding:4px 6px}
 .tally .agu input[data-ag]{width:3.2em!important;border:0;padding:2px 0!important;text-align:right;background:transparent;box-shadow:none;font-size:24px!important}
-.tally .agu span{position:static;transform:none;font-size:18px;color:var(--muted)}
+.tally .agu span{position:static;transform:none;font-size:20px;color:var(--muted);font-family:var(--body);font-weight:700}
 .tally.agt > div{align-items:center}body.esc .tally.agt{grid-template-columns:repeat(var(--nd),minmax(0,1fr))}.tally input[data-ag]{padding:6px 24px 6px 8px}.tally .unit:has(input[data-ag]) span{right:8px;font-size:16px}
-.unit span{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:20px}
+.unit span{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:20px;font-family:var(--body)}
 .msg{font-size:15px;font-weight:600;border-radius:12px;padding:10px 12px;border-left:5px solid currentColor}
 .msg.warn{background:var(--warn-soft);color:var(--warn)}
 .msg.bad{background:var(--bad-soft);color:var(--bad)}
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v76 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v77 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -533,7 +533,7 @@ function rutas() {
     <div class="comps">${comps().map(x => `<span class="tank ${spClass(x)}" title="${compLabel(x)}">${x.id}</span>`).join('')}</div>
     <p class="small muted">${n} ganaderos en la lista.</p>
     <div class="field"><label class="lbl" for="estL">Litros estimados de hoy (para el DeCA)</label>
-      <div class="unit"><input class="big" id="estL" inputmode="numeric" autocomplete="off" placeholder="0" value="${S.estManual || estSel() || ''}" style="font-size:34px"><span>l</span></div>
+      <div class="unit"><input class="big" id="estL" inputmode="numeric" autocomplete="off" placeholder="0" value="${S.estManual || estSel() || ''}" style="font-size:34px"><span>L</span></div>
       <span class="small muted">Sale calculado con la última recogida de cada ganadero. Corrígelo si hoy llevas más o menos.</span></div>
     ${n ? '' : `<div class="msg bad">No hay ganaderos cargados en ${S.sel.length > 1 ? 'estas rutas' : 'esta ruta'}. Avisa a la oficina.</div>`}
     ${viajesHoy(S.sel).length ? `<div class="msg warn"><b>Hoy ya hay ${viajesHoy(S.sel).length > 1 ? 'viajes' : 'un viaje'} de ${S.sel.length > 1 ? 'estas rutas' : 'esta ruta'}:</b><br>${viajesHoy(S.sel).map(v => esc(txtViaje(v))).join('<br>')}<br>Inicia otro solo si de verdad vuelves a salir.</div>` : ''}
@@ -775,7 +775,7 @@ function ficha(i) {
       <span class="sp-badge sp-${g.esp}">${labelEsp(g.esp)}</span></div>
     <div class="pair">
       <div class="field"><label class="lbl" for="lit">Litros</label>
-        <div class="unit"><input class="big" id="lit" inputmode="numeric" enterkeyhint="next" autocomplete="off" value="${r.litros ?? ''}" placeholder="0"><span>l</span></div></div>
+        <div class="unit"><input class="big" id="lit" inputmode="numeric" enterkeyhint="next" autocomplete="off" value="${r.litros ?? ''}" placeholder="0"><span>L</span></div></div>
       <div class="field"><label class="lbl" for="tmp">Temp.</label>
         <div class="unit"><input class="big" id="tmp" inputmode="decimal" enterkeyhint="next" autocomplete="off" value="${r.temp != null ? String(r.temp).replace('.', ',') : ''}" placeholder="0,0"><span>°C</span></div></div>
     </div>
@@ -1223,7 +1223,7 @@ function ofiEditar(x, r, nuevo) {
     </div>
     <label class="row small" style="gap:8px;align-items:center"><input type="checkbox" id="eSin" ${r && r.sin ? 'checked' : ''} style="width:22px;height:22px"> No se le recogió</label>
     <div id="eDatos" class="stack">
-      <div class="pair"><div class="field"><label class="lbl" for="eL">Litros totales</label><div class="unit"><input class="big" id="eL" inputmode="numeric" value="${r && !r.sin ? r.l : ''}"><span>l</span></div></div>
+      <div class="pair"><div class="field"><label class="lbl" for="eL">Litros totales</label><div class="unit"><input class="big" id="eL" inputmode="numeric" value="${r && !r.sin ? r.l : ''}"><span>L</span></div></div>
         <div class="field"><label class="lbl" for="eT">Temperatura</label><div class="unit"><input class="big" id="eT" inputmode="decimal" value="${r && !r.sin ? esc(r.t) : ''}"><span>°C</span></div></div></div>
       <div class="field"><label class="lbl" for="eM">Muestra</label><input id="eM" inputmode="numeric" value="${r ? esc(r.mue) : ''}"></div>
       <div class="field"><span class="lbl">Destino principal</span>${chips('eD1', d1)}<input id="eD1t" value="${esc(d1)}" placeholder="p. ej. 5D" style="margin-top:6px"></div>
@@ -1846,7 +1846,7 @@ function recepRender() {
         ${E.porComp ? `<div class="cel ncel" style="align-items:center"><span class="tiny">Comp. cisterna</span><b style="font-size:24px">${c.n}</b></div>` : ''}<div class="cel ncel" ${E.porComp ? 'hidden' : ''}><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
-      <div><span class="tiny">Parcial contador${ofi && c.decl && !E.porEsp ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px${c.auto ? ';color:var(--muted);opacity:.55;font-weight:500' : ''}"${c.auto ? ' title="Propuesto: escribe el real"' : ''} data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>l</span></div></div>
+      <div><span class="tiny">Parcial contador${ofi && c.decl && !E.porEsp ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px${c.auto ? ';color:var(--muted);opacity:.55;font-weight:500' : ''}"${c.auto ? ' title="Propuesto: escribe el real"' : ''} data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>L</span></div></div>
       ${c.pista2 && !num(c.contador) ? `<div class="msg warn" style="padding:6px 10px">La cartilla trae ${fmt(c.pista2)} l de ${esc(ESPS[c.esp] || '')}${(E.ya || {})[c.esp] ? ' sin registrar' : ''} y el compartimento ${c.n} admite unos ${fmt(capN[c.n])} l: <b>ha habido un 2º viaje</b>. Escribe lo que se descarga ahora; lo demás, en otro registro de este camión.</div>` : ''}
       ${(() => { const cap = capDe(c), l = num(c.contador) || 0; return cap && l > cap + MARGEN_CAP ? `<div class="msg bad" style="padding:6px 10px">¡No cabe! ${fmt(l)} l de ${esc(ESPS[c.esp] || c.id)} y el compartimento ${nums(c).join(' + ')} de la cisterna admite ${fmt(cap)} l.</div>` : ''; })()}
       </div><div class="cmid stack">
@@ -1861,7 +1861,7 @@ function recepRender() {
       ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad" style="padding:6px 10px">¡Atención! ${esc(ESPS[c.esp])} al ${ppal(c)}, que lleva oveja/D.O.: pasaría a mezcla.</div>` : ''}
       ${extras(c).map((p, j) => `<div class="xbox"><span class="tiny">${p.tipo === 'ARRASTRE' ? 'Arrastre a' : 'Parte a'}</span>
         <div class="d5">${silos.map(s => `<button class="dest" aria-pressed="${p.dep === s}" ${s === ppal(c) ? 'disabled style="opacity:.35"' : ''} data-xdep="${s}" data-i="${i}" data-j="${j}"><b>${s}</b></button>`).join('')}</div>
-        <div class="xrow"><div class="unit"><input class="sm" style="font-size:22px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
+        <div class="xrow"><div class="unit"><input class="sm" style="font-size:22px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>L</span></div>
           ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}<button class="lnk" data-xdel="${i}" data-j="${j}">✕</button></div></div>`).join('')}
       ${1 + extras(c).length < 3 ? `<div class="row" style="gap:6px">${E.porComp ? '' : `<button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button>`}<button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>` : '<p class="small muted" style="margin:0">Máximo 3 depósitos por compartimento (como en el programa).</p>'}
       ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
@@ -1878,7 +1878,7 @@ function recepRender() {
     ${x.otra || !ofi || E.porEsp ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
     <div class="card stack">
       <div class="camgrid">
-        <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>
+        <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>L</span></div>
           <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con los parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: parciales ${fmt(suma)} l (dif. ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div></div>
         <div><span class="tiny">Limpieza cisterna</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.limpieza === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="limpieza" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
         <div><span class="tiny">Limpieza filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
@@ -2045,7 +2045,7 @@ function recepAgua(guardado) {
     ${sesiones.filter(ses => ses.cams.length).map(ses => { const pr = propuesta(ses); const tot = deps.reduce((a, dp) => a + (num(val(ses, dp, pr)) || 0), 0);
       return `<div class="card stack"><div class="route-head"><h2>${ses.cod}</h2><b class="num">${fmt(tot)} l</b></div>
         <p class="small muted">${A.manual[ses.cod] ? 'Ajustado a mano.' : esc(pr.txt) + ` (${d.arranque} + ${d.final} l por depósito)`}</p>
-        <div class="tally agt" style="--nd:${deps.length}">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit agu"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" maxlength="3" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>l</span></div></div>`).join('')}</div>
+        <div class="tally agt" style="--nd:${deps.length}">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit agu"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" maxlength="3" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>L</span></div></div>`).join('')}</div>
         ${deps.filter(dp => (num(val(ses, dp, pr)) || 0) > 0).length > 3 ? `<div class="msg bad">${ses.cod} va a más de 3 depósitos y el programa solo admite 3: junta el agua de alguno (pon 0 en uno y súmalo a otro).</div>` : ''}
         ${A.manual[ses.cod] ? `<button class="btn ghost" data-rest="${ses.cod}">Volver a la propuesta</button>` : ''}</div>`; }).join('')}
     <div id="agMsg" hidden></div>

@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v77 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v78 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1092,8 +1092,10 @@ function marcoEsc() {
   const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
-  const it = cal ? [['recep2', 'Recepción 2', 'Registro de calidad por especie', ['vRecep', 'vRecepC', 'vDep']], ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']], ['recep', 'Recepción', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['recep2', 'Recepción 2', 'Registro de calidad por especie', ['vRecep', 'vRecepC', 'vDep']], ofi && ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+  const RC = ['recep2', 'Recepción calidad', 'Registro de calidad por camión', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']];
+  const it = cal ? [RC, HC, ['recep', 'Recepción', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']],
+      RC, ofi && HC, ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
   $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
     <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!/^recep/.test(k) || (k === 'recep2') === (R.modo === 'esp')) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
@@ -1367,7 +1369,7 @@ async function recepcion(sinCargar) {
   const v = $('#vRecep'), u = D().usuario;
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
-    show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
+    show('vRecep', R.modo === 'esp' ? 'Recepción calidad' : 'Recepción de leche', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
       R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
       // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
@@ -1420,7 +1422,7 @@ async function recepcion(sinCargar) {
   $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); salir(); };
   enlazarDiaNav();
   enlazarParte(v);
-  show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
+  show('vRecep', R.modo === 'esp' ? 'Recepción calidad' : 'Recepción de leche', u.nombre);
 }
 /* ═══════════ Histórico de viajes y DeCA (oficina): todo lo guardado, por fechas ═══════════ */
 const Hh = { desde: '', hasta: '', lista: null, cond: '', q: '' };
@@ -1718,7 +1720,7 @@ function recep2Lista(v, u) {
   if ($('#r2Otra')) $('#r2Otra').onclick = () => recepOtra2();
   enlazarDiaNav();
   enlazarParte(v);
-  show('vRecep', 'Recepción 2 · registro de calidad', u.nombre);
+  show('vRecep', 'Recepción calidad', u.nombre);
 }
 function recepOtra2() {
   const v = $('#vRecepC'), o = U.otra2 = U.otra2 || { prov: '', mat: '', n: 1 };
@@ -1990,7 +1992,7 @@ function recepRender() {
   if (E.porEsp) {   // RECEPCIÓN 2: registro de calidad por especie. Se guarda aparte (RECEPCION_CALIDAD); no va al programa de gestión.
     v.querySelectorAll('#reAnular, #reAnu').forEach(el => { el.hidden = true; });
     const tt = $('#reTot'); if (tt) tt.closest('div').parentElement.hidden = true;
-    v.insertAdjacentHTML('afterbegin', `<div class="msg ok" style="margin:0"><b>Recepción 2 · registro de calidad.</b> Se guarda aparte para Calidad; el fichero del programa de gestión sigue saliendo de <b>Recepción</b>.${x.cal ? ` Ya registrado${x.cal.usuario ? ' por ' + esc(x.cal.usuario) : ''}: al guardar se rehace.` : ''}</div>`);
+    v.insertAdjacentHTML('afterbegin', `<div class="msg ok" style="margin:0"><b>Recepción calidad.</b> Se guarda aparte para Calidad; el fichero del programa de gestión sigue saliendo de <b>Recepción</b>.${x.cal ? ` Ya registrado${x.cal.usuario ? ' por ' + esc(x.cal.usuario) : ''}: al guardar se rehace.` : ''}</div>`);
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });

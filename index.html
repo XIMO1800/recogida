@@ -319,7 +319,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v73 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v74 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1563,9 +1563,9 @@ function imprimirParte() {
     const base = x.comps || [], comps = src.comps.slice().sort((a, b) => ORD_ESP.indexOf(espDe(a)) - ORD_ESP.indexOf(espDe(b)));
     const nComp = (c, i) => { if (c.nComp) return esc(c.nComp); const b = base.find(z => z.id === c.id); return b && b.n ? b.n : (x.otra ? src.comps.indexOf(c) + 1 : ''); };
     const total = src.total || src.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
-    return `<table class="b"><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
+    return `<table class="b"><colgroup>${[14, 9, 6, 6, 6, 6, 6, 7, 5, 7, 5, 8, 15].map(w => `<col style="width:${w}%">`).join('')}</colgroup><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
       ${comps.map((c, i) => `<tr>${i === 0 ? `<td class="prov" rowspan="${comps.length}"><b>${esc(x.otra || R2() ? x.conductor : x.conductor + ' · ruta ' + rutasTxt(x))}</b><br>Matrícula: ${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
-        <td><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
+        <td class="cis"><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
         ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(src.usuario || '')}${R2() ? '' : `<br><small>${esc(src.hora || '')}</small>`}<div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
@@ -1576,7 +1576,7 @@ function imprimirParte() {
     @page{size:A4;margin:10mm}body{font-family:Arial,sans-serif;font-size:10.5px;color:#111;margin:0}
     .h{display:flex;align-items:center;border:1.5px solid #333;margin-bottom:6px}.h img{height:38px;padding:4px 10px;border-right:1.5px solid #333}.h h1{flex:1;font-size:16px;text-align:center;margin:0}.h .f{border-left:1.5px solid #333;padding:4px 14px;text-align:center;font-size:12px}
     table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3px 4px;text-align:center;vertical-align:middle}th{background:#eee;font-size:9px}
-    table.b{margin-bottom:6px;page-break-inside:avoid}td.prov{text-align:left;width:120px}td.n{text-align:right;font-weight:bold}td.firma{width:80px;font-size:10px}.tot{margin-top:4px;border-top:1px solid #555;padding-top:2px}
+    table.b{margin-bottom:6px;page-break-inside:avoid;table-layout:fixed;width:100%}table.b td{white-space:nowrap}table.b td.prov,table.b td.firma,table.b td.cis{white-space:normal;overflow-wrap:anywhere}table.b th{overflow-wrap:anywhere}td.prov{text-align:left}td.n{text-align:right;font-weight:bold}td.firma{font-size:10px}.tot{margin-top:4px;border-top:1px solid #555;padding-top:2px}
     .pie{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-top:8px}.pie td{text-align:left}.pie td.n{text-align:right}
     .obs{border:1px solid #555;min-height:34px;padding:4px;margin-top:8px}.ver{margin-top:8px;display:flex;justify-content:space-between;font-size:11px}
   </style></head><body>

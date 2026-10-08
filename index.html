@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v69 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v70 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1565,7 +1565,7 @@ function imprimirParte() {
         <td><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
-        ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(src.usuario || '')}<br><small>${esc(src.hora || '')}</small><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
+        ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(src.usuario || '')}${R2() ? '' : `<br><small>${esc(src.hora || '')}</small>`}<div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
       ${src.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(src.obs)}</small></td></tr>` : ''}</tbody></table>`;
   };
   const ve = R.ventas || [], vend = e => ve.filter(z => z.esp === e);
@@ -1644,7 +1644,7 @@ function recep2Lista(v, u) {
       <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>ya registrado ${x.veces === 1 ? 'una vez' : x.veces + ' veces'} hoy: toca para otro viaje</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
-      <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l<br><span class="small">${esc(x.cal.hora)}</span>` : 'Registrar'}</span></button>`;
+      <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : 'Registrar'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado ${R.esHoy ? 'hoy' : 'el ' + esc(R.dia)} (registro de calidad)</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div></div>`;
@@ -1695,7 +1695,9 @@ function recepCamion2(x) {
       : { id: k.id, n: k.n, nComp: String(k.n), esp: '', ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }; });
   // Litros propuestos: los de la cartilla del viaje de hoy de ese camión (si hay dos viajes, el último), por especie
   const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
-  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj ? vj.cart || {} : {}, viajeRef: vj ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
+    r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
+  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj ? vj.cart || {} : {}, ya, viajeRef: vj ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepCamion(x) {
@@ -1740,6 +1742,7 @@ function recepRender() {
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
   const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!(E.porEsp ? x.cal : x.recep);
   const capN = {}; (x.comps || []).forEach(k => { if (k.n && k.cap) capN[k.n] = Math.max(capN[k.n] || 0, k.cap); });
+  const MARGEN_CAP = 200;   // siempre cabe algo más de la capacidad nominal
   const capDe = c => { const ns = String(c.nComp || '').split(',').filter(Boolean); return ns.length && ns.every(n => capN[n]) ? ns.reduce((a, n) => a + capN[n], 0) : 0; };
   const nums = c => String(c.nComp || '').split(',').filter(Boolean), choca = (c, k) => desc.some(z => z !== c && nums(z).includes(k));   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
   const silos = R.deps.map(d => d.id);
@@ -1794,7 +1797,8 @@ function recepRender() {
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
       <div><span class="tiny">Parcial contador${ofi && c.decl && !E.porEsp ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px${c.auto ? ';color:var(--muted);opacity:.55;font-weight:500' : ''}"${c.auto ? ' title="Propuesto: escribe el real"' : ''} data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>l</span></div></div>
-      ${(() => { const cap = capDe(c), l = num(c.contador) || 0; return cap && l > cap ? `<div class="msg bad" style="padding:6px 10px">¡No cabe! ${fmt(l)} l de ${esc(ESPS[c.esp] || c.id)} y el compartimento ${nums(c).join(' + ')} de la cisterna admite ${fmt(cap)} l.</div>` : ''; })()}
+      ${c.pista2 && !num(c.contador) ? `<div class="msg warn" style="padding:6px 10px">La cartilla trae ${fmt(c.pista2)} l de ${esc(ESPS[c.esp] || '')}${(E.ya || {})[c.esp] ? ' sin registrar' : ''} y el compartimento ${c.n} admite unos ${fmt(capN[c.n])} l: <b>ha habido un 2º viaje</b>. Escribe lo que se descarga ahora; lo demás, en otro registro de este camión.</div>` : ''}
+      ${(() => { const cap = capDe(c), l = num(c.contador) || 0; return cap && l > cap + MARGEN_CAP ? `<div class="msg bad" style="padding:6px 10px">¡No cabe! ${fmt(l)} l de ${esc(ESPS[c.esp] || c.id)} y el compartimento ${nums(c).join(' + ')} de la cisterna admite ${fmt(cap)} l.</div>` : ''; })()}
       </div><div class="cmid stack">
       <div class="mini5"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
@@ -1865,8 +1869,12 @@ function recepRender() {
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-pesp]').forEach(b => b.onclick = () => { const c = C(b.dataset.pesp), e = b.dataset.e, DEP = { D: '3', O: '4', V: '2', C: '1' };
     c.esp = e; c.ord = desc.length + 1;
-    if (!c.contador) { const ya = desc.filter(z => z !== c && z.esp === e).reduce((a, z) => a + (num(z.contador) || 0), 0), lit = Math.round((E.cart || {})[e] || 0) - ya;
-      if (lit > 0) { c.contador = String(lit); c.auto = true; } }   // si no cabe en el compartimento, solo se avisa (será un 2º viaje)
+    // Litros propuestos = cartilla de esa especie − lo ya registrado hoy de este camión − lo puesto en otros compartimentos.
+    // Si no cabe en el compartimento (con 200 l de margen) no se propone nada: ha habido un 2º viaje y se teclea lo que trae.
+    c.pista2 = 0;
+    if (!c.contador) { const enOtros = desc.filter(z => z !== c && z.esp === e).reduce((a, z) => a + (num(z.contador) || 0), 0),
+        lit = Math.round((E.cart || {})[e] || 0) - Math.round((E.ya || {})[e] || 0) - enOtros, cap = capN[c.n] || 0;
+      if (lit > 0 && cap && lit > cap + MARGEN_CAP) c.pista2 = lit; else if (lit > 0) { c.contador = String(lit); c.auto = true; } }
     if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) enfoca(inp); }, 50); });
@@ -1932,7 +1940,7 @@ function recepRender() {
   if (E.porEsp) {   // RECEPCIÓN 2: registro de calidad por especie. Se guarda aparte (RECEPCION_CALIDAD); no va al programa de gestión.
     v.querySelectorAll('#reAnular, #reAnu').forEach(el => { el.hidden = true; });
     const tt = $('#reTot'); if (tt) tt.closest('div').parentElement.hidden = true;
-    v.insertAdjacentHTML('afterbegin', `<div class="msg ok" style="margin:0"><b>Recepción 2 · registro de calidad.</b> Se guarda aparte para Calidad; el fichero del programa de gestión sigue saliendo de <b>Recepción</b>.${x.cal ? ` Registrado a las ${esc(x.cal.hora)}${x.cal.usuario ? ' por ' + esc(x.cal.usuario) : ''}: al guardar se rehace.` : ''}</div>`);
+    v.insertAdjacentHTML('afterbegin', `<div class="msg ok" style="margin:0"><b>Recepción 2 · registro de calidad.</b> Se guarda aparte para Calidad; el fichero del programa de gestión sigue saliendo de <b>Recepción</b>.${x.cal ? ` Ya registrado${x.cal.usuario ? ' por ' + esc(x.cal.usuario) : ''}: al guardar se rehace.` : ''}</div>`);
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });

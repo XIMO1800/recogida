@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v54 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v55 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1316,6 +1316,11 @@ document.addEventListener('keydown', e => {
 const R = { viajes: null, deps: [], hasta: '', ed: null };
 const ESPS = { D: 'Oveja D.O.', O: 'Oveja', C: 'Cabra', V: 'Vaca' };
 const espComp = c => (c.esp && c.esp.length ? c.esp[0] : letraDe(c.id)) || '';
+/** Recepción 2: especies de un viaje = las que ya ha recogido (cartilla) más las de sus compartimentos. Máximo 4. */
+const espViaje = x => { const c = x.cart || {}, set = new Set(Object.keys(c).filter(e => (c[e] || 0) > 0).map(e => e.toUpperCase()));
+  (x.comps || []).forEach(k => { const e = espComp(k); if (e) set.add(e.toUpperCase()); }); (x.recep ? x.recep.comps : []).forEach(k => set.add(espDe(k)));
+  return ['D', 'O', 'V', 'C'].filter(e => set.has(e)); };
+const prefViaje = x => x.comps && x.comps[0] ? String(x.comps[0].id).slice(0, -1) : String(+x.ruta || '');
 const usoMalo = (esp, dep) => { if (!/^[CV]$/.test(esp)) return false; const d = R.deps.find(x => x.id === dep), k = contenidoDep(dep);
   return (k.esps.length && k.esps.every(e => e === 'D' || e === 'O')) || (d && /oveja|d\.?o/i.test(d.uso) && !/mezcla/i.test(d.uso)); };
 // Lo que ha entrado hoy en un depósito (recepciones guardadas + agua) y el tipo de leche que resulta
@@ -1362,7 +1367,7 @@ async function recepcion(sinCargar) {
   const tarjeta = x => `<button class="farm${x.recep ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
       <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${x.recep && D().calidad ? mezclaEstado(x) : ''}</span>
-      <span class="comps">${(x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
+      <span class="comps">${(R.modo === 'esp' && !x.otra ? espViaje(x).map(e => prefViaje(x) + e) : x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
       <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
@@ -1605,9 +1610,10 @@ function recepCamion(x) {
   // la D.O. que viene en dos destinos (2D y 2d) es una sola tarjeta, con sus compartimentos de cisterna marcados (p. ej. 3,4).
   const porEsp = R.modo === 'esp' && !x.otra;
   if (porEsp) {
-    const pref = (x.comps[0] ? String(x.comps[0].id).slice(0, -1) : ''), g = {};
-    base0.forEach(b => { const e = b.esp || '?'; const z = g[e] = g[e] || { id: pref + e, esp: e, decl: 0, cap: 0, ns: [] }; z.decl += b.decl; z.cap += b.cap; if (b.n) z.ns.push(b.n); });
-    base = ORD_ESP.concat(Object.keys(g).filter(e => !ORD_ESP.includes(e))).filter(e => g[e]).map(e => Object.assign(g[e], { n: g[e].ns.sort((a, b) => a - b).join(',') }));
+    const pref = prefViaje(x), g = {};
+    espViaje(x).forEach(e => { g[e] = { id: pref + e, esp: e, decl: 0, cap: 0, ns: [] }; });   // lo recogido manda: si trae vaca, hay tarjeta de vaca
+    base0.forEach(b => { const e = String(b.esp || '').toUpperCase(); const z = g[e]; if (!z) return; z.decl += b.decl; z.cap += b.cap; if (b.n) z.ns.push(b.n); });
+    base = ORD_ESP.filter(e => g[e]).map(e => Object.assign(g[e], { n: g[e].ns.sort((a, b) => a - b).join(',') }));
     if (prev && prev.comps.some(c => !base.find(b => b.id === c.id))) {   // guardada por destinos: se junta por especie para verla aquí
       const j = {}; prev.comps.forEach(c => { const e = espDe(c), b = base.find(z => z.esp === e) || { id: pref + e };
         const z = j[e] = j[e] || { id: b.id, esp: e, ord: c.ord, contador: 0, temp: c.temp, ph: c.ph, dornic: c.dornic, visual: c.visual, nComp: '', reps: [] };

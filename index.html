@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v60 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v61 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1636,9 +1636,9 @@ function recepCamion(x) {
   // Recepción 2 sin registro: los litros vienen propuestos en tenue (lo recibido en Recepción por especie o, si aún no, lo de la cartilla)
   const litR1 = e => { if (!porEsp) return ''; const r1 = x.recep ? x.recep.comps.filter(c => espDe(c) === e).reduce((a, c) => a + (Number(c.contador) || 0), 0) : 0;
     return String(Math.round(r1 || (x.cart || {})[e] || 0) || ''); };
-  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), auto: !!litR1(b.esp), pista: '', temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), auto: !!litR1(b.esp), pista: '', temp: '', ph: '', dornic: '', visual: '', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
-  R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
+  R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepRender() {
@@ -1764,7 +1764,7 @@ function recepRender() {
   v.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].l = b.dataset.q; recepRender(); });
   v.querySelectorAll('[data-xdel]').forEach(b => b.onclick = () => { const c = C(b.dataset.xdel), p = extras(c)[+b.dataset.j]; c.reps = c.reps.filter(r => r !== p); recepRender(); });
   v.querySelectorAll('[data-addc]').forEach(b => b.onclick = () => { const e = b.dataset.addc, n = E.comps.filter(c => c.esp === e).length;
-    const id = 'V' + e + (n ? n + 1 : ''); E.comps.push({ id, esp: e, decl: 0, nComp: '', ord: desc.length + 1, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); recepRender();
+    const id = 'V' + e + (n ? n + 1 : ''); E.comps.push({ id, esp: e, decl: 0, nComp: '', ord: desc.length + 1, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }); recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
   v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; }); if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
@@ -1776,6 +1776,7 @@ function recepRender() {
     if (!usados.length) return err('Escribe el parcial del contador de al menos un compartimento.');
     for (const c of usados) {
       if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
+      if (E.porEsp && !c.visual) return err(`Marca el aspecto visual (C o I) de ${ESPS[c.esp] || c.id}.`);
       if (E.porEsp && !c.nComp) return err(`Marca en qué compartimento de la cisterna venía ${ESPS[c.esp] || c.id} (1 = junto a la cabina).`);
       if (nums(c).some(k => usados.some(z => z !== c && nums(z).includes(k)))) return err(`Un compartimento de la cisterna está puesto en más de una leche (${c.id}).`);
       if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
@@ -1787,6 +1788,7 @@ function recepRender() {
       if (ds.size > 3) return err(`V${e} va a ${ds.size} depósitos entre todos sus compartimentos: el programa admite como máximo 3.`);
     }
     if (E.porEsp) {   // Recepción 2: guarda el registro de calidad
+      if (!E.limpieza || !E.filtro) return err('Marca la limpieza de la cisterna y la del filtro (C o I).');
       const b = $('#reGuardar'); ocupado(b, 'Guardando…');
       const firma = ofi ? '' : ($('#reFirma').value || '').trim();
       if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar el registro.'); }

@@ -36,7 +36,10 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .recgrid{display:grid;gap:12px}
 @media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
 .ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.vm{display:grid;grid-template-columns:1fr 1fr;gap:8px}[data-mz]:disabled{opacity:.4;cursor:not-allowed}.vm .tg .tiny{min-width:0!important;margin-right:4px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
+.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.g2 .farm{min-height:0;padding:8px 12px;margin:0}.g2 .farm .comps .tank{font-size:11px;padding:1px 5px}
+.r2otra{border-style:dashed!important;justify-content:center}.r2otra .name{color:var(--brand)}
+@media (max-width:700px){.g2{grid-template-columns:1fr}}
+.vm{display:grid;grid-template-columns:1fr 1fr;gap:8px}[data-mz]:disabled{opacity:.4;cursor:not-allowed}.vm .tg .tiny{min-width:0!important;margin-right:4px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
 .rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -316,7 +319,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v70 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v71 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1641,7 +1644,7 @@ function recep2Lista(v, u) {
   const cal = !!D().calidad, ofi = !!D().oficina, editable = !cal || ofi || !!D().recepcion;
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
-      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>ya registrado ${x.veces === 1 ? 'una vez' : x.veces + ' veces'} hoy: toca para otro viaje</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>${x.veces === 1 ? '1 viaje' : x.veces + ' viajes'} hoy</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
       <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : 'Registrar'}</span></button>`;
@@ -1653,9 +1656,9 @@ function recep2Lista(v, u) {
       <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}</div>` : '';
   const pend = l.filter(x => !x.cal), hechos = l.filter(x => x.cal);
   const puede = (R.esHoy || ofi) && editable;
-  const camHtml = `${puede && pend.length ? `<span class="lbl">Camiones</span><div class="stack">${pend.map(tarjeta).join('')}</div>` : ''}
-    ${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)}</span><div class="stack">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}
-    ${puede ? '<button class="btn ghost" id="r2Otra">+ Otra entrada (cisterna de otro proveedor)</button>' : ''}`;
+  const camHtml = `${puede ? `<span class="lbl">Camiones</span><div class="g2">${pend.map(tarjeta).join('')}
+      <button class="farm r2otra" id="r2Otra"><span class="main"><span class="name">+ Otra entrada</span><span class="sub">Cisterna de otro proveedor</span></span></button></div>` : ''}
+    ${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}`;
   const parte = cal || ofi ? parteHtml() : '';
   v.innerHTML = esEsc() && (cal || ofi)
     ? `${diaNav}<div class="esc2"><div class="stack">${camHtml}</div><div class="stack">${parte}${depHtml}</div></div>`

@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v66 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v67 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1301,7 +1301,9 @@ function fin() {
 }
 
 /* ═══════════ TECLADO: la cabecera se encoge y se salta de campo con "Siguiente" ═══════════ */
-document.addEventListener('focusin', e => { if (e.target.matches('input')) { document.body.classList.add('kb'); setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250); } });
+// Solo en pantallas táctiles (móvil): en el ordenador, mover la pantalla al entrar en una casilla hacía que el siguiente clic cayera fuera del botón
+const tactil = () => matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches;
+document.addEventListener('focusin', e => { if (e.target.matches('input') && tactil()) { document.body.classList.add('kb'); setTimeout(() => e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250); } });
 document.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement || !document.activeElement.matches('input')) document.body.classList.remove('kb'); }, 60));
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || !e.target.matches('input')) return;
@@ -1464,6 +1466,11 @@ async function historico(recargar) {
 /* Repintar una pantalla al salir de una casilla sin perder el sitio: si se ha pulsado otra casilla o un botón,
    se espera a que termine ese clic y, tras repintar, el cursor vuelve a la casilla a la que se fue (con ratón o con Tab). */
 let pulsando = false, repintar = null;
+/* Pone el cursor en una casilla sin mover la pantalla, salvo que la casilla esté fuera de la vista. */
+function enfoca(inp) { const r = inp.getBoundingClientRect(); if (r.top < 60 || r.bottom > innerHeight - 20) inp.scrollIntoView({ block: 'center' }); inp.focus({ preventScroll: true }); }
+/* Doble clic: al pulsar un botón, Chrome le daba el foco en el «mousedown» y, si el botón no estaba entero a la vista, movía
+   la pantalla para enseñarlo; el ratón soltaba ya fuera del botón y el clic se perdía. Los botones no toman el foco con el ratón. */
+document.addEventListener('mousedown', e => { const b = e.target.closest && e.target.closest('button'); if (b && !b.disabled) e.preventDefault(); }, true);
 document.addEventListener('pointerdown', () => { pulsando = true; }, true);
 document.addEventListener('pointerup', () => setTimeout(() => { pulsando = false; if (repintar) { const f = repintar; repintar = null; conFoco(f); } }, 0), true);
 function rehacer(fn) { if (pulsando) { repintar = fn; return; } setTimeout(() => conFoco(fn), 0); }
@@ -1853,11 +1860,11 @@ function recepRender() {
   v.querySelectorAll('[data-xdel]').forEach(b => b.onclick = () => { const c = C(b.dataset.xdel), p = extras(c)[+b.dataset.j]; c.reps = c.reps.filter(r => r !== p); recepRender(); });
   v.querySelectorAll('[data-addc]').forEach(b => b.onclick = () => { const e = b.dataset.addc, n = E.comps.filter(c => c.esp === e).length;
     const id = 'V' + e + (n ? n + 1 : ''); E.comps.push({ id, esp: e, decl: 0, nComp: '', ord: desc.length + 1, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }); recepRender();
-    setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
+    setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-pesp]').forEach(b => b.onclick = () => { const c = C(b.dataset.pesp), e = b.dataset.e, DEP = { D: '3', O: '4', V: '2', C: '1' };
     c.esp = e; c.ord = desc.length + 1; if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
-    setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
-  v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) { inp.scrollIntoView({ block: 'center' }); inp.focus(); } }, 50); });
+    setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) enfoca(inp); }, 50); });
+  v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; });
     if (E.porComp) { c.esp = ''; c.reps = []; } else if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
   $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => rehacer(recepRender);

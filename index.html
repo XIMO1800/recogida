@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v56 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v57 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -482,7 +482,7 @@ function pinView(msg) {
         pinView(`Hay un viaje o datos sin enviar de ${S.datos.conductor.nombre}. Entra con su PIN y termínalo antes de cambiar de conductor.`); return;
       }
       if (d.rol === 'RECEPCION') { S.datos = { recepcion: true, calidad: (d.roles || []).includes('CALIDAD'), usuario: d.usuario }; persistir(); recepcion(); return; }
-      if (d.rol === 'CALIDAD') { S.datos = { calidad: true, usuario: d.usuario }; persistir(); R.fecha = ''; recepcion(); return; }
+      if (d.rol === 'CALIDAD') { S.datos = { calidad: true, usuario: d.usuario }; persistir(); R.fecha = ''; R.modo = 'esp'; recepcion(); return; }
       if (d.rol === 'OFICINA') { S.datos = { oficina: true, calidad: (d.roles || []).includes('CALIDAD'), usuario: d.usuario, config: d.config }; persistir(); oficina(); return; }
       cargarDatos(d);
       if (S.viaje) (S.viaje.empezado ? lista : deca)(); else rutas();
@@ -1083,8 +1083,8 @@ function marcoEsc() {
   const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
-  const it = cal ? [['recep', 'Recepción', 'Verificación de calidad', ['vRecep', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['recep2', 'Recepción 2', 'Una tarjeta por especie (prueba)', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
+  const it = cal ? [['recep2', 'Recepción 2', 'Registro de calidad por especie', ['vRecep', 'vRecepC', 'vDep']], ['recep', 'Recepción', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ['recep2', 'Recepción 2', 'Registro de calidad por especie', ['vRecep', 'vRecepC', 'vDep']], ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
   $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
     <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!/^recep/.test(k) || (k === 'recep2') === (R.modo === 'esp')) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
@@ -1320,6 +1320,8 @@ const espComp = c => (c.esp && c.esp.length ? c.esp[0] : letraDe(c.id)) || '';
 const espViaje = x => { const c = x.cart || {}, set = new Set(Object.keys(c).filter(e => (c[e] || 0) > 0).map(e => e.toUpperCase()));
   (x.comps || []).forEach(k => { const e = espComp(k); if (e) set.add(e.toUpperCase()); }); (x.recep ? x.recep.comps : []).forEach(k => set.add(espDe(k)));
   return ['D', 'O', 'V', 'C'].filter(e => set.has(e)); };
+/** Lo que vale para el parte: en Recepción 2 el registro de calidad por especie; en Recepción, lo recibido por destinos. */
+const R2 = () => R.modo === 'esp', fuente = x => R2() ? x.cal : x.recep;
 const prefViaje = x => x.comps && x.comps[0] ? String(x.comps[0].id).slice(0, -1) : String(+x.ruta || '');
 const usoMalo = (esp, dep) => { if (!/^[CV]$/.test(esp)) return false; const d = R.deps.find(x => x.id === dep), k = contenidoDep(dep);
   return (k.esps.length && k.esps.every(e => e === 'D' || e === 'O')) || (d && /oveja|d\.?o/i.test(d.uso) && !/mezcla/i.test(d.uso)); };
@@ -1356,19 +1358,19 @@ async function recepcion(sinCargar) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
-      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
+      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   // Lo que ha entrado hoy en cada silo según las recepciones guardadas
   const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => { x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })); });
   (R.agua || []).forEach(a => { silo[a.dep] = (silo[a.dep] || 0) + a.l; });
-  const pend = R.viajes.filter(x => !x.recep), hechos = R.viajes.filter(x => x.recep);
-  const tarjeta = x => `<button class="farm${x.recep ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
+  const pend = R.viajes.filter(x => !fuente(x)), hechos = R.viajes.filter(x => fuente(x));
+  const tarjeta = x => `<button class="farm${fuente(x) ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
-      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${x.recep && D().calidad ? mezclaEstado(x) : ''}</span>
-      <span class="comps">${(R.modo === 'esp' && !x.otra ? espViaje(x).map(e => prefViaje(x) + e) : x.recep ? x.recep.comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
-      <span class="st num">${x.recep ? `${fmt(x.recep.total || x.recep.comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(x.recep.hora)}</span>` : 'Recibir'}</span></button>`;
+      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${fuente(x) && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="comps">${(R2() && !x.otra ? espViaje(x).map(e => prefViaje(x) + e) : fuente(x) ? fuente(x).comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
+      <span class="st num">${fuente(x) ? `${fmt(fuente(x).total || fuente(x).comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(fuente(x).hora)}</span>` : R2() ? 'Registrar' : 'Recibir'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}${d.letraQ ? ' · Q ' + esc(d.letraQ) : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div>
@@ -1395,7 +1397,7 @@ async function recepcion(sinCargar) {
   v.innerHTML = html;
   // Recepción y oficina abren cualquier camión; calidad abre los ya recibidos (el mismo parte) para poner la mezcla
   v.querySelectorAll('[data-v]').forEach(b => { const x = R.viajes.find(z => z.id === b.dataset.v);
-    if (editable || (x && x.recep)) b.onclick = () => recepCamion(x); else b.style.cursor = 'default'; });
+    if (editable || (x && fuente(x))) b.onclick = () => recepCamion(x); else b.style.cursor = 'default'; });
   $('#reAct').onclick = () => recepcion();
   if ($('#reOtra')) $('#reOtra').onclick = () => recepOtra();
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
@@ -1474,12 +1476,12 @@ const ORD_ESP = ['D', 'O', 'V', 'C'];
 const espDe = c => String(c.esp || '').toUpperCase();
 function totEsp() {
   const t = { D: 0, O: 0, V: 0, C: 0 };
-  R.viajes.filter(x => x.recep).forEach(x => x.recep.comps.forEach(c => { const e = espDe(c); if (e in t) t[e] += Number(c.contador) || 0; }));
+  R.viajes.filter(x => fuente(x)).forEach(x => fuente(x).comps.forEach(c => { const e = espDe(c); if (e in t) t[e] += Number(c.contador) || 0; }));
   return t;
 }
 /** Mezcla pendiente/hecha de un camión (D.O., oveja y cabra; la vaca no se verifica). */
 function mezclaEstado(x) {
-  const cs = x.recep.comps.filter(c => 'DOC'.includes(espDe(c))); if (!cs.length) return '';
+  const cs = fuente(x).comps.filter(c => 'DOC'.includes(espDe(c))); if (!cs.length) return '';
   const m = cs.map(c => (R.mezclas || {})[x.id + '|' + c.id] || ''), falta = m.filter(z => !z).length, mal = m.filter(z => z === 'I').length;
   return mal ? ` · <b style="color:var(--bad)">mezcla incorrecta</b>` : falta ? ` · <b style="color:var(--warn)">mezcla: faltan ${falta}</b>` : ' · <b style="color:var(--ok)">mezcla ✓</b>';
 }
@@ -1537,20 +1539,21 @@ function enlazarParte(v) {
 }
 /** Parte en papel con el formato del FOR PR 7.-02: un bloque por camión, una línea por compartimento. */
 function imprimirParte() {
-  const cams = R.viajes.filter(x => x.recep && x.recep.comps.length).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1);
+  const cams = R.viajes.filter(x => fuente(x) && fuente(x).comps.length).sort((a, b) => String(fuente(a).hora) < String(fuente(b).hora) ? -1 : 1);
   const P = R.parte || {}, t = totEsp(), logo = ($('.logo img') || {}).src || '';
   const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, num1 = x => x === '' || x == null ? '' : String(x).replace('.', ',');
   const bloque = x => {
-    const base = x.comps || [], comps = x.recep.comps.slice().sort((a, b) => ORD_ESP.indexOf(espDe(a)) - ORD_ESP.indexOf(espDe(b)));
-    const nComp = (c, i) => { if (c.nComp) return esc(c.nComp); const b = base.find(z => z.id === c.id); return b && b.n ? b.n : (x.otra ? x.recep.comps.indexOf(c) + 1 : ''); };
-    const total = x.recep.total || x.recep.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
+    const src = fuente(x);
+    const base = x.comps || [], comps = src.comps.slice().sort((a, b) => ORD_ESP.indexOf(espDe(a)) - ORD_ESP.indexOf(espDe(b)));
+    const nComp = (c, i) => { if (c.nComp) return esc(c.nComp); const b = base.find(z => z.id === c.id); return b && b.n ? b.n : (x.otra ? src.comps.indexOf(c) + 1 : ''); };
+    const total = src.total || src.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
     return `<table class="b"><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
       ${comps.map((c, i) => `<tr>${i === 0 ? `<td class="prov" rowspan="${comps.length}"><b>${esc(x.otra ? x.conductor : x.conductor + ' · ruta ' + rutasTxt(x))}</b><br>Matrícula: ${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
-        <td><b>${EP[espDe(c)] || esc(c.esp)}</b> <small>${esc(c.id)}</small></td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
-        <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(x.recep.limpieza || '')}</td><td>${esc(x.recep.filtro || '')}</td><td>${nComp(c, i)}</td>
+        <td><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
+        <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
-        ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(x.recep.usuario || '')}<br><small>${esc(x.recep.hora || '')}</small><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
-      ${x.recep.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(x.recep.obs)}</small></td></tr>` : ''}</tbody></table>`;
+        ${i === 0 ? `<td rowspan="${comps.length}" class="firma">${esc(src.usuario || '')}<br><small>${esc(src.hora || '')}</small><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
+      ${src.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(src.obs)}</small></td></tr>` : ''}</tbody></table>`;
   };
   const ve = R.ventas || [], vend = e => ve.filter(z => z.esp === e);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Registro recepción de leche ${esc(R.dia)}</title><style>
@@ -1603,18 +1606,18 @@ function recepOtra() {
 }
 function recepCamion(x) {
   // Borrador de la recepción: se parte de lo guardado o de los compartimentos del camión (en su orden)
-  let prev = x.recep;
+  let prev = R2() ? x.cal : x.recep;
   const base0 = x.comps.map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, cap: c.cap || 0, n: c.n || 0 }));
   let base = base0;
   // RECEPCIÓN 2 (prueba): una tarjeta por especie en vez de por destino. Id = prefijo de ruta + especie (2O, 2D, 2C, 2V);
   // la D.O. que viene en dos destinos (2D y 2d) es una sola tarjeta, con sus compartimentos de cisterna marcados (p. ej. 3,4).
-  const porEsp = R.modo === 'esp' && !x.otra;
+  const porEsp = R2();
   if (porEsp) {
-    const pref = prefViaje(x), g = {};
-    espViaje(x).forEach(e => { g[e] = { id: pref + e, esp: e, decl: 0, cap: 0, ns: [] }; });   // lo recogido manda: si trae vaca, hay tarjeta de vaca
+    const pref = x.otra ? 'V' : prefViaje(x), g = {};
+    (x.otra ? [...new Set((x.recep ? x.recep.comps : []).map(espDe))] : espViaje(x)).forEach(e => { g[e] = { id: pref + e, esp: e, decl: 0, cap: 0, ns: [] }; });   // lo recogido manda: si trae vaca, hay tarjeta de vaca
     base0.forEach(b => { const e = String(b.esp || '').toUpperCase(); const z = g[e]; if (!z) return; z.decl += b.decl; z.cap += b.cap; if (b.n) z.ns.push(b.n); });
     base = ORD_ESP.filter(e => g[e]).map(e => Object.assign(g[e], { n: g[e].ns.sort((a, b) => a - b).join(',') }));
-    if (prev && prev.comps.some(c => !base.find(b => b.id === c.id))) {   // guardada por destinos: se junta por especie para verla aquí
+    if (false && prev && prev.comps.some(c => !base.find(b => b.id === c.id))) {   // guardada por destinos: se junta por especie para verla aquí
       const j = {}; prev.comps.forEach(c => { const e = espDe(c), b = base.find(z => z.esp === e) || { id: pref + e };
         const z = j[e] = j[e] || { id: b.id, esp: e, ord: c.ord, contador: 0, temp: c.temp, ph: c.ph, dornic: c.dornic, visual: c.visual, nComp: '', reps: [] };
         z.contador += Number(c.contador) || 0; if (c.visual === 'I') z.visual = 'I'; ['temp', 'ph', 'dornic'].forEach(k => { if (z[k] === '' || z[k] == null) z[k] = c[k]; });
@@ -1627,7 +1630,9 @@ function recepCamion(x) {
   const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { nComp: c.nComp || nBase(c.id), ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
   // Recepción 2: cada especie viene ya con su depósito habitual (se puede cambiar): D.O. → 3, oveja → 4, vaca → 2, cabra → 1
   const DEP_ESP = { D: '3', O: '4', V: '2', C: '1' }, depDe = e => porEsp && DEP_ESP[e] && (R.deps || []).some(d => String(d.id) === DEP_ESP[e]) ? [{ dep: DEP_ESP[e], l: '', tipo: 'PRINCIPAL' }] : [];
-  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
+  // Recepción 2 sin registro todavía: los litros se proponen con lo ya recibido por destinos (sumado por especie), se pueden cambiar
+  const litR1 = e => !porEsp || !x.recep ? '' : String(x.recep.comps.filter(c => espDe(c) === e).reduce((a, c) => a + (Number(c.contador) || 0), 0) || '');
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
   R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();
@@ -1635,7 +1640,7 @@ function recepCamion(x) {
 function recepRender() {
   const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
-  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!x.recep;
+  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!(E.porEsp ? x.cal : x.recep);
   const nums = c => String(c.nComp || '').split(',').filter(Boolean), choca = (c, k) => desc.some(z => z !== c && nums(z).includes(k));   // la oficina ve lo declarado y el cuadre; recepción solo mete el contador
   const silos = R.deps.map(d => d.id);
   const ppal = c => { const p = c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL'); return p ? p.dep : ''; };
@@ -1723,7 +1728,7 @@ function recepRender() {
       </div>
       <div id="reMsg" hidden></div>
       ${ofi ? '' : `<div class="field" style="max-width:360px"><label class="lbl" for="reFirma">Firma: PIN de quien hace la recepción</label><input class="big" id="reFirma" type="password" inputmode="numeric" autocomplete="off" style="font-size:28px;letter-spacing:.3em" placeholder="••••"></div>`}
-      <button class="btn" id="reGuardar">${ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
+      <button class="btn" id="reGuardar">${E.porEsp ? (ofi ? 'Guardar registro de calidad' : 'Firmar y guardar registro de calidad') : ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
       <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">
         <b>Anular la recepción de ${esc(x.matricula || '')} · ${esc(x.conductor)}</b>
@@ -1764,7 +1769,7 @@ function recepRender() {
     if (!usados.length) return err('Escribe el parcial del contador de al menos un compartimento.');
     for (const c of usados) {
       if (!ppal(c)) return err(`Elige el depósito de ${c.id}.`);
-      if (!c.nComp) return err(`Marca en qué compartimento de la cisterna venía ${c.id} (1 = junto a la cabina).`);
+      if (E.porEsp && !c.nComp) return err(`Marca en qué compartimento de la cisterna venía ${ESPS[c.esp] || c.id} (1 = junto a la cabina).`);
       if (nums(c).some(k => usados.some(z => z !== c && nums(z).includes(k)))) return err(`Un compartimento de la cisterna está puesto en más de una leche (${c.id}).`);
       if (resto(c) < 0) return err(`En ${c.id} lo pasado a otros depósitos es más que el parcial.`);
       if (extras(c).some(p => !p.dep || !(num(p.l) > 0))) return err(`En ${c.id} hay un arrastre o reparto sin depósito o sin litros.`);
@@ -1773,6 +1778,17 @@ function recepRender() {
     if (E.x.otra) for (const e of new Set(usados.map(c => c.esp))) {
       const ds = new Set(); usados.filter(c => c.esp === e).forEach(c => { ds.add(ppal(c)); extras(c).forEach(p => ds.add(p.dep)); });
       if (ds.size > 3) return err(`V${e} va a ${ds.size} depósitos entre todos sus compartimentos: el programa admite como máximo 3.`);
+    }
+    if (E.porEsp) {   // Recepción 2: guarda el registro de calidad
+      const b = $('#reGuardar'); ocupado(b, 'Guardando…');
+      const firma = ofi ? '' : ($('#reFirma').value || '').trim();
+      if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar el registro.'); }
+      const recep = { viajeId: E.x.id, fecha: R.esHoy ? '' : R.dia, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, conductor: E.x.conductor,
+        comps: usados.map(c => ({ id: c.id, esp: c.esp, ord: c.ord, nComp: c.nComp, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
+          reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
+      try { const r = await api('guardarRecepCalidad', { recep, firma }); toast('Registro de calidad guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); R.ed = null; recepcion(); }
+      catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+      return;
     }
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
     if (!(tot > 0)) return err('Escribe el total del contador del camión.');
@@ -1800,9 +1816,10 @@ function recepRender() {
       } catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha anulado.' : e.message; }
     };
   }
-  if (E.porEsp) {   // RECEPCIÓN 2: solo para ver la misma información agrupada por especie. No guarda nada.
-    v.querySelectorAll('#reGuardar, #reAnular, #reAnu, .field:has(#reFirma)').forEach(el => { el.hidden = true; });
-    v.insertAdjacentHTML('afterbegin', '<div class="msg warn" style="margin:0"><b>Recepción 2 · vista de prueba por especie.</b> Aquí no se guarda nada: para guardar, usa <b>Recepción</b>. Los datos y el fichero para el programa no cambian.</div>');
+  if (E.porEsp) {   // RECEPCIÓN 2: registro de calidad por especie. Se guarda aparte (RECEPCION_CALIDAD); no va al programa de gestión.
+    v.querySelectorAll('#reAnular, #reAnu').forEach(el => { el.hidden = true; });
+    const tt = $('#reTot'); if (tt) tt.closest('div').parentElement.hidden = true;
+    v.insertAdjacentHTML('afterbegin', `<div class="msg ok" style="margin:0"><b>Recepción 2 · registro de calidad por especie.</b> Se guarda aparte para Calidad; el fichero del programa de gestión sigue saliendo de <b>Recepción</b>.${x.cal ? ` Registrado a las ${esc(x.cal.hora)}${x.cal.usuario ? ' por ' + esc(x.cal.usuario) : ''}: al guardar se rehace.` : ''}</div>`);
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });

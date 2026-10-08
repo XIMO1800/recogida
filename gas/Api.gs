@@ -21,10 +21,10 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, corregir: corregir, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua,
+      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, corregir: corregir, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
       CALIDAD: { login: loginCalidad, recepViajes: recepViajes, guardarMezcla: guardarMezcla, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
-      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion },
+      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
     const acciones = {};
@@ -33,7 +33,7 @@ function doPost(e) {
     if (!fn) throw new Error('Acción desconocida: ' + req.accion);
     // Firma de la recepción: en la pantalla compartida de fábrica cada persona firma con su PIN al guardar
     let quien = cond;
-    if (req.firma && /^(guardarRecepcion|anularRecepcion|guardarAgua)$/.test(req.accion)) {
+    if (req.firma && /^(guardarRecepcion|anularRecepcion|guardarAgua|guardarRecepCalidad)$/.test(req.accion)) {
       quien = tabla_(HOJA_US_()).filas.filter(function (r) { return String(r.PIN).trim() === String(req.firma).trim() && String(r.ACTIVO).toUpperCase() !== 'NO' && (esRecepcion_(r) || esOficina_(r)); })[0];
       if (!quien) throw new Error('PIN de firma incorrecto: no es de nadie de recepción.');
     }
@@ -617,6 +617,8 @@ function guardarSinViaje_(recs, c) {
 const CAB_RECEP = ['REC_ID', 'FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN_DESCARGA', 'COMPARTIMENTO', 'ESPECIE',
   'LITROS_DECLARADOS', 'LITROS_CONTADOR', 'DEPOSITO', 'LITROS_DEPOSITO', 'TIPO', 'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'USUARIO', 'N_COMP_CISTERNA'];
 const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUARIO', 'HORA', 'FICHERO'];
+const CAB_RCAL = ['FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN', 'ID', 'ESPECIE', 'N_COMP_CISTERNA', 'LITROS', 'DEPOSITOS',
+  'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
 const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION'];
 const CAB_VENTA = ['ID', 'FECHA', 'HORA', 'DEPOSITO', 'ESPECIE', 'LITROS', 'CLIENTE', 'USUARIO'];
@@ -654,7 +656,9 @@ function loginCalidad(req, c) {
 function guardarMezcla(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
-    const sh = hoja_('MEZCLAS', CAB_MEZCLA), cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', req.viajeId);
+    const sh = hoja_('MEZCLAS', CAB_MEZCLA);
+    hoja_('RECEPCION_CALIDAD', CAB_RCAL);
+    const cam = buscar_('RECEPCION_CALIDAD', 'VIAJE_ID', req.viajeId) || buscar_('RECEPCION_CAMION', 'VIAJE_ID', req.viajeId);
     if (!cam) throw new Error('Ese camión no está recibido.');
     const comp = String(req.comp || ''), m = String(req.mezcla || '').toUpperCase();
     if (m && !/^[CI]$/.test(m)) throw new Error('Mezcla: C o I.');
@@ -760,9 +764,20 @@ function recepViajes(req, c) {
     const k = (String(r.CONDUCTOR).trim() + '|' + String(r.MATRICULA).trim()).toUpperCase(); if (vistos[k] || externos.length >= 40) return; vistos[k] = 1;
     externos.push({ prov: String(r.CONDUCTOR).trim(), mat: String(r.MATRICULA || '').trim(), esp: espX[r.VIAJE_ID] || '' });
   });
+  // Registro de calidad por especie (Recepción 2): no va al programa de gestión
+  hoja_('RECEPCION_CALIDAD', CAB_RCAL);
+  const ids2 = {}; salida.forEach(function (x) { ids2[x.id] = 1; });
+  const calidad = {}; tabla_('RECEPCION_CALIDAD').filas.forEach(function (r) {
+    if (!ids2[r.VIAJE_ID] && fechas.indexOf(String(r.FECHA)) < 0) return;
+    const k = calidad[r.VIAJE_ID] = calidad[r.VIAJE_ID] || { fecha: String(r.FECHA), hora: String(r.HORA), usuario: String(r.USUARIO), limpieza: String(r.LIMPIEZA_CISTERNA || ''),
+      filtro: String(r.LIMPIEZA_FILTRO || ''), obs: String(r.OBSERVACIONES || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''), comps: [] };
+    k.comps.push({ id: String(r.ID), esp: String(r.ESPECIE), ord: Number(r.ORDEN) || 0, nComp: String(r.N_COMP_CISTERNA || ''), contador: numES_(r.LITROS), temp: r.TEMPERATURA, ph: r.PH,
+      dornic: r.DORNIC, visual: String(r.VISUAL || ''), reps: String(r.DEPOSITOS || '').split('|').filter(String).map(function (t) { const q = t.split(':'); return { dep: q[0], l: numES_(q[1]), tipo: q[2] || 'PRINCIPAL' }; }) });
+  });
+  Object.keys(calidad).forEach(function (id) { calidad[id].comps.sort(function (a, b) { return a.ord - b.ord; }); });
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
-  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'),
+  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad,
     mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
@@ -857,6 +872,41 @@ function guardarRecepcion(req, c) {
     else { const t = tabla_('RECEPCION_CAMION'); shC.getRange(shC.getLastRow() + 1, 1, 1, t.cab.length).setValues([t.cab.map(function (h) { return cam[h] !== undefined ? String(cam[h]) : ''; })]); }
     exportarDia_(fecha);
     return { ok: true, fichero: cam.FICHERO, diferencia: cam.DIFERENCIA };
+  } finally { lock.releaseLock(); }
+}
+/** RECEPCIÓN 2 · registro de CALIDAD por especie (FOR PR 7.-02): T, pH, ºD, visual, nº de compartimento de la cisterna, litros,
+ *  depósitos, limpieza de cisterna y de filtro. Se guarda en RECEPCION_CALIDAD y NO toca el fichero del programa de gestión
+ *  (eso sigue saliendo solo de la recepción por destinos). Se guarda entero cada vez (se borran las filas anteriores del camión). */
+function guardarRecepCalidad(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const r = req.recep || {}, id = String(r.viajeId || '');
+    if (!id) throw new Error('Falta el camión.');
+    const comps = (r.comps || []).filter(function (x) { return Number(x.contador) > 0; });
+    if (!comps.length) throw new Error('No hay ninguna leche con litros.');
+    const nUsados = {};
+    comps.forEach(function (x) {
+      if (!(x.reps || []).length || (x.reps || []).some(function (p) { return !String(p.dep || '').trim(); })) throw new Error('Falta el depósito de ' + x.id + '.');
+      String(x.nComp || '').split(',').filter(String).forEach(function (n) { if (nUsados[n]) throw new Error('El compartimento ' + n + ' de la cisterna está en ' + nUsados[n] + ' y en ' + x.id + '.'); nUsados[n] = x.id; });
+    });
+    const sh = hoja_('RECEPCION_CALIDAD', CAB_RCAL), t = tabla_('RECEPCION_CALIDAD');
+    const prev = t.filas.filter(function (x) { return x.VIAJE_ID === id; });
+    const v = buscar_('VIAJES', 'VIAJE_ID', id) || {}, cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id) || {};
+    const conds = {}; tabla_(HOJA_US_()).filas.forEach(function (x) { conds[x.CONDUCTOR_ID] = String(x.NOMBRE); });
+    const fecha = prev.length ? String(prev[0].FECHA) : (cam.FECHA ? String(cam.FECHA) : fechaAtrasada_(r.fecha, c)), hora = prev.length ? String(prev[0].HORA) : ahora_('HH:mm');
+    prev.map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });
+    const filas = comps.map(function (x, i) {
+      const o = { FECHA: fecha, HORA: hora, VIAJE_ID: id, DECA_NUM: v.DECA_NUM || cam.DECA_NUM || '', MATRICULA: v.MATRICULA || cam.MATRICULA || r.matricula || '',
+        CONDUCTOR: conds[v.CONDUCTOR_ID] || cam.CONDUCTOR || r.conductor || '', RUTA: v.PREFIJO_DESTINO ? pad2_(v.PREFIJO_DESTINO) : (cam.RUTA || ''), ORDEN: Number(x.ord) || i + 1,
+        ID: String(x.id), ESPECIE: String(x.esp), N_COMP_CISTERNA: String(x.nComp || '').replace(/\s/g, ''), LITROS: Math.round(Number(x.contador)),
+        DEPOSITOS: (x.reps || []).map(function (p) { return String(p.dep).trim() + ':' + Math.round(Number(p.l) || 0) + ':' + (p.tipo || 'PRINCIPAL'); }).join('|'),
+        TEMPERATURA: x.temp === '' || x.temp == null ? '' : x.temp, PH: x.ph || '', DORNIC: x.dornic || '', VISUAL: x.visual || '',
+        LIMPIEZA_CISTERNA: r.limpieza || '', LIMPIEZA_FILTRO: r.filtro || '', OBSERVACIONES: r.obs || '', USUARIO: String(c.NOMBRE) };
+      return t.cab.map(function (h) { return o[h] !== undefined ? o[h] : ''; });
+    });
+    const f0 = sh.getLastRow() + 1;
+    sh.getRange(f0, 1, filas.length, t.cab.length).setNumberFormat('@').setValues(filas.map(function (f) { return f.map(String); }));
+    return { ok: true, fecha: fecha };
   } finally { lock.releaseLock(); }
 }
 /** Fecha con la que se guarda una recepción o el agua: hoy, salvo que OFICINA esté registrando un día anterior que se quedó

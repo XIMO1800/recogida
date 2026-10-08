@@ -615,7 +615,7 @@ function guardarSinViaje_(recs, c) {
    Fichero para el programa: D (descarga) + aammdd + nº (D2610011.TXT), en la misma carpeta de exportación. */
 
 const CAB_RECEP = ['REC_ID', 'FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN_DESCARGA', 'COMPARTIMENTO', 'ESPECIE',
-  'LITROS_DECLARADOS', 'LITROS_CONTADOR', 'DEPOSITO', 'LITROS_DEPOSITO', 'TIPO', 'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'USUARIO'];
+  'LITROS_DECLARADOS', 'LITROS_CONTADOR', 'DEPOSITO', 'LITROS_DEPOSITO', 'TIPO', 'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'USUARIO', 'N_COMP_CISTERNA'];
 const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUARIO', 'HORA', 'FICHERO'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
 const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION'];
@@ -742,6 +742,7 @@ function recepViajes(req, c) {
     Object.keys(decl).forEach(function (kk) { const p = kk.split('|'); if (p[0] === v.VIAJE_ID && !comps.some(function (x) { return x.id === p[1]; })) comps.push({ id: p[1], esp: [], cap: 0, decl: Math.round(decl[kk]) }); });
     return { id: v.VIAJE_ID, fecha: v.FECHA, deca: v.DECA_NUM, matricula: v.MATRICULA, conductor: conds[v.CONDUCTOR_ID] || v.CONDUCTOR_ID,
       rutas: v.RUTAS, ruta: pad2_(v.PREFIJO_DESTINO), estado: v.ESTADO, ini: v.HORA_INICIO, fin: v.HORA_FIN, comps: comps, cart: cart[v.VIAJE_ID] || {},
+      nCompCam: k ? (Number(k.N_COMPARTIMENTOS) || Math.max.apply(null, [0].concat(camionObj_(k, compTab).letras.map(function (x) { return x.n; })))) : 0,
       recep: recepObj_(hechas[v.VIAJE_ID], camiones[v.VIAJE_ID]) };
   });
   // Entradas sin viaje de la app (cisterna de otro proveedor, agua…) de hoy
@@ -775,7 +776,7 @@ function recepObj_(filas, cam) {
   (filas || []).forEach(function (r) {
     const id = String(r.COMPARTIMENTO);
     if (String(r.ESPECIE).toUpperCase() === 'AGUA' && /^AGUA/.test(String(r.TIPO))) { agua.push({ dep: String(r.DEPOSITO), l: numES_(r.LITROS_DEPOSITO), tipo: String(r.TIPO).replace(/^AGUA\s*/, '') }); return; }
-    if (!comps[id]) { comps[id] = { id: id, esp: String(r.ESPECIE), ord: Number(r.ORDEN_DESCARGA) || 0, contador: numES_(r.LITROS_CONTADOR), temp: r.TEMPERATURA, ph: r.PH, dornic: r.DORNIC, visual: r.VISUAL, reps: [] }; orden.push(id); }
+    if (!comps[id]) { comps[id] = { id: id, esp: String(r.ESPECIE), ord: Number(r.ORDEN_DESCARGA) || 0, nComp: String(r.N_COMP_CISTERNA || ''), contador: numES_(r.LITROS_CONTADOR), temp: r.TEMPERATURA, ph: r.PH, dornic: r.DORNIC, visual: r.VISUAL, reps: [] }; orden.push(id); }
     comps[id].reps.push({ dep: String(r.DEPOSITO), l: numES_(r.LITROS_DEPOSITO), tipo: String(r.TIPO) });
   });
   return { comps: orden.map(function (id) { return comps[id]; }), agua: agua, total: cam ? numES_(cam.TOTAL_CONTADOR) : 0, limpieza: cam ? cam.LIMPIEZA_CISTERNA : '',
@@ -801,6 +802,12 @@ function guardarRecepcion(req, c) {
     }
     const shR = hoja_('RECEPCIONES', CAB_RECEP), shC = hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
     columnas_('RECEPCION_CAMION', ['LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'], 'FICHERO');
+    columnas_('RECEPCIONES', ['N_COMP_CISTERNA'], 'USUARIO');
+    // Nº de compartimento de la cisterna (posición física: 1 junto a la cabina). Distinto del orden de descarga. No va al fichero.
+    const nUsados = {}; comps.forEach(function (x) { const n = String(x.nComp || '').trim(); if (!n) return;
+      if (!/^\d{1,2}$/.test(n)) throw new Error('Nº de compartimento de la cisterna no válido en ' + x.id + '.');
+      if (nUsados[n]) throw new Error('El compartimento nº ' + n + ' de la cisterna está puesto en ' + nUsados[n] + ' y en ' + x.id + '.'); nUsados[n] = x.id; });
+    const cabR = tabla_('RECEPCIONES').cab;
     let v = buscar_('VIAJES', 'VIAJE_ID', r.viajeId);
     const otra = !v;
     if (otra) {
@@ -821,8 +828,9 @@ function guardarRecepcion(req, c) {
         const o = { REC_ID: r.viajeId + '-' + x.id + '-' + (j + 1), FECHA: fecha, HORA: hora, VIAJE_ID: r.viajeId, DECA_NUM: v.DECA_NUM, MATRICULA: v.MATRICULA,
           CONDUCTOR: conductor, RUTA: pad2_(v.PREFIJO_DESTINO), ORDEN_DESCARGA: i + 1, COMPARTIMENTO: x.id, ESPECIE: x.esp,
           LITROS_DECLARADOS: x.decl || '', LITROS_CONTADOR: x.contador, DEPOSITO: p.dep, LITROS_DEPOSITO: p.l, TIPO: p.tipo || 'PRINCIPAL',
-          TEMPERATURA: x.temp === '' || x.temp == null ? '' : x.temp, PH: x.ph || '', DORNIC: x.dornic || '', VISUAL: x.visual || '', USUARIO: String(c.NOMBRE) };
-        filas.push(CAB_RECEP.map(function (h) { return o[h] !== undefined ? o[h] : ''; }));
+          TEMPERATURA: x.temp === '' || x.temp == null ? '' : x.temp, PH: x.ph || '', DORNIC: x.dornic || '', VISUAL: x.visual || '', USUARIO: String(c.NOMBRE),
+          N_COMP_CISTERNA: String(x.nComp || '').trim() };
+        filas.push(cabR.map(function (h) { return o[h] !== undefined ? o[h] : ''; }));
       });
     });
     // Agua de arranque y de arrastre final que entra al depósito (no la cuenta el total del camión)
@@ -831,11 +839,11 @@ function guardarRecepcion(req, c) {
         CONDUCTOR: conductor, RUTA: pad2_(v.PREFIJO_DESTINO), ORDEN_DESCARGA: a.tipo === 'ARRANQUE' ? 0 : 99, COMPARTIMENTO: 'AG1', ESPECIE: 'AGUA',
         LITROS_DECLARADOS: '', LITROS_CONTADOR: Math.round(Number(a.l)), DEPOSITO: a.dep, LITROS_DEPOSITO: Math.round(Number(a.l)), TIPO: 'AGUA ' + (a.tipo || 'ARRASTRE'),
         TEMPERATURA: '', PH: '', DORNIC: '', VISUAL: '', USUARIO: String(c.NOMBRE) };
-      filas.push(CAB_RECEP.map(function (h) { return o[h] !== undefined ? o[h] : ''; }));
+      filas.push(cabR.map(function (h) { return o[h] !== undefined ? o[h] : ''; }));
     });
     const f0 = shR.getLastRow() + 1;
-    ['RUTA', 'COMPARTIMENTO', 'DECA_NUM', 'MATRICULA', 'DEPOSITO', 'FECHA', 'HORA'].forEach(function (h) { shR.getRange(f0, CAB_RECEP.indexOf(h) + 1, filas.length, 1).setNumberFormat('@'); });
-    shR.getRange(f0, 1, filas.length, CAB_RECEP.length).setValues(filas);
+    ['RUTA', 'COMPARTIMENTO', 'DECA_NUM', 'MATRICULA', 'DEPOSITO', 'FECHA', 'HORA'].forEach(function (h) { if (cabR.indexOf(h) >= 0) shR.getRange(f0, cabR.indexOf(h) + 1, filas.length, 1).setNumberFormat('@'); });
+    shR.getRange(f0, 1, filas.length, cabR.length).setValues(filas);
     const suma = comps.reduce(function (a, x) { return a + (Number(x.contador) || 0); }, 0), total = Math.round(Number(r.total) || 0);
     const cam = { VIAJE_ID: r.viajeId, FECHA: fecha, HORA: hora, DECA_NUM: v.DECA_NUM, MATRICULA: v.MATRICULA, CONDUCTOR: conductor, RUTA: pad2_(v.PREFIJO_DESTINO),
       TOTAL_CONTADOR: total, SUMA_PARCIALES: suma, DIFERENCIA: total ? total - suma : '', LIMPIEZA_CISTERNA: r.limpieza || '', FILTRO: r.filtro || '',

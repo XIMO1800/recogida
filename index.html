@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v57 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v58 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1632,7 +1632,7 @@ function recepCamion(x) {
   const DEP_ESP = { D: '3', O: '4', V: '2', C: '1' }, depDe = e => porEsp && DEP_ESP[e] && (R.deps || []).some(d => String(d.id) === DEP_ESP[e]) ? [{ dep: DEP_ESP[e], l: '', tipo: 'PRINCIPAL' }] : [];
   // Recepción 2 sin registro todavía: los litros se proponen con lo ya recibido por destinos (sumado por especie), se pueden cambiar
   const litR1 = e => !porEsp || !x.recep ? '' : String(x.recep.comps.filter(c => espDe(c) === e).reduce((a, c) => a + (Number(c.contador) || 0), 0) || '');
-  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', pista: litR1(b.esp), temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
   R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();
@@ -1693,7 +1693,7 @@ function recepRender() {
         <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
-      <div><span class="tiny">Parcial contador${ofi && c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
+      <div><span class="tiny">Parcial contador${ofi && c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>l</span></div></div>
       </div><div class="cmid stack">
       <div class="mini5"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>

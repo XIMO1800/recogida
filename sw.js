@@ -1,5 +1,5 @@
 /* Recogida de Leche: la app funciona sin cobertura. Los datos van a la cola del móvil, no aquí. */
-const CACHE = 'recogida-v74';
+const CACHE = 'recogida-v75';
 const ARCHIVOS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'];

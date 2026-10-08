@@ -21,9 +21,9 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, corregir: corregir, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
+      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, corregir: corregir, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, guardarMezcla: guardarMezcla, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, historicoCalidad: historicoCalidad, guardarMezcla: guardarMezcla, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
       RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
@@ -367,6 +367,27 @@ function oficinaViajes(req, c) {
 }
 /** Histórico de viajes para la oficina: todos los de VIAJES entre dos fechas (por defecto, el último año), sin las recogidas
  *  (rápido), con su DeCA. El detalle de uno se pide aparte con oficinaViajes({ids:[id]}). */
+/** Histórico del registro de calidad (Recepción 2): un registro por camión y viaje, entre dos fechas (por defecto, el último año). */
+function historicoCalidad(req, c) {
+  hoja_('RECEPCION_CALIDAD', CAB_RCAL); hoja_('MEZCLAS', CAB_MEZCLA); hoja_('PARTE_DIA', CAB_PARTE);
+  const hoy = new Date(), haceUnAno = new Date(); haceUnAno.setFullYear(hoy.getFullYear() - 1);
+  const d = fechaNum_(req.desde) || fechaNum_(Utilities.formatDate(haceUnAno, TZ, 'dd/MM/yyyy')), h = fechaNum_(req.hasta) || fechaNum_(Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy'));
+  const mz = {}; tabla_('MEZCLAS').filas.forEach(function (r) { mz[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
+  const ver = {}; tabla_('PARTE_DIA').filas.forEach(function (r) { if (String(r.VERIFICADO_POR || '').trim()) ver[String(r.FECHA)] = String(r.VERIFICADO_POR); });
+  const regs = {}, orden = [];
+  tabla_('RECEPCION_CALIDAD').filas.forEach(function (r) {
+    const id = String(r.VIAJE_ID); if (!/^Q/.test(id)) return;
+    const f = fechaNum_(r.FECHA); if (!f || f < d || f > h) return;
+    if (!regs[id]) { regs[id] = { id: id, fecha: String(r.FECHA), f: f, matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''), usuario: String(r.USUARIO || ''),
+      limpieza: String(r.LIMPIEZA_CISTERNA || ''), filtro: String(r.LIMPIEZA_FILTRO || ''), obs: String(r.OBSERVACIONES || ''), verificado: ver[String(r.FECHA)] || '', comps: [], litros: 0 }; orden.push(id); }
+    const g = regs[id], l = numES_(r.LITROS);
+    g.comps.push({ n: String(r.N_COMP_CISTERNA || ''), esp: String(r.ESPECIE), l: l, temp: String(r.TEMPERATURA || ''), ph: String(r.PH || ''), dornic: String(r.DORNIC || ''),
+      visual: String(r.VISUAL || ''), mezcla: mz[id + '|' + r.ID] || '' });
+    g.litros += l;
+  });
+  const lista = orden.map(function (id) { return regs[id]; }).sort(function (a, b) { return b.f - a.f; });
+  return { ok: true, registros: lista };
+}
 function historicoViajes(req, c) {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const haceUnAno = new Date(hoy); haceUnAno.setFullYear(hoy.getFullYear() - 1);

@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v61 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v62 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1724,7 +1724,7 @@ function recepRender() {
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
     ${x.otra ? `<div class="card stack pendc" style="cursor:default"><span class="tiny">Otro compartimento</span><div class="d5" style="grid-template-columns:repeat(4,1fr)">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" data-addc="${k}"><b class="sp-${k}">+ ${k}</b><small style="font-size:10px">${t}</small></button>`).join('')}</div></div>` : ''}</div>
     ${pend.length && !desc.length ? '<p class="small muted">Toca el compartimento que empiezas a descargar. Si alguno viene vacío, déjalo sin tocar.</p>' : ''}
-    ${x.otra || !ofi ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
+    ${x.otra || !ofi || E.porEsp ? '' : `<div class="card stack" id="reCuadre">${cuadreHtml()}</div>`}
     <div class="card stack">
       <div class="camgrid">
         <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>

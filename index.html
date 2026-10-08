@@ -36,10 +36,15 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .recgrid{display:grid;gap:12px}
 @media (min-width:900px){.recgrid{grid-template-columns:repeat(2,minmax(0,1fr))}body.ancho .big{font-size:40px}}
 .ordn{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.ordb{border:2px solid var(--line);background:#fff;border-radius:10px;min-width:44px;min-height:40px;font-weight:700;font-size:16px}.ordb.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.vm{display:grid;grid-template-columns:1fr 1fr;gap:8px}.vm [data-mz]:disabled{opacity:.4;cursor:not-allowed}.vm .tg .tiny{min-width:0!important;margin-right:4px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
+.tl{display:grid;grid-template-columns:auto auto 1fr;gap:6px 12px;align-items:center}.tl .n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--muted)}.tl .tag{font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}.tl .tag{margin-left:10px}.vm{display:grid;grid-template-columns:1fr 1fr;gap:8px}[data-mz]:disabled{opacity:.4;cursor:not-allowed}.vm .tg .tiny{min-width:0!important;margin-right:4px}.tl .ini{background:#e1ecf9;color:#1d5796}.tl .fin{background:#fde4e4;color:#b3262d}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
 .rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.chead{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}.chead .cel{display:flex;align-items:center;gap:6px;min-height:44px;flex-wrap:wrap}
+.chead .ordb{display:inline-flex;align-items:center;justify-content:center;font-size:20px;min-width:52px;min-height:44px}.chead .cel .tq{font-size:18px}
+.chead .ncel{flex-direction:column;align-items:stretch;gap:0}.ncb{display:flex;gap:4px;min-width:150px}.ncb button{flex:1;min-width:0;min-height:38px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font:inherit;font-weight:700;font-size:17px}.ncb button.on{background:var(--brand);border-color:var(--brand);color:#fff}.ncb button.on.bad{background:var(--bad);border-color:var(--bad)}.ncs{font:inherit;font-size:20px;font-weight:700;min-height:40px;border:2px solid var(--line);border-radius:10px;background:#fff;padding:2px 8px}.ncs.mal{border-color:var(--bad);color:var(--bad)}
+.mini5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.mini5 label,.mini5>div{display:flex;flex-direction:column;gap:2px;min-width:0}.mini5 input{width:100%;min-width:0}.tg.ci button{min-height:42px;font-size:16px;padding:0}
+@media (max-width:520px){.mini5{grid-template-columns:repeat(3,minmax(0,1fr))}}
 input.sm{width:100%;font-family:var(--display);font-weight:700;font-size:20px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
 .d5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.d5 .dest{min-height:48px;padding:4px 2px;border-top-width:2px}
 .tg{display:flex;gap:4px}.tg button{flex:1;min-height:38px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-weight:700;font-size:14px;font-family:inherit}.tg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.tg button.on.bad{background:var(--bad);border-color:var(--bad)}
@@ -311,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v45 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v46 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1599,7 +1604,7 @@ function recepCamion(x) {
   const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { nComp: c.nComp || nBase(c.id), ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
   base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
-  R.ed = { x, comps, nMax: x.otra ? 6 : (x.nCompCam || Math.max(0, ...base.map(b => b.n)) || comps.length), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
+  R.ed = { x, comps, nMax: Math.min(4, x.otra ? 4 : (x.nCompCam || Math.max(0, ...base.map(b => b.n)) || comps.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepRender() {
@@ -1651,17 +1656,19 @@ function recepRender() {
       ${x.otra ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
       <p class="small muted">Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:8px;padding:12px">
-      <div class="route-head"><span>${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></span>
-        <span class="ordn"><span class="ordb on" style="display:inline-flex;align-items:center;justify-content:center">${c.ord}º</span>${x.unico && E.comps.length === 1 ? '' : `<button class="lnk" data-unord="${i}">${x.otra ? 'Quitar' : 'No era este'}</button>`}</span></div>
-      <div class="tg ncomp"><span class="tiny" style="align-self:center;min-width:52px">Nº comp. cisterna</span>${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${c.nComp === k ? 'on' + (desc.some(z => z !== c && z.nComp === k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)">${k}</button>`).join('')}</div>
+      <div class="chead">
+        <div class="cel"><span class="ordb on" title="Orden de descarga">${c.ord}º</span></div>
+        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap">${tq(c.id)} <b>${esc(ESPS[c.esp] || c.esp || '')}</b></div>
+        <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${c.nComp === k ? 'on' + (desc.some(z => z !== c && z.nComp === k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)">${k}</button>`).join('')}</div></div>
+      </div>
       ${c.nComp && desc.some(z => z !== c && z.nComp === c.nComp) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${c.nComp} de la cisterna está puesto también en ${desc.filter(z => z !== c && z.nComp === c.nComp).map(z => z.id).join(', ')}.</div>` : ''}
       <div><span class="tiny">Parcial contador${ofi && c.decl ? ` · cisterna ${fmt(c.decl)} l` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="0"><span>l</span></div></div>
-      <div class="mini"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
+      <div class="mini5"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
-        <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label></div>
-      <div class="vm"><div class="tg"><span class="tiny" style="align-self:center;min-width:52px">Visual</span>${['C', 'I'].map(k => `<button class="${c.visual === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="visual" data-i="${i}" data-val="${k}" title="${k === 'C' ? 'Correcto' : 'Incorrecto'}">${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>
-        ${'DOC'.includes(espDe(c)) ? (() => { const m = (R.mezclas || {})[x.id + '|' + c.id] || ''; return `<div class="tg" title="${mzOk ? 'Mezcla según la analítica' : 'La pone Calidad con la analítica'}"><span class="tiny" style="align-self:center;min-width:52px">Mezcla</span>${['C', 'I'].map(k => `<button class="${m === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-mz="${esc(x.id + '|' + c.id)}" data-val="${k}" ${mzOk ? '' : 'disabled'}>${k === 'C' ? 'C ✓' : 'I ✗'}</button>`).join('')}</div>`; })()
-          : '<div class="tg"><span class="tiny" style="align-self:center">Mezcla</span><span class="small muted" style="align-self:center">vaca: no se verifica</span></div>'}</div>
+        <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label>
+        <div><span class="tiny">Visual</span><div class="tg ci">${['C', 'I'].map(k => `<button class="${c.visual === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="visual" data-i="${i}" data-val="${k}" title="${k === 'C' ? 'Correcto' : 'Incorrecto'}">${k}</button>`).join('')}</div></div>
+        <div><span class="tiny">Mezcla</span>${'DOC'.includes(espDe(c)) ? (() => { const m = (R.mezclas || {})[x.id + '|' + c.id] || ''; return `<div class="tg ci" title="${mzOk ? 'Mezcla según la analítica' : 'La pone Calidad con la analítica'}">${['C', 'I'].map(k => `<button class="${m === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-mz="${esc(x.id + '|' + c.id)}" data-val="${k}" title="${k === 'C' ? 'Correcta' : 'Incorrecta'}" ${mzOk ? '' : 'disabled'}>${k}</button>`).join('')}</div>`; })()
+          : '<div class="tg ci"><button disabled title="La vaca no se verifica">—</button></div>'}</div></div>
       <div><span class="tiny">Depósito</span><div class="d5">${silos.map(s => { const k = contenidoDep(s); return `<button class="dest" aria-pressed="${ppal(c) === s}" data-silo="${s}" data-i="${i}"><b style="font-size:20px">${s}</b><small style="font-size:10px">${esc(k.tipo || '')}</small></button>`; }).join('')}</div></div>
       ${ppal(c) && usoMalo(c.esp, ppal(c)) ? `<div class="msg bad" style="padding:6px 10px">¡Atención! ${esc(ESPS[c.esp])} al ${ppal(c)}, que lleva oveja/D.O.: pasaría a mezcla.</div>` : ''}
       ${extras(c).map((p, j) => `<div class="xbox"><span class="tiny">${p.tipo === 'ARRASTRE' ? 'Arrastre a' : 'Parte a'}</span>
@@ -1671,6 +1678,7 @@ function recepRender() {
       ${1 + extras(c).length < 3 ? `<div class="row" style="gap:6px"><button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button><button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>` : '<p class="small muted" style="margin:0">Máximo 3 depósitos por compartimento (como en el programa).</p>'}
       ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
+      ${x.unico && E.comps.length === 1 ? '' : `<div style="text-align:right"><button class="lnk" data-unord="${i}" style="flex:0">${x.otra ? 'Quitar este compartimento' : 'No era este (quitar del orden)'}</button></div>`}
     </div>`).join('')}
     ${pend.map(c => `<button class="card pendc ${bgEsp(c.esp)}" data-sel="${E.comps.indexOf(c)}"><b class="sp-${esc(c.esp)}" style="font-size:34px;font-family:var(--mono)">${esc(c.id)}</b><span>${esc(ESPS[c.esp] || '')}${ofi && c.decl ? ' · ' + fmt(c.decl) + ' l' : ''}</span>${c.nComp ? `<span class="small muted">suele ir en el comp. ${esc(c.nComp)} de la cisterna</span>` : ''}
       <span class="btn" style="width:auto;min-height:44px;padding:8px 14px">${desc.length ? 'Descargo este ahora' : 'Empiezo por este'}</span><span class="small muted">${desc.length ? `será el ${desc.length + 1}º` : 'será el 1º'}</span></button>`).join('')}
@@ -1682,7 +1690,7 @@ function recepRender() {
         <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>l</span></div>
           <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con los parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: parciales ${fmt(suma)} l (dif. ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div></div>
         <div><span class="tiny">Limpieza cisterna</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.limpieza === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="limpieza" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
-        <div><span class="tiny">Filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
+        <div><span class="tiny">Limpieza filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
         <div><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
       </div>
       <div id="reMsg" hidden></div>

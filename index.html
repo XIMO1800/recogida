@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v68 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v69 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1865,12 +1865,8 @@ function recepRender() {
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${E.comps.length - 1}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-pesp]').forEach(b => b.onclick = () => { const c = C(b.dataset.pesp), e = b.dataset.e, DEP = { D: '3', O: '4', V: '2', C: '1' };
     c.esp = e; c.ord = desc.length + 1;
-    if (!c.contador && (E.cart || {})[e]) {
-      // Reparto de lo de la cartilla entre los compartimentos de esa especie: se llena cada uno hasta su capacidad y el resto al último
-      const fijos = desc.filter(z => z !== c && z.esp === e && !z.auto), grupo = desc.filter(z => z !== c && z.esp === e && z.auto).concat(c);
-      let resto = Math.round(E.cart[e]) - fijos.reduce((a, z) => a + (num(z.contador) || 0), 0);
-      grupo.forEach((z, k) => { const cap = capN[z.n] || 0, l = k === grupo.length - 1 || !cap ? resto : Math.min(cap, resto); z.contador = l > 0 ? String(l) : ''; z.auto = l > 0; resto -= Math.max(l, 0); });
-    }
+    if (!c.contador) { const ya = desc.filter(z => z !== c && z.esp === e).reduce((a, z) => a + (num(z.contador) || 0), 0), lit = Math.round((E.cart || {})[e] || 0) - ya;
+      if (lit > 0) { c.contador = String(lit); c.auto = true; } }   // si no cabe en el compartimento, solo se avisa (será un 2º viaje)
     if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) enfoca(inp); }, 50); });

@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v58 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v59 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1358,7 +1358,7 @@ async function recepcion(sinCargar) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', R.modo === 'esp' ? 'Recepción 2 · por especie' : 'Recepción de leche', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
-      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
+      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1626,7 +1626,9 @@ function recepCamion(x) {
       prev = Object.assign({}, prev, { comps: Object.values(j).sort((a, b) => a.ord - b.ord) });
     }
   }
-  const nBase = id => String((base.find(b => b.id === id) || {}).n || '');
+  // Recepción 2: el nº de compartimento propuesto es el último que se puso a ese camión (matrícula) para esa especie; si no hay, el de COMPARTIMENTOS
+  const ultCal = (R.compsCal || {})[String(x.matricula || '').toUpperCase().replace(/[^A-Z0-9]/g, '')] || {};
+  const nBase = id => { const b = base.find(z => z.id === id) || {}; return String((porEsp && ultCal[String(b.esp || '').toUpperCase()]) || b.n || ''); };
   const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { nComp: c.nComp || nBase(c.id), ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
   // Recepción 2: cada especie viene ya con su depósito habitual (se puede cambiar): D.O. → 3, oveja → 4, vaca → 2, cabra → 1
   const DEP_ESP = { D: '3', O: '4', V: '2', C: '1' }, depDe = e => porEsp && DEP_ESP[e] && (R.deps || []).some(d => String(d.id) === DEP_ESP[e]) ? [{ dep: DEP_ESP[e], l: '', tipo: 'PRINCIPAL' }] : [];

@@ -657,7 +657,7 @@ function guardarMezcla(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const sh = hoja_('MEZCLAS', CAB_MEZCLA);
-    hoja_('RECEPCION_CALIDAD', CAB_RCAL);
+    hoja_('RECEPCION_CALIDAD', CAB_RCAL); hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
     const cam = buscar_('RECEPCION_CALIDAD', 'VIAJE_ID', req.viajeId) || buscar_('RECEPCION_CAMION', 'VIAJE_ID', req.viajeId);
     if (!cam) throw new Error('Ese camión no está recibido.');
     const comp = String(req.comp || ''), m = String(req.mezcla || '').toUpperCase();
@@ -767,7 +767,11 @@ function recepViajes(req, c) {
   // Registro de calidad por especie (Recepción 2): no va al programa de gestión
   hoja_('RECEPCION_CALIDAD', CAB_RCAL);
   const ids2 = {}; salida.forEach(function (x) { ids2[x.id] = 1; });
-  const calidad = {}; tabla_('RECEPCION_CALIDAD').filas.forEach(function (r) {
+  // Último nº de compartimento usado por cada camión (matrícula) y especie: se propone la próxima vez
+  const compsCal = {}, calTodo = tabla_('RECEPCION_CALIDAD').filas;
+  calTodo.forEach(function (r) { const m = String(r.MATRICULA || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), n = String(r.N_COMP_CISTERNA || '').trim();
+    if (m && n) (compsCal[m] = compsCal[m] || {})[String(r.ESPECIE).toUpperCase()] = n; });
+  const calidad = {}; calTodo.forEach(function (r) {
     if (!ids2[r.VIAJE_ID] && fechas.indexOf(String(r.FECHA)) < 0) return;
     const k = calidad[r.VIAJE_ID] = calidad[r.VIAJE_ID] || { fecha: String(r.FECHA), hora: String(r.HORA), usuario: String(r.USUARIO), limpieza: String(r.LIMPIEZA_CISTERNA || ''),
       filtro: String(r.LIMPIEZA_FILTRO || ''), obs: String(r.OBSERVACIONES || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''), comps: [] };
@@ -777,7 +781,7 @@ function recepViajes(req, c) {
   Object.keys(calidad).forEach(function (id) { calidad[id].comps.sort(function (a, b) { return a.ord - b.ord; }); });
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
-  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad,
+  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal,
     mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
@@ -891,6 +895,7 @@ function guardarRecepCalidad(req, c) {
     });
     const sh = hoja_('RECEPCION_CALIDAD', CAB_RCAL), t = tabla_('RECEPCION_CALIDAD');
     const prev = t.filas.filter(function (x) { return x.VIAJE_ID === id; });
+    hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
     const v = buscar_('VIAJES', 'VIAJE_ID', id) || {}, cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id) || {};
     const conds = {}; tabla_(HOJA_US_()).filas.forEach(function (x) { conds[x.CONDUCTOR_ID] = String(x.NOMBRE); });
     const fecha = prev.length ? String(prev[0].FECHA) : (cam.FECHA ? String(cam.FECHA) : fechaAtrasada_(r.fecha, c)), hora = prev.length ? String(prev[0].HORA) : ahora_('HH:mm');

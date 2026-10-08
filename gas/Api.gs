@@ -565,14 +565,17 @@ function htmlDeca_(d, emitido, url, qr) {
     fila('Fecha y hora de emisión', emitido) +
     fila('a) Cargador contractual', cfg.CARGADOR_NOMBRE + ' · NIF ' + cfg.CARGADOR_NIF + ' · ' + cfg.CARGADOR_DIRECCION) +
     fila('b) Transportista efectivo', String(d.cond.TRANSPORTISTA) + ' · NIF ' + String(d.cond.NIF_TRANSPORTISTA)) +
-    fila('c) Lugar de origen', 'Recogida en explotaciones ganaderas de la ruta ' + d.rutas.map(function (r) { return Number(r); }).join(' y ') + (pueblos ? ' (' + pueblos + ')' : '')) +
-    fila('c) Lugar de destino', cfg.CARGADOR_NOMBRE + ' · ' + cfg.CARGADOR_DIRECCION) +
-    fila('d) Naturaleza de la mercancía', cfg.MERCANCIA || 'Leche cruda') +
-    fila('d) Peso (estimado al inicio)', d.kg.toLocaleString('es-ES') + ' kg (' + d.litros.toLocaleString('es-ES') + ' l)') +
-    fila('e) Vehículo (matrícula)', d.matricula) +
-    (d.letraQ ? fila('Cisterna (código Letra Q)', d.letraQ) : '') +
-    fila('Conductor', String(d.cond.NOMBRE || '')) +
-    (d.nota ? fila('Observaciones', d.nota) : '') +
+    fila('c) Origen', 'Recogida en explotaciones ganaderas de la ruta ' + d.rutas.map(function (r) { return Number(r); }).join(' y ') + (pueblos ? ' (' + pueblos + ')' : '')) +
+    fila('c) Destino', cfg.CARGADOR_NOMBRE + ' · NIF ' + cfg.CARGADOR_NIF + ' · ' + cfg.CARGADOR_DIRECCION) +
+    fila('d) Mercancía · naturaleza', cfg.MERCANCIA || 'Leche cruda') +
+    fila('d) Mercancía · peso bruto (estimado al inicio)', d.kg.toLocaleString('es-ES') + ' kg (' + d.litros.toLocaleString('es-ES') + ' l)') +
+    fila('d) Mercancía · bultos', '1 (cisterna)') +
+    fila('e) Autorización especial de circulación', 'No requerida') +
+    fila('f) Fecha del transporte', Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy')) +
+    fila('g) Vehículo (matrícula)', d.matricula) +
+    (d.letraQ ? fila('g) Cisterna (código Letra Q)', d.letraQ) : '') +
+    fila('g) Conductor', String(d.cond.NOMBRE || '')) +
+    fila('h) Observaciones', d.nota || 'Sin observaciones') +
     '</table>' +
     (url ? '<p style="font-size:8.5pt;margin-top:8px">Documento accesible en:<br><b>' + esc_(url) + '</b></p>' : '') +
     '<p style="font-size:8pt;color:#555">Documento electrónico emitido antes del inicio del servicio. El peso real se registra al finalizar la recogida. ' +

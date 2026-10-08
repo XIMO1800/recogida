@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v55 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v56 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1625,7 +1625,9 @@ function recepCamion(x) {
   }
   const nBase = id => String((base.find(b => b.id === id) || {}).n || '');
   const comps = prev ? prev.comps.map((c, k) => Object.assign({ decl: (base.find(b => b.id === c.id) || {}).decl || 0 }, c, { nComp: c.nComp || nBase(c.id), ord: k + 1, contador: String(c.contador), reps: c.reps.map(p => Object.assign({}, p, { l: String(p.l) })) })) : [];
-  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: [] }); });
+  // Recepción 2: cada especie viene ya con su depósito habitual (se puede cambiar): D.O. → 3, oveja → 4, vaca → 2, cabra → 1
+  const DEP_ESP = { D: '3', O: '4', V: '2', C: '1' }, depDe = e => porEsp && DEP_ESP[e] && (R.deps || []).some(d => String(d.id) === DEP_ESP[e]) ? [{ dep: DEP_ESP[e], l: '', tipo: 'PRINCIPAL' }] : [];
+  base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: 'C', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
   R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || 'C' : 'C', filtro: prev ? prev.filtro || 'C' : 'C', obs: prev ? prev.obs || '' : '' };
   recepRender();

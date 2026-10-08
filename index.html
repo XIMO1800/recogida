@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v65 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v66 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1800,7 +1800,7 @@ function recepRender() {
         <div class="d5">${silos.map(s => `<button class="dest" aria-pressed="${p.dep === s}" ${s === ppal(c) ? 'disabled style="opacity:.35"' : ''} data-xdep="${s}" data-i="${i}" data-j="${j}"><b>${s}</b></button>`).join('')}</div>
         <div class="xrow"><div class="unit"><input class="sm" style="font-size:22px" data-xl="${i}" data-j="${j}" inputmode="numeric" value="${esc(p.l)}"><span>l</span></div>
           ${[100, 500, 1000].map(q => `<button class="btn sec" data-q="${q}" data-i="${i}" data-j="${j}">${q}</button>`).join('')}<button class="lnk" data-xdel="${i}" data-j="${j}">✕</button></div></div>`).join('')}
-      ${1 + extras(c).length < 3 ? `<div class="row" style="gap:6px"><button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button><button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>` : '<p class="small muted" style="margin:0">Máximo 3 depósitos por compartimento (como en el programa).</p>'}
+      ${1 + extras(c).length < 3 ? `<div class="row" style="gap:6px">${E.porComp ? '' : `<button class="lnk" data-xadd="${i}" data-t="ARRASTRE">+ Arrastre</button>`}<button class="lnk" data-xadd="${i}" data-t="OTRO">+ Otro dep.</button></div>` : '<p class="small muted" style="margin:0">Máximo 3 depósitos por compartimento (como en el programa).</p>'}
       ${ppal(c) && num(c.contador) ? `<p class="small" style="margin:0"><b>${fmt(resto(c))} l al ${ppal(c)}</b>${extras(c).map(p => ` · ${fmt(num(p.l) || 0)} l al ${esc(p.dep || '¿?')}`).join('')}</p>` : ''}
       ${resto(c) < 0 ? '<div class="msg bad">Lo pasado a otros depósitos es más que el parcial.</div>' : ''}
       ${x.unico && E.comps.length === 1 ? '' : `<div style="text-align:right"><button class="lnk" data-unord="${i}" style="flex:0">${x.otra ? 'Quitar este compartimento' : E.porComp ? 'Quitar (vacío o equivocado)' : 'No era este (quitar del orden)'}</button></div>`}

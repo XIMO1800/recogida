@@ -176,7 +176,11 @@ body.kb .back{width:38px}
 .big{font-family:var(--display);font-size:46px;font-weight:700;width:100%;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:14px;padding:6px 16px;font-variant-numeric:tabular-nums}
 .big:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--brand-soft)}
 .unit{position:relative}
-.tally .unit{padding:0;border:0;background:none}.tally input[data-ag]{padding:6px 24px 6px 8px}.tally .unit:has(input[data-ag]) span{right:8px;font-size:16px}
+.tally .unit{padding:0;border:0;background:none}
+.tally .agu{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);padding:4px 6px}
+.tally .agu input[data-ag]{width:3.2em!important;border:0;padding:2px 0!important;text-align:right;background:transparent;box-shadow:none;font-size:24px!important}
+.tally .agu span{position:static;transform:none;font-size:18px;color:var(--muted)}
+.tally.agt > div{align-items:center}body.esc .tally.agt{grid-template-columns:repeat(var(--nd),minmax(0,1fr))}.tally input[data-ag]{padding:6px 24px 6px 8px}.tally .unit:has(input[data-ag]) span{right:8px;font-size:16px}
 .unit span{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:20px}
 .msg{font-size:15px;font-weight:600;border-radius:12px;padding:10px 12px;border-left:5px solid currentColor}
 .msg.warn{background:var(--warn-soft);color:var(--warn)}
@@ -230,7 +234,7 @@ body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 
 body.esc .solo-movil{display:none!important}
 body.esc .agGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
 body.esc .agGrid .agDer{position:sticky;top:12px}
-body.esc .agGrid .tally{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+
 body.esc .agGrid .tally div{padding:6px}body.esc .agGrid .tally input{font-size:20px!important;padding:4px 22px 4px 8px;border-radius:10px}body.esc .agGrid .tally .unit span{right:8px;font-size:15px}
 body.esc .agGrid .tally b{font-size:15px!important}
 body.esc .agGrid .agDer .card{padding:14px 16px}
@@ -320,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v75 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v76 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2041,7 +2045,7 @@ function recepAgua(guardado) {
     ${sesiones.filter(ses => ses.cams.length).map(ses => { const pr = propuesta(ses); const tot = deps.reduce((a, dp) => a + (num(val(ses, dp, pr)) || 0), 0);
       return `<div class="card stack"><div class="route-head"><h2>${ses.cod}</h2><b class="num">${fmt(tot)} l</b></div>
         <p class="small muted">${A.manual[ses.cod] ? 'Ajustado a mano.' : esc(pr.txt) + ` (${d.arranque} + ${d.final} l por depósito)`}</p>
-        <div class="tally">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>l</span></div></div>`).join('')}</div>
+        <div class="tally agt" style="--nd:${deps.length}">${deps.map(dp => `<div><b class="mono" style="font-size:18px">Dep. ${dp}</b><div class="unit agu"><input class="big" style="font-size:28px" data-ag="${ses.cod}" data-dep="${dp}" inputmode="numeric" maxlength="3" value="${esc(val(ses, dp, pr))}" placeholder="0"><span>l</span></div></div>`).join('')}</div>
         ${deps.filter(dp => (num(val(ses, dp, pr)) || 0) > 0).length > 3 ? `<div class="msg bad">${ses.cod} va a más de 3 depósitos y el programa solo admite 3: junta el agua de alguno (pon 0 en uno y súmalo a otro).</div>` : ''}
         ${A.manual[ses.cod] ? `<button class="btn ghost" data-rest="${ses.cod}">Volver a la propuesta</button>` : ''}</div>`; }).join('')}
     <div id="agMsg" hidden></div>

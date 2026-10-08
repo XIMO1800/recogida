@@ -9,7 +9,8 @@
 const TZ = 'Europe/Madrid';
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.tipo) return puente_(e.parameter);
   return json_({ ok: true, app: 'RECOGIDA LECHE', hora: ahora_('dd/MM/yyyy HH:mm') });
 }
 
@@ -1304,3 +1305,76 @@ function unirViajes(idA, idB, mapa) {
     return res;
   } finally { lock.releaseLock(); }
 }
+
+/* ───────────── Puente al servidor (ordenador del despacho, Windows 7) ─────────────
+ * El ordenador PIDE los ficheros por HTTPS (GET con clave) y los deja en el servidor:
+ *   ?tipo=pendientes&clave=…              → texto: OK y una línea por fichero «NOMBRE;CARPETA;VERSION»
+ *   ?tipo=fichero&nombre=…&clave=…        → el contenido del fichero tal cual
+ *   ?tipo=entregado&nombre=…&version=…&clave=…&equipo=…  → lo apunta en la pestaña PUENTE
+ * R…TXT van a RECLECHE y D…TXT a DESLECHE. Un fichero vuelve a estar pendiente si se rehace (por ejemplo el
+ * D…0.TXT del día, o un R corregido por la oficina), y el puente lo machaca en el servidor.
+ * La clave NO está en el código: está en las propiedades del proyecto (la crea instalarPuente). */
+const CAB_PUENTE = ['NOMBRE', 'CARPETA', 'VERSION', 'ENTREGADO', 'EQUIPO'];
+const RE_PUENTE = /^[RD]\d{6}[0-9A-Z]\.TXT$/i;
+
+function puente_(p) {
+  const txt = function (t) { return ContentService.createTextOutput(t).setMimeType(ContentService.MimeType.TEXT); };
+  try {
+    const clave = PropertiesService.getScriptProperties().getProperty('PUENTE_CLAVE');
+    if (!clave || String(p.clave || '') !== clave) return txt('ERROR;clave no válida');
+    const cfg = cfg_(); if (!cfg.CARPETA_EXPORTACION_ID) return txt('ERROR;falta CARPETA_EXPORTACION_ID en CONFIG');
+    const carpeta = DriveApp.getFolderById(cfg.CARPETA_EXPORTACION_ID);
+    if (p.tipo === 'pendientes') {
+      const hechos = {}; tabla_(hojaPuente_().getName()).filas.forEach(function (r) { hechos[String(r.NOMBRE).toUpperCase()] = String(r.VERSION); });
+      const lineas = ficherosPuente_(carpeta).filter(function (f) { return hechos[f.nombre.toUpperCase()] !== f.version; })
+        .map(function (f) { return [f.nombre, f.destino, f.version].join(';'); });
+      return txt(['OK'].concat(lineas).join('\r\n'));
+    }
+    const nombre = String(p.nombre || '').toUpperCase();
+    if (!RE_PUENTE.test(nombre)) return txt('ERROR;nombre no válido');
+    if (p.tipo === 'fichero') {
+      const it = carpeta.getFilesByName(nombre);
+      if (!it.hasNext()) return txt('ERROR;no existe ' + nombre);
+      return txt(it.next().getBlob().getDataAsString('UTF-8'));
+    }
+    if (p.tipo === 'entregado') {
+      const lock = LockService.getScriptLock(); lock.waitLock(20000);
+      try {
+        const sh = hojaPuente_(), t = tabla_(sh.getName()), ya = t.filas.filter(function (r) { return String(r.NOMBRE).toUpperCase() === nombre; })[0];
+        const o = { NOMBRE: nombre, CARPETA: nombre.charAt(0) === 'R' ? 'RECLECHE' : 'DESLECHE', VERSION: String(p.version || ''), ENTREGADO: ahora_('dd/MM/yyyy HH:mm'), EQUIPO: String(p.equipo || '') };
+        if (ya) actualizar_(sh.getName(), ya._fila, o);
+        else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_PUENTE.length).setNumberFormat('@').setValues([CAB_PUENTE.map(function (h) { return o[h]; })]); }
+      } finally { lock.releaseLock(); }
+      return txt('OK');
+    }
+    return txt('ERROR;tipo no válido');
+  } catch (err) { return txt('ERROR;' + (err && err.message || err)); }
+}
+function hojaPuente_() { return hoja_('PUENTE', CAB_PUENTE); }
+/** Ficheros R/D de la carpeta de exportación tocados en los últimos 45 días, con su versión (fecha de modificación). */
+function ficherosPuente_(carpeta) {
+  const desde = new Date(Date.now() - 45 * 864e5), out = [];
+  const it = carpeta.searchFiles('modifiedDate > "' + Utilities.formatDate(desde, 'UTC', "yyyy-MM-dd'T'HH:mm:ss") + '" and trashed = false');
+  while (it.hasNext()) {
+    const f = it.next(), n = String(f.getName()).toUpperCase();
+    if (!RE_PUENTE.test(n)) continue;
+    out.push({ nombre: n, destino: n.charAt(0) === 'R' ? 'RECLECHE' : 'DESLECHE', version: String(f.getLastUpdated().getTime()) });
+  }
+  return out.sort(function (a, b) { return a.version - b.version; });
+}
+/** EJECUTAR UNA VEZ desde el editor al montar el puente: crea la clave (si no existe), marca como YA ENTREGADOS todos
+ *  los ficheros que hay ahora (el puente antiguo ya los dejó en el servidor) y escribe en el registro la clave. */
+function instalarPuente() {
+  const pr = PropertiesService.getScriptProperties();
+  let clave = pr.getProperty('PUENTE_CLAVE');
+  if (!clave) { clave = Utilities.getUuid().replace(/-/g, '').slice(0, 20); pr.setProperty('PUENTE_CLAVE', clave); }
+  const carpeta = DriveApp.getFolderById(cfg_().CARPETA_EXPORTACION_ID), sh = hojaPuente_();
+  const hechos = {}; tabla_(sh.getName()).filas.forEach(function (r) { hechos[String(r.NOMBRE).toUpperCase()] = 1; });
+  const nuevos = ficherosPuente_(carpeta).filter(function (f) { return !hechos[f.nombre]; })
+    .map(function (f) { return [f.nombre, f.destino, f.version, ahora_('dd/MM/yyyy HH:mm'), 'INICIO (puente antiguo)']; });
+  if (nuevos.length) { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, nuevos.length, CAB_PUENTE.length).setNumberFormat('@').setValues(nuevos); }
+  Logger.log('Ficheros marcados como ya entregados: ' + nuevos.length);
+  Logger.log('CLAVE DEL PUENTE: ' + clave);
+  return clave;
+}
+

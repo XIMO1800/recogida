@@ -319,7 +319,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v71 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v72 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1653,7 +1653,8 @@ function recep2Lista(v, u) {
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div></div>`;
   const diaNav = ofi || cal ? `<div class="row" style="align-items:center;gap:8px"><button class="btn sec" id="diaAnt" style="width:auto;padding:6px 14px">‹</button>
       <b style="font-size:18px;flex:1;text-align:center">${R.esHoy ? 'Hoy · ' : ''}${esc(diaTxt(R.dia))}</b>
-      <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}</div>` : '';
+      <button class="btn sec" id="diaSig" style="width:auto;padding:6px 14px" ${R.esHoy ? 'disabled' : ''}>›</button>${R.esHoy ? '' : '<button class="btn ghost" id="diaHoy" style="width:auto;padding:6px 14px">Hoy</button>'}
+      <input type="date" id="diaFecha" class="sm" style="width:auto;font-family:var(--body)" value="${esAiso(R.dia)}" max="${new Date().toISOString().slice(0, 10)}" title="Ir a una fecha"></div>` : '';
   const pend = l.filter(x => !x.cal), hechos = l.filter(x => x.cal);
   const puede = (R.esHoy || ofi) && editable;
   const camHtml = `${puede ? `<span class="lbl">Camiones</span><div class="g2">${pend.map(tarjeta).join('')}
@@ -1670,6 +1671,7 @@ function recep2Lista(v, u) {
   if ($('#diaAnt')) $('#diaAnt').onclick = () => mover(-1);
   if ($('#diaSig')) $('#diaSig').onclick = () => mover(1);
   if ($('#diaHoy')) $('#diaHoy').onclick = () => { R.fecha = ''; recepcion(); };
+  if ($('#diaFecha')) $('#diaFecha').onchange = e => { if (e.target.value) { R.fecha = isoAes(e.target.value); recepcion(); } };
   enlazarParte(v);
   show('vRecep', 'Recepción 2 · registro de calidad', u.nombre);
 }

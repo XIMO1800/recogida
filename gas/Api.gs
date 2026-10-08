@@ -782,9 +782,18 @@ function recepViajes(req, c) {
       dornic: r.DORNIC, visual: String(r.VISUAL || ''), reps: String(r.DEPOSITOS || '').split('|').filter(String).map(function (t) { const q = t.split(':'); return { dep: q[0], l: numES_(q[1]), tipo: q[2] || 'PRINCIPAL' }; }) });
   });
   Object.keys(calidad).forEach(function (id) { calidad[id].comps.sort(function (a, b) { return a.ord - b.ord; }); });
+  // Recepción 2: camiones activos con sus compartimentos físicos (nº y capacidad) y el último conductor que lo llevó
+  const ultCond = {}; tabla_('VIAJES').filas.forEach(function (v) { if (v.CAMION_ID) ultCond[v.CAMION_ID] = conds[v.CONDUCTOR_ID] || v.CONDUCTOR_ID; });
+  const camionesAct = camTab.filter(function (k) { return String(k.ACTIVO).toUpperCase() !== 'NO' && String(k.MATRICULA || '').trim() && !/PENDIENTE/i.test(String(k.MATRICULA)); }).map(function (k) {
+    const o = camionObj_(k, compTab), porN = {};
+    o.letras.forEach(function (x) { if (x.n) porN[x.n] = Math.max(porN[x.n] || 0, x.cap || 0); });
+    const n = Math.max(Number(k.N_COMPARTIMENTOS) || 0, Object.keys(porN).length ? Math.max.apply(null, Object.keys(porN).map(Number)) : 0);
+    return { id: o.id, matricula: o.matricula, conductor: ultCond[o.id] || String(k.TITULAR || ''), desc: o.desc, nComp: n,
+      comps: Array.from({ length: n }, function (_, i) { return { n: i + 1, cap: porN[i + 1] || 0 }; }) };
+  });
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
-  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal,
+  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
     mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },

@@ -40,7 +40,7 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 .dep-card{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;gap:1px;cursor:pointer;font:inherit;color:inherit}.dep-card:active{background:var(--brand-soft)}
 .rc .tiny,.tiny{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.chead{display:grid;grid-template-columns:1fr auto;padding-left:30px;gap:8px;align-items:center}.chead .cel{display:flex;align-items:center;gap:6px;min-height:44px;flex-wrap:wrap}
+.chead{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.chead .cel{display:flex;align-items:center;gap:6px;min-height:44px;flex-wrap:wrap}
 .rc>.card{position:relative;overflow:hidden}.ctop{gap:8px;padding:12px;background:rgba(255,255,255,.6);border-bottom:2px solid var(--cb,var(--line))}.cmid{gap:8px;padding:10px 12px 12px;border-bottom:2px solid var(--cb,var(--line))}.cbot{gap:8px;padding:10px 12px 12px;background:rgba(0,0,0,.025)}.chead .ordd{position:absolute;top:7px;left:7px;font-family:var(--display);font-size:15px;line-height:1;font-weight:700;color:var(--cs,var(--muted));opacity:.75;border:1.5px solid var(--cb,var(--line));border-radius:8px;padding:4px 6px}.chead .cel b{font-size:19px}
 .chead .ncel{flex-direction:column;align-items:stretch;gap:0}.ncb{display:flex;gap:4px;min-width:150px}.ncb button{flex:1;min-width:0;min-height:38px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font:inherit;font-weight:700;font-size:17px}.ncb button.on{background:var(--brand);border-color:var(--brand);color:#fff}.ncb button.on.bad{background:var(--bad);border-color:var(--bad)}.ncs{font:inherit;font-size:20px;font-weight:700;min-height:40px;border:2px solid var(--line);border-radius:10px;background:#fff;padding:2px 8px}.ncs.mal{border-color:var(--bad);color:var(--bad)}
 .mini5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.mini5 label,.mini5>div{display:flex;flex-direction:column;gap:2px;min-width:0}.mini5 input{width:100%;min-width:0}.tg.ci button{min-height:42px;font-size:16px;padding:0}
@@ -316,7 +316,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v51 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v52 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1658,7 +1658,7 @@ function recepRender() {
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         <span class="ordd" title="Orden de descarga">${c.ord}º</span>
-        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center"><b>${esc(ESPS[c.esp] || c.esp || '')}</b> ${tq(c.id)}</div>
+        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b> ${tq(c.id)}</div>
         <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${c.nComp === k ? 'on' + (desc.some(z => z !== c && z.nComp === k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)">${k}</button>`).join('')}</div></div>
       </div>
       ${c.nComp && desc.some(z => z !== c && z.nComp === c.nComp) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${c.nComp} de la cisterna está puesto también en ${desc.filter(z => z !== c && z.nComp === c.nComp).map(z => z.id).join(', ')}.</div>` : ''}

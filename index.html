@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v79 · 08/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v80 · 09/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1334,6 +1334,8 @@ const espViaje = x => { const c = x.cart || {}, set = new Set(Object.keys(c).fil
   (x.comps || []).forEach(k => { const e = espComp(k); if (e) set.add(e.toUpperCase()); }); (x.recep ? x.recep.comps : []).forEach(k => set.add(espDe(k)));
   return ['D', 'O', 'V', 'C'].filter(e => set.has(e)); };
 /** Lo que vale para el parte: en Recepción 2 el registro de calidad por especie; en Recepción, lo recibido por destinos. */
+/** Orden de los registros de calidad: el momento real en que se metieron (ALTA); los antiguos, por fecha y hora */
+const ordCal = r => r ? (r.alta || (esAiso(r.fecha) + ' ' + String(r.hora || '').padStart(5, '0'))) : '';
 const R2 = () => R.modo === 'esp', fuente = x => R2() ? x.cal : x.recep, listaRec = () => R2() ? (R.l2 || []) : (R.viajes || []);
 const prefViaje = x => x.comps && x.comps[0] ? String(x.comps[0].id).slice(0, -1) : String(+x.ruta || '');
 const usoMalo = (esp, dep) => { if (!/^[CV]$/.test(esp)) return false; const d = R.deps.find(x => x.id === dep), k = contenidoDep(dep);
@@ -1595,7 +1597,7 @@ function enlazarParte(v) {
 }
 /** Parte en papel con el formato del FOR PR 7.-02: un bloque por camión, una línea por compartimento. */
 function imprimirParte() {
-  const cams = listaRec().filter(x => fuente(x) && fuente(x).comps.length).sort((a, b) => String(fuente(a).hora) < String(fuente(b).hora) ? -1 : 1);
+  const cams = listaRec().filter(x => fuente(x) && fuente(x).comps.length).sort((a, b) => { const ka = R2() ? ordCal(fuente(a)) : String(fuente(a).hora), kb = R2() ? ordCal(fuente(b)) : String(fuente(b).hora); return ka < kb ? -1 : 1; });
   const P = R.parte || {}, t = totEsp(), logo = ($('.logo img') || {}).src || '';
   const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, num1 = x => x === '' || x == null ? '' : String(x).replace('.', ',');
   const bloque = x => {
@@ -1682,7 +1684,7 @@ function enlazarDiaNav() {
   if ($('#diaFecha')) $('#diaFecha').onchange = e => { if (e.target.value) { R.fecha = isoAes(e.target.value); recepcion(); } };
 }
 function recep2Lista(v, u) {
-  const regs = Object.entries(R.calDia || {}).filter(([id, r]) => /^Q/.test(id) && r.fecha === R.dia).sort((a, b) => String(a[1].hora) < String(b[1].hora) ? -1 : 1);
+  const regs = Object.entries(R.calDia || {}).filter(([id, r]) => /^Q/.test(id) && r.fecha === R.dia).sort((a, b) => ordCal(a[1]) < ordCal(b[1]) ? -1 : 1);
   // Cada camión activo se puede registrar siempre (también un 2º o 3º viaje en el día: descargas parciales, primavera…)
   const nuevoId = t => { const base = 'Q' + yymmdd(R.dia) + '-' + t.id; let id = base, k = 1; while ((R.calDia || {})[id]) id = base + '-' + (++k); return id; };
   const l = R.camiones.map(t => ({ id: nuevoId(t), r2: true, matricula: t.matricula, conductor: t.conductor, desc: t.desc,

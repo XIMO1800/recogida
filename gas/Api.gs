@@ -642,7 +642,7 @@ const CAB_RECEP = ['REC_ID', 'FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA
   'LITROS_DECLARADOS', 'LITROS_CONTADOR', 'DEPOSITO', 'LITROS_DEPOSITO', 'TIPO', 'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'USUARIO', 'N_COMP_CISTERNA'];
 const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUARIO', 'HORA', 'FICHERO'];
 const CAB_RCAL = ['FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN', 'ID', 'ESPECIE', 'N_COMP_CISTERNA', 'LITROS', 'DEPOSITOS',
-  'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO'];
+  'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
 const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION'];
 const CAB_VENTA = ['ID', 'FECHA', 'HORA', 'DEPOSITO', 'ESPECIE', 'LITROS', 'CLIENTE', 'USUARIO'];
@@ -798,7 +798,8 @@ function recepViajes(req, c) {
   const calidad = {}; calTodo.forEach(function (r) {
     if (!ids2[r.VIAJE_ID] && fechas.indexOf(String(r.FECHA)) < 0) return;
     const k = calidad[r.VIAJE_ID] = calidad[r.VIAJE_ID] || { fecha: String(r.FECHA), hora: String(r.HORA), usuario: String(r.USUARIO), limpieza: String(r.LIMPIEZA_CISTERNA || ''),
-      filtro: String(r.LIMPIEZA_FILTRO || ''), obs: String(r.OBSERVACIONES || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''), comps: [] };
+      filtro: String(r.LIMPIEZA_FILTRO || ''), obs: String(r.OBSERVACIONES || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''),
+      alta: String(r.ALTA || ''), comps: [] };
     k.comps.push({ id: String(r.ID), esp: String(r.ESPECIE), ord: Number(r.ORDEN) || 0, nComp: String(r.N_COMP_CISTERNA || ''), contador: numES_(r.LITROS), temp: r.TEMPERATURA, ph: r.PH,
       dornic: r.DORNIC, visual: String(r.VISUAL || ''), reps: String(r.DEPOSITOS || '').split('|').filter(String).map(function (t) { const q = t.split(':'); return { dep: q[0], l: numES_(q[1]), tipo: q[2] || 'PRINCIPAL' }; }) });
   });
@@ -926,12 +927,19 @@ function guardarRecepCalidad(req, c) {
       if (!(x.reps || []).length || (x.reps || []).some(function (p) { return !String(p.dep || '').trim(); })) throw new Error('Falta el depósito de ' + x.id + '.');
       String(x.nComp || '').split(',').filter(String).forEach(function (n) { if (nUsados[n]) throw new Error('El compartimento ' + n + ' de la cisterna está en ' + nUsados[n] + ' y en ' + x.id + '.'); nUsados[n] = x.id; });
     });
-    const sh = hoja_('RECEPCION_CALIDAD', CAB_RCAL), t = tabla_('RECEPCION_CALIDAD');
+    const sh = hoja_('RECEPCION_CALIDAD', CAB_RCAL);
+    // ALTA: momento real en que se registró por primera vez (fecha y hora con segundos). Ordena el parte como se fueron metiendo.
+    if (sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String).indexOf('ALTA') < 0) {
+      const col = sh.getLastColumn() + 1;
+      sh.getRange(1, col).setValue('ALTA').setFontWeight('bold').setFontColor('#ffffff').setBackground('#1d5875');
+    }
+    const t = tabla_('RECEPCION_CALIDAD');
     const prev = t.filas.filter(function (x) { return x.VIAJE_ID === id; });
     hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
     const v = buscar_('VIAJES', 'VIAJE_ID', id) || {}, cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id) || {};
     const conds = {}; tabla_(HOJA_US_()).filas.forEach(function (x) { conds[x.CONDUCTOR_ID] = String(x.NOMBRE); });
     const fecha = prev.length ? String(prev[0].FECHA) : (cam.FECHA ? String(cam.FECHA) : fechaAtrasada_(r.fecha, c)), hora = prev.length ? String(prev[0].HORA) : ahora_('HH:mm');
+    const alta = prev.length ? String(prev[0].ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss');
     prev.map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });
     const filas = comps.map(function (x, i) {
       const o = { FECHA: fecha, HORA: hora, VIAJE_ID: id, DECA_NUM: v.DECA_NUM || cam.DECA_NUM || '', MATRICULA: v.MATRICULA || cam.MATRICULA || r.matricula || '',
@@ -939,7 +947,7 @@ function guardarRecepCalidad(req, c) {
         ID: String(x.id), ESPECIE: String(x.esp), N_COMP_CISTERNA: String(x.nComp || '').replace(/\s/g, ''), LITROS: Math.round(Number(x.contador)),
         DEPOSITOS: (x.reps || []).map(function (p) { return String(p.dep).trim() + ':' + Math.round(Number(p.l) || 0) + ':' + (p.tipo || 'PRINCIPAL'); }).join('|'),
         TEMPERATURA: x.temp === '' || x.temp == null ? '' : x.temp, PH: x.ph || '', DORNIC: x.dornic || '', VISUAL: x.visual || '',
-        LIMPIEZA_CISTERNA: r.limpieza || '', LIMPIEZA_FILTRO: r.filtro || '', OBSERVACIONES: r.obs || '', USUARIO: String(c.NOMBRE) };
+        LIMPIEZA_CISTERNA: r.limpieza || '', LIMPIEZA_FILTRO: r.filtro || '', OBSERVACIONES: r.obs || '', USUARIO: String(c.NOMBRE), ALTA: alta };
       return t.cab.map(function (h) { return o[h] !== undefined ? o[h] : ''; });
     });
     const f0 = sh.getLastRow() + 1;

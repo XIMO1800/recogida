@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v80 · 09/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v81 · 09/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1336,6 +1336,9 @@ const espViaje = x => { const c = x.cart || {}, set = new Set(Object.keys(c).fil
 /** Lo que vale para el parte: en Recepción 2 el registro de calidad por especie; en Recepción, lo recibido por destinos. */
 /** Orden de los registros de calidad: el momento real en que se metieron (ALTA); los antiguos, por fecha y hora */
 const ordCal = r => r ? (r.alta || (esAiso(r.fecha) + ' ' + String(r.hora || '').padStart(5, '0'))) : '';
+/** Litros propuestos de la cartilla en Recepción calidad: solo quien tiene el rol CALIDAD (solo o junto a OFICINA / RECEPCION).
+ *  Un usuario de RECEPCION u OFICINA sin CALIDAD no ve ningún dato: apunta lo que marque el contador. */
+const verPropuesta = () => !!D().calidad;
 const R2 = () => R.modo === 'esp', fuente = x => R2() ? x.cal : x.recep, listaRec = () => R2() ? (R.l2 || []) : (R.viajes || []);
 const prefViaje = x => x.comps && x.comps[0] ? String(x.comps[0].id).slice(0, -1) : String(+x.ruta || '');
 const usoMalo = (esp, dep) => { if (!/^[CV]$/.test(esp)) return false; const d = R.deps.find(x => x.id === dep), k = contenidoDep(dep);
@@ -1699,7 +1702,7 @@ function recep2Lista(v, u) {
       comps: t ? t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })) : Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: r });
   });
   R.l2 = l;
-  const cal = !!D().calidad, ofi = !!D().oficina, editable = !cal || ofi || !!D().recepcion;
+  const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
       <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>${x.veces === 1 ? '1 viaje' : x.veces + ' viajes'} hoy</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
@@ -1753,7 +1756,7 @@ function recepCamion2(x) {
   const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
-  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj ? vj.cart || {} : {}, ya, viajeRef: vj ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
   recepRender();
 }
 function recepCamion(x) {
@@ -1786,7 +1789,7 @@ function recepCamion(x) {
   const DEP_ESP = { D: '3', O: '4', V: '2', C: '1' }, depDe = e => porEsp && DEP_ESP[e] && (R.deps || []).some(d => String(d.id) === DEP_ESP[e]) ? [{ dep: DEP_ESP[e], l: '', tipo: 'PRINCIPAL' }] : [];
   // Recepción 2 sin registro todavía: los litros se proponen con lo ya recibido por destinos (sumado por especie), se pueden cambiar
   // Recepción 2 sin registro: los litros vienen propuestos en tenue (lo recibido en Recepción por especie o, si aún no, lo de la cartilla)
-  const litR1 = e => { if (!porEsp) return ''; const r1 = x.recep ? x.recep.comps.filter(c => espDe(c) === e).reduce((a, c) => a + (Number(c.contador) || 0), 0) : 0;
+  const litR1 = e => { if (!porEsp || !verPropuesta()) return ''; const r1 = x.recep ? x.recep.comps.filter(c => espDe(c) === e).reduce((a, c) => a + (Number(c.contador) || 0), 0) : 0;
     return String(Math.round(r1 || (x.cart || {})[e] || 0) || ''); };
   base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), auto: !!litR1(b.esp), pista: '', temp: '', ph: '', dornic: '', visual: '', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
@@ -1796,7 +1799,7 @@ function recepCamion(x) {
 function recepRender() {
   const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
-  const soloCal = !!D().calidad && !ofi && !D().recepcion, mzOk = !!D().calidad && !!(E.porEsp ? x.cal : x.recep);
+  const soloCal = !!D().calidad && !ofi && !D().recepcion && !E.porComp, mzOk = !!D().calidad && !!(E.porEsp ? x.cal : x.recep);
   const capN = {}; (x.comps || []).forEach(k => { if (k.n && k.cap) capN[k.n] = Math.max(capN[k.n] || 0, k.cap); });
   const MARGEN_CAP = 200;   // siempre cabe algo más de la capacidad nominal
   const capDe = c => { const ns = String(c.nComp || '').split(',').filter(Boolean); return ns.length && ns.every(n => capN[n]) ? ns.reduce((a, n) => a + capN[n], 0) : 0; };

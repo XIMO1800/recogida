@@ -1510,4 +1510,3 @@ function instalarPuente() {
   Logger.log('CLAVE DEL PUENTE: ' + clave);
   return clave;
 }
-

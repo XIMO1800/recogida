@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v81 · 09/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v82 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -349,6 +349,13 @@ const num = s => parseFloat(String(s).replace(',', '.'));
 const SP = { D: 'D.O.', O: 'Oveja', C: 'Cabra', V: 'Vaca' };
 const labelEsp = e => e === 'D' ? 'Oveja D.O.' : (SP[e] || e);
 const D = () => S.datos;
+/* Pruebas: quien hace recepción toca el logotipo en la lista de Recepción y pasa a Recepción calidad (y al revés).
+   Solo desde la lista, para no perder un camión a medio rellenar. */
+document.addEventListener('click', e => {
+  if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || U.view !== 'vRecep') return;
+  R.modo = R.modo === 'esp' ? '' : 'esp'; R.ed = null; recepcion();
+  toast(R.modo === 'esp' ? 'Recepción calidad' : 'Recepción');
+});
 const CFG = () => D().config;
 const misRutas = () => Object.keys(D().rutas).sort();
 const ganRuta = r => D().ganaderos.filter(g => g.ruta === r);

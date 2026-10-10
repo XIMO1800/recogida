@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=85">
+<link rel="manifest" href="manifest.json?v=86">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v85 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v86 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -464,12 +464,14 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
 const VIEWS = ['vHisto', 'vHisto2', 'vDep', 'vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
 function show(v, title, sub) {
+  // Repintar la misma pantalla (mismo título: p. ej. al meter un dato en un camión) no sube arriba: se queda donde estaba
+  const misma = U.view === v && $('#barTitle').textContent === title && $('#barSub').textContent === (sub || ''), y = window.scrollY;
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   document.body.classList.toggle('ancho', ['vRecep', 'vRecepC', 'vAgua', 'vDep'].includes(v));
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
   $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
-  window.scrollTo(0, 0); syncPill(); marcoEsc();
+  syncPill(); marcoEsc(); window.scrollTo(0, misma ? y : 0);
 }
 $('#decaBtn').onclick = () => { U.volver = U.view === 'vFicha' ? S.i : null; U.vistaPrev = U.view; deca(); };
 $('#back').onclick = () => {

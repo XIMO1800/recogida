@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=102">
+<link rel="manifest" href="manifest.json?v=103">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -244,7 +244,7 @@ body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
   body.ancho .top .app-name{display:none}
   body.ancho .top .bar{order:3;flex:1;min-width:0;padding-block:5px}
   body.ancho .top .bar-t{flex-direction:row;align-items:baseline;gap:10px}
-  body.ancho .top .bar-t b{font-size:21px}body.ancho .top .bar-t span{font-size:14px}
+  body.ancho .top .bar-t b{font-size:21px;flex:none;overflow:visible}body.ancho .top .bar-t span{font-size:14px}
   body.ancho .top .back{width:38px;height:38px;min-height:0}
   body.ancho .top .pill{order:4;margin-left:0}
   /* Compartimentos en una sola fila; con 4 se desliza con el dedo a los lados (se ve asomar el 4º) */
@@ -252,7 +252,11 @@ body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
     overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:6px;-webkit-overflow-scrolling:touch}
   body.ancho .recgrid.rc > *{scroll-snap-align:start;min-width:0}
   /* Recepción calidad lleva T, pH, ºD, visual y mezcla: cada compartimento conserva su ancho y se desliza */
-  body.ancho .recgrid.rc.r2{grid-auto-columns:minmax(430px, calc((100% - 24px) / min(var(--n), 3)))}
+  /* Recepción: mismo ancho que Contadores; T, pH y ºD en una fila y visual y mezcla debajo */
+  body.ancho .r2 .mini5{grid-template-columns:repeat(6,minmax(0,1fr))}
+  body.ancho .r2 .mini5>:nth-child(-n+3){grid-column:span 2}body.ancho .r2 .mini5>:nth-child(n+4){grid-column:span 3}
+  /* Nº de compartimento de la cisterna: que quepan los 4 botones */
+  body.ancho .ncb{min-width:0}body.ancho .ncb button{min-width:30px;padding:0 2px;font-size:16px}
 }
 .desliza{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:-4px}
 .desliza .btn{width:auto;min-height:40px;padding:2px 22px;font-size:24px;line-height:1}
@@ -351,7 +355,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v102 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v103 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1963,7 +1967,7 @@ function recepRender() {
     <div class="recgrid rc${E.porEsp ? ' r2' : ''}" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
-        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b ${E.porComp ? `data-plit="${i}" class="plit${c.tapL ? ' on' : ''}" title="Toca para poner los litros de la cartilla; otra vez, para quitarlos"` : ''}>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
+        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b ${E.porComp ? `data-plit="${i}" class="plit${c.tapL ? ' on' : ''}" title="Toca para poner los litros de la cartilla; otra vez, para quitarlos"` : ''}>${esc((E.porEsp ? ESPS : { D: 'D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' })[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
         ${E.porComp ? `<div class="cel ncel" style="align-items:center"><span class="tiny">Comp. cisterna</span><b style="font-size:24px">${c.n}</b></div>` : ''}<div class="cel ncel" ${E.porComp ? 'hidden' : ''}><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}

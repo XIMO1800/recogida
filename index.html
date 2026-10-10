@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=103">
+<link rel="manifest" href="manifest.json?v=104">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -355,7 +355,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v103 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v104 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1958,6 +1958,8 @@ function recepRender() {
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
+  // Al repintar el mismo camión, la fila de compartimentos se queda en el mismo sitio del deslizamiento lateral
+  const g0 = v.querySelector('.recgrid.rc'), sl0 = g0 && v.dataset.k === String(x.id) + E.porEsp ? g0.scrollLeft : 0; v.dataset.k = String(x.id) + E.porEsp;
   v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px" ${!E.porEsp && (x.otra || x.recep) ? '' : 'hidden'}>
       <div class="route-head"><h2 style="font-size:26px">${esc(x.conductor)} <span class="mono muted" style="font-size:17px;font-weight:500">${esc(x.matricula || '—')}</span></h2></div>
       <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) + (E.viajeRef ? ` · litros propuestos (en gris) de la cartilla del viaje de las ${esc(E.viajeRef)}` : '') : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
@@ -2150,6 +2152,7 @@ function recepRender() {
     + (E.porEsp || x.otra ? '' : ` · Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${x.deca || '—'}`));
   v.querySelectorAll('input').forEach(i => i.setAttribute('enterkeyhint', 'done'));   // la tecla Intro del teclado pone «Hecho»
   { const g = v.querySelector('.recgrid.rc'), d = $('#reDesl');   // flechas solo si hay compartimentos fuera de la pantalla
+    if (g && sl0) { g.style.scrollSnapType = 'none'; g.scrollLeft = sl0; requestAnimationFrame(() => { g.style.scrollSnapType = ''; }); }
     if (g && d) { d.hidden = !(g.scrollWidth > g.clientWidth + 4);
       d.querySelectorAll('[data-desl]').forEach(b => b.onclick = () => { const c = g.firstElementChild; g.scrollBy({ left: (+b.dataset.desl) * ((c ? c.getBoundingClientRect().width : 300) + 12), behavior: 'smooth' }); }); } }
   if (U.borrarBarra) {   // Recepción: papelera en la franja roja; primer toque pregunta, segundo borra

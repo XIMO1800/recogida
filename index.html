@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=105">
+<link rel="manifest" href="manifest.json?v=106">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -357,7 +357,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v105 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v106 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1972,7 +1972,7 @@ function recepRender() {
       <div class="chead">
         ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
         <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b ${E.porComp ? `data-plit="${i}" class="plit${c.tapL ? ' on' : ''}" title="Toca para poner los litros de la cartilla; otra vez, para quitarlos"` : ''}>${esc((E.porEsp ? ESPS : { D: 'D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' })[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
-        ${E.porComp ? `<div class="cel ncel" style="align-items:center"><span class="tiny">Comp. cisterna</span><b style="font-size:24px">${c.n}</b></div>` : ''}<div class="cel ncel" ${E.porComp ? 'hidden' : ''}><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
+        <div class="cel ncel"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp && !E.porComp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
       <div><span class="tiny">Parcial contador${ofi && c.decl && !E.porEsp ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px${c.auto ? ';color:var(--muted);opacity:.55;font-weight:500' : ''}"${c.auto ? ' title="Propuesto: escribe el real"' : ''} data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>L</span></div></div>
@@ -2038,7 +2038,8 @@ function recepRender() {
     catch (e) { b.disabled = false; toast(esRed(e) ? 'Sin conexión: no se ha guardado' : e.message); }
   });
   v.querySelectorAll('[data-nc]').forEach(b => b.onclick = () => { const c = C(b.dataset.i), k = b.dataset.nc;
-    if (E.porEsp) { const l = nums(c); c.nComp = (l.includes(k) ? l.filter(z => z !== k) : l.concat(k)).sort().join(','); } else c.nComp = c.nComp === k ? '' : k; recepRender(); });
+    if (E.porComp) c.nComp = k;   // Recepción: un compartimento de la cisterna por ficha (propuesto el de su orden; se puede cambiar)
+    else if (E.porEsp) { const l = nums(c); c.nComp = (l.includes(k) ? l.filter(z => z !== k) : l.concat(k)).sort().join(','); } else c.nComp = c.nComp === k ? '' : k; recepRender(); });
   v.querySelectorAll('[data-silo]').forEach(b => b.onclick = () => { const c = C(b.dataset.i); c.reps = c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL' && r.dep !== b.dataset.silo); c.reps.unshift({ dep: b.dataset.silo, l: '', tipo: 'PRINCIPAL' }); recepRender(); });
   v.querySelectorAll('[data-xadd]').forEach(b => b.onclick = () => { const c = C(b.dataset.xadd); const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== ppal(c)); c.reps.push({ dep: b.dataset.t === 'ARRASTRE' && mez ? mez.id : '', l: b.dataset.t === 'ARRASTRE' ? '100' : '', tipo: b.dataset.t === 'ARRASTRE' ? 'ARRASTRE' : 'OTRO' }); recepRender(); });
   v.querySelectorAll('[data-xdep]').forEach(b => b.onclick = () => { extras(C(b.dataset.i))[+b.dataset.j].dep = b.dataset.xdep; recepRender(); });

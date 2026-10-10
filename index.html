@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=101">
+<link rel="manifest" href="manifest.json?v=102">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -152,6 +152,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+.sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
 .dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
 .hist tr.tot-sep td{padding:0!important;height:5px;background:var(--brand)!important;border:0!important;border-radius:3px!important}.hist tr.tot-row td{padding-top:12px;padding-bottom:12px;font-weight:800;background:var(--brand-soft);border-color:var(--brand)!important}.hist tr.tot-row td:first-child{border-left-color:var(--brand)}.hist tr.tot-row td:first-child b{color:var(--brand);letter-spacing:.06em}
@@ -350,7 +351,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v101 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v102 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1778,8 +1779,8 @@ function recep2Lista(v, u) {
   const pend = l.filter(x => !x.cal), hechos = l.filter(x => x.cal);
   const puede = (R.esHoy || ofi) && editable;
   // Primero lo ya registrado (para ver de un vistazo qué está hecho) y debajo los camiones para registrar
-  const camHtml = `${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)} · ${hechos.length}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}
-    ${puede ? `<span class="lbl">Camiones para registrar</span><div class="g2">${pend.map(tarjeta).join('')}
+  const camHtml = `${hechos.length ? `<span class="lbl blq">Recepciones ${R.esHoy ? 'de hoy' : 'del ' + esc(R.dia)} · ${hechos.length}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay recepciones.</p>')}
+    ${puede ? `${hechos.length ? '<div class="sep-blq"></div>' : ''}<span class="lbl blq">Camiones disponibles</span><div class="g2">${pend.map(tarjeta).join('')}
       <button class="farm r2otra" id="r2Otra"><span class="main"><span class="name">+ Otra entrada</span><span class="sub">Cisterna de otro proveedor</span></span></button></div>` : ''}`;
   const parte = cal || ofi ? parteHtml() : '';
   v.innerHTML = esEsc() && (cal || ofi)

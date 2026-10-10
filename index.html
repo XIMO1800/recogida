@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=88">
+<link rel="manifest" href="manifest.json?v=89">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -230,6 +230,19 @@ body{margin:0}
 body.esc #side{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:232px;background:var(--brand-deep);color:#fff;z-index:6;padding:18px 12px;gap:4px}
 body.esc .top{margin-left:232px}
 body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
+/* Tablet en horizontal (recepción): logotipo, versión, título y estado en UNA sola franja roja, para dejar sitio a los contadores */
+@media (orientation:landscape) and (min-width:700px) and (max-width:1099px){
+  body.ancho .top-in{display:flex;align-items:center;gap:12px;max-width:none;padding-inline:14px}
+  body.ancho .top .brand{display:contents}
+  body.ancho .top .logo{order:1}body.ancho .top .logo img{height:28px}
+  body.ancho .top .ver{order:2}
+  body.ancho .top .app-name{display:none}
+  body.ancho .top .bar{order:3;flex:1;min-width:0;padding-block:5px}
+  body.ancho .top .bar-t{flex-direction:row;align-items:baseline;gap:10px}
+  body.ancho .top .bar-t b{font-size:21px}body.ancho .top .bar-t span{font-size:14px}
+  body.ancho .top .back{width:38px;height:38px;min-height:0}
+  body.ancho .top .pill{order:4;margin-left:0}
+}
 body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
 body.esc .solo-movil{display:none!important}
 body.esc .agGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
@@ -324,7 +337,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v88 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v89 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */

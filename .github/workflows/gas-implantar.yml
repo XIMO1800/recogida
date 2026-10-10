@@ -1,0 +1,35 @@
+# Sube gas/ al Apps Script y hace «Nueva versión» sobre la MISMA implementación (la dirección de la API no cambia).
+# Solo se ejecuta a mano: Actions → «Apps Script · implantar» → Run workflow.
+name: Apps Script · implantar
+on:
+  workflow_dispatch:
+    inputs:
+      motivo:
+        description: 'Qué cambia (sale en la descripción de la versión)'
+        required: true
+        default: 'Actualización'
+concurrency: { group: gas-implantar, cancel-in-progress: false }
+jobs:
+  implantar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Comprobaciones
+        run: |
+          test -f gas/appsscript.json || { echo "Falta gas/appsscript.json: ejecutar antes «traer lo implantado»"; exit 1; }
+          for f in gas/*.gs; do node -e "new Function(require('fs').readFileSync('$f','utf8'))" || { echo "Error de sintaxis en $f"; exit 1; }; done
+      - name: Credenciales de clasp
+        env: { CLASPRC: '${{ secrets.CLASPRC_JSON }}' }
+        run: |
+          test -n "$CLASPRC" || { echo "Falta el secreto CLASPRC_JSON en Settings → Secrets → Actions"; exit 1; }
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+      - name: Subir y crear nueva versión
+        run: |
+          ID=$(node -p "require('./gas/clasp-id.json').scriptId"); DEP=$(node -p "require('./gas/clasp-id.json').deploymentId")
+          mkdir -p sube && cp gas/*.gs gas/appsscript.json sube/ && cd sube
+          echo "{\"scriptId\":\"$ID\",\"rootDir\":\".\"}" > .clasp.json
+          npx -y @google/clasp@2.4.2 push --force
+          npx -y @google/clasp@2.4.2 deploy -i "$DEP" -d "${{ github.event.inputs.motivo }} · $(date -u +%F)"
+          npx -y @google/clasp@2.4.2 deployments

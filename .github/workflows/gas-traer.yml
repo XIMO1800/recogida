@@ -1,0 +1,32 @@
+# Trae al repositorio lo que hay AHORA en el Apps Script (todos sus archivos y appsscript.json),
+# a la rama «apps-script-actual», para comprobar que gas/ está completo antes de implantar desde aquí.
+name: Apps Script · traer lo implantado
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  traer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Credenciales de clasp
+        env: { CLASPRC: '${{ secrets.CLASPRC_JSON }}' }
+        run: |
+          test -n "$CLASPRC" || { echo "Falta el secreto CLASPRC_JSON en Settings → Secrets → Actions"; exit 1; }
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+      - name: Descargar el proyecto
+        run: |
+          ID=$(node -p "require('./gas/clasp-id.json').scriptId")
+          mkdir -p actual && cd actual
+          echo "{\"scriptId\":\"$ID\",\"rootDir\":\".\"}" > .clasp.json
+          npx -y @google/clasp@2.4.2 pull
+          rm .clasp.json; ls -la
+      - name: Guardar en la rama apps-script-actual
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git checkout -B apps-script-actual
+          git rm -rq --cached . ; git add actual
+          git commit -qm "Apps Script tal como está implantado ($(date -u +%F\ %H:%M) UTC)" || true
+          git push -f origin apps-script-actual

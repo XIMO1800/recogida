@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=104">
+<link rel="manifest" href="manifest.json?v=105">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -50,6 +50,8 @@ body.ancho .app,body.ancho .top-in{max-width:1180px}
 @media (max-width:520px){.mini5{grid-template-columns:repeat(3,minmax(0,1fr))}}
 input.sm{width:100%;font-family:var(--display);font-weight:700;font-size:20px;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
 .d5{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}.d5 .dest{min-height:48px;padding:4px 2px;border-top-width:2px}
+/* Depósitos: el número siempre a la misma altura; debajo, dos líneas reservadas para lo que lleva (vacías si no lleva nada) */
+.d5 .dest[data-silo]{justify-content:flex-start;padding-top:6px}.d5 .dest[data-silo] small{display:block;height:2.4em;line-height:1.2;overflow:hidden;margin-top:1px}
 .tg{display:flex;gap:4px}.tg button{flex:1;min-height:38px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-weight:700;font-size:14px;font-family:inherit}.tg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.tg button.on.bad{background:var(--bad);border-color:var(--bad)}
 .lnk{border:1.5px dashed var(--line);background:transparent;border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px;color:var(--muted);font-family:inherit;flex:1}
 .xbox{background:rgba(255,255,255,.75);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
@@ -355,7 +357,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v104 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v105 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */

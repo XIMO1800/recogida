@@ -1,12 +1,15 @@
 # Sube gas/ al Apps Script y hace «Nueva versión» sobre la MISMA implementación (la dirección de la API no cambia).
-# Solo se ejecuta a mano: Actions → «Apps Script · implantar» → Run workflow.
+# Se ejecuta SOLO cada vez que se sube a main un cambio en gas/*.gs o gas/appsscript.json (y también a mano si hace falta).
 name: Apps Script · implantar
 on:
+  push:
+    branches: [main]
+    paths: ['gas/*.gs', 'gas/appsscript.json']
   workflow_dispatch:
     inputs:
       motivo:
         description: 'Qué cambia (sale en la descripción de la versión)'
-        required: true
+        required: false
         default: 'Actualización'
 concurrency: { group: gas-implantar, cancel-in-progress: false }
 jobs:
@@ -31,5 +34,6 @@ jobs:
           mkdir -p sube && cp gas/*.gs gas/appsscript.json sube/ && cd sube
           echo "{\"scriptId\":\"$ID\",\"rootDir\":\".\"}" > .clasp.json
           npx -y @google/clasp@2.4.2 push --force
-          npx -y @google/clasp@2.4.2 deploy -i "$DEP" -d "${{ github.event.inputs.motivo }} · $(date -u +%F)"
+          MOTIVO="${{ github.event.inputs.motivo }}"; [ -n "$MOTIVO" ] || MOTIVO="$(git log -1 --pretty=%s | cut -c1-90)"
+          npx -y @google/clasp@2.4.2 deploy -i "$DEP" -d "$MOTIVO · $(date -u +%F)"
           npx -y @google/clasp@2.4.2 deployments

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=93">
+<link rel="manifest" href="manifest.json?v=94">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -247,7 +247,11 @@ body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
   body.ancho .recgrid.rc{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px) / min(var(--n), 3.25));
     overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:6px;-webkit-overflow-scrolling:touch}
   body.ancho .recgrid.rc > *{scroll-snap-align:start;min-width:0}
+  /* Recepción calidad lleva T, pH, ºD, visual y mezcla: cada compartimento conserva su ancho y se desliza */
+  body.ancho .recgrid.rc.r2{grid-auto-columns:minmax(430px, calc((100% - 24px) / min(var(--n), 3)))}
 }
+.desliza{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:-4px}
+.desliza .btn{width:auto;min-height:40px;padding:2px 22px;font-size:24px;line-height:1}
 body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
 body.esc .solo-movil{display:none!important}
 body.esc .agGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
@@ -343,7 +347,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v93 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v94 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1942,7 +1946,8 @@ function recepRender() {
       <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) + (E.viajeRef ? ` · litros propuestos (en gris) de la cartilla del viaje de las ${esc(E.viajeRef)}` : '') : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
       ${x.otra && !E.porComp ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
       <p class="small muted">${E.porComp ? 'Di qué leche lleva cada compartimento y rellena sus datos. Si alguno viene vacío o no se descarga en este viaje, déjalo sin tocar.</p>' : ''}</div>
-    <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
+    <div class="desliza" id="reDesl" hidden><button class="btn sec" data-desl="-1" aria-label="Compartimentos de la izquierda">‹</button><span class="small muted">Hay más compartimentos: desliza con el dedo o usa las flechas</span><button class="btn sec" data-desl="1" aria-label="Compartimentos de la derecha">›</button></div>
+    <div class="recgrid rc${E.porEsp ? ' r2' : ''}" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
         <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
@@ -2118,8 +2123,11 @@ function recepRender() {
     $('#reBorrarNo').onclick = () => { $('#reBorrar').hidden = false; $('#reBorrarSi').hidden = true; };
     $('#reBorrarOk').onclick = borrarTodo;
   }
-  show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor
+  show('vRecepC', (E.porEsp ? 'Recepción calidad' : 'Recepción') + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor
     + (E.porEsp || x.otra ? '' : ` · Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${x.deca || '—'}`));
+  { const g = v.querySelector('.recgrid.rc'), d = $('#reDesl');   // flechas solo si hay compartimentos fuera de la pantalla
+    if (g && d) { d.hidden = !(g.scrollWidth > g.clientWidth + 4);
+      d.querySelectorAll('[data-desl]').forEach(b => b.onclick = () => { const c = g.firstElementChild; g.scrollBy({ left: (+b.dataset.desl) * ((c ? c.getBoundingClientRect().width : 300) + 12), behavior: 'smooth' }); }); } }
   if (U.borrarBarra) {   // Recepción: papelera en la franja roja; primer toque pregunta, segundo borra
     const bb = $('#barBorrar'); bb.hidden = false; bb.textContent = '🗑'; bb.style.background = '';
     bb.onclick = () => { if (bb.dataset.ok === '1') { bb.dataset.ok = ''; return U.borrarBarra(); }

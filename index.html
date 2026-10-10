@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=91">
+<link rel="manifest" href="manifest.json?v=92">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -242,6 +242,10 @@ body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
   body.ancho .top .bar-t b{font-size:21px}body.ancho .top .bar-t span{font-size:14px}
   body.ancho .top .back{width:38px;height:38px;min-height:0}
   body.ancho .top .pill{order:4;margin-left:0}
+  /* Compartimentos en una sola fila; con 4 se desliza con el dedo a los lados (se ve asomar el 4º) */
+  body.ancho .recgrid.rc{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px) / min(var(--n), 3.25));
+    overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  body.ancho .recgrid.rc > *{scroll-snap-align:start;min-width:0}
 }
 body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
 body.esc .solo-movil{display:none!important}
@@ -338,7 +342,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v91 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v92 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */

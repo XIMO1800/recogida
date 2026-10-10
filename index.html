@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=108">
+<link rel="manifest" href="manifest.json?v=109">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -154,15 +154,17 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
-/* Contadores 2 (hoja en vertical) */
-.c2b{gap:8px;padding:10px 12px;border-top:5px solid var(--brand)}.c2b.hecho{border-top-color:#c98a00}
-.c2h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:18px}.c2n{background:var(--brand);color:#fff;border-radius:8px;padding:0 9px;font-weight:800}
-.c2f{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:8px;border-radius:12px;background:var(--cf,#fff);border:1.5px solid var(--cb,var(--line));border-left:6px solid var(--cs,#a39a9c)}
-.c2f:not(.on){opacity:.85}.c2ord{min-height:44px;border-radius:10px;border:2px dashed var(--line);background:#fff;font-weight:800;font-size:18px;font-family:inherit}.c2f.on .c2ord{border-style:solid;border-color:var(--brand);color:var(--brand)}
-.c2c{font-size:18px}.c2nc{display:flex;flex-direction:column;gap:2px}.c2nc .ncb{min-width:0}.c2nc .ncb button{min-width:38px}.c2pend{width:100%;cursor:pointer;font:inherit;text-align:left;opacity:.9}.c2go{font-weight:700;color:var(--brand);justify-self:end}.c2quita{grid-column:1/-1;justify-self:end}.c2deps{display:flex;gap:5px;grid-column:1/-1}.c2deps button{flex:1;min-height:44px;border-radius:10px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:19px;font-family:var(--mono)}
-.c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}
-.c2l{grid-column:1/-1}.c2l input{font-size:26px}.c2arr{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;border-top:1px dashed var(--cb,var(--line));padding-top:6px}.c2mas{grid-column:1/-1;justify-self:start}
-.c2tot{display:flex;flex-direction:column;gap:2px}.c2t{width:100%;border-collapse:collapse}.c2t th,.c2t td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}.c2t .n{text-align:right}.c2t td.c2o{font-weight:800}.c2t tbody tr{background:var(--cf,#fff)}
+/* Contadores 2 (hoja en vertical, prueba) */
+.c2b{gap:8px;padding:10px 12px;border-top:5px solid var(--brand)}
+.c2h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:19px}.c2n{background:var(--brand);color:#fff;border-radius:8px;padding:0 9px;font-weight:800}
+.c2pend{display:flex;flex-direction:column;gap:4px}.c2chip{border:1.5px solid var(--cb,var(--line));border-left:6px solid var(--cs,#a39a9c);background:var(--cf,#fff);border-radius:10px;padding:8px 12px;font:inherit;font-size:17px;cursor:pointer}
+.c2tab{width:100%;border-collapse:separate;border-spacing:0 3px}.c2tab th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 6px}
+.c2tab td{background:var(--cf,#fff);padding:5px 6px;vertical-align:middle}.c2tab tr:not(.c2arrrow) td{border-top:1.5px solid var(--cb,var(--line))}.c2tab tr td:first-child{border-left:6px solid var(--cs,#a39a9c)}
+.c2tab tr.c2arrrow td{padding-top:0}.c2tc{width:1%}.c2nb{display:flex;gap:3px}.c2nb button{min-width:34px;min-height:40px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-weight:800;font-size:16px;font-family:inherit}
+.c2nb button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.c2tn{font-size:16px;white-space:nowrap}.c2tl{width:24%}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 30px 5px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:left}.c2l span,.c2tot .unit span{right:10px;font-size:16px}
+.c2td{width:34%}.c2deps{display:flex;gap:3px}.c2deps button{flex:1;min-width:0;min-height:40px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:17px;font-family:var(--mono)}
+.c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}.c2tx{width:1%}
+.c2tot{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.c2tot .unit{max-width:220px}
 
 .sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
@@ -367,7 +369,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v108 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v109 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1554,50 +1556,47 @@ async function historico(recargar) {
    orden de descarga, depósito y litros, y su arrastre si lo hay; abajo el total y la firma. Cada camión se guarda al firmarlo y
    va al programa de gestión igual que desde Contadores (mismo guardado). Lo que se va metiendo se queda en la tablet. */
 const C2 = { st: null };
-const c2Clave = () => 'rl_c2_' + R.dia;
+const c2Clave = () => 'rl_c2prueba_' + R.dia;   // solo en esta tablet; nunca se envía
 function c2Leer() { try { return JSON.parse(localStorage.getItem(c2Clave()) || '{}'); } catch (e) { return {}; } }
 function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
 function contadores2(v, u) {
-  const st = C2.st = c2Leer(); st.orden = st.orden || []; st.t = st.t || {};
-  // los ya recibidos que no estén en la hoja (p. ej. hechos desde Contadores) entran por su hora
-  R.viajes.filter(x => x.recep && !st.orden.includes(x.id)).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1).forEach(x => st.orden.push(x.id));
-  st.orden = st.orden.filter(id => R.viajes.some(x => x.id === id)); c2Escribir();
-  const enHoja = st.orden.map(id => R.viajes.find(x => x.id === id)), pend = R.viajes.filter(x => !x.recep && !st.orden.includes(x.id));
+  // PRUEBA VISUAL: no guarda nada en la hoja de Google. Solo salen los camiones que se añaden (también los ya guardados, para practicar).
+  const st = C2.st = c2Leer(); st.orden = (st.orden || []).filter(id => R.viajes.some(x => x.id === id)); st.t = st.t || {}; c2Escribir();
+  const enHoja = st.orden.map(id => R.viajes.find(x => x.id === id)), pend = R.viajes.filter(x => !st.orden.includes(x.id));
   const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
-  const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0 }));
+  const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, n0: String(c.n || '') }));
   const silos = R.deps.map(d => d.id);
   const depBtns = (x, id, campo, val, quita) => `<div class="c2deps">${silos.map(s => `<button class="${String(val) === String(s) ? 'on' : ''}" ${s === quita ? 'disabled' : ''} data-c2dep="${esc(x.id)}|${esc(id)}|${campo}|${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
-  const bloqueHecho = (x, n) => { const r = x.recep;
-    return `<div class="card stack c2b hecho"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span><span class="reg-ok" style="margin-left:auto">✓ GUARDADO ${esc(r.hora || '')}</span></div>
-      <table class="c2t"><thead><tr><th>Cisterna</th><th>Comp.</th><th>Depósito</th><th class="n">Litros</th></tr></thead><tbody>
-      ${r.comps.map((c, i) => `<tr class="${bgEsp(espDe(c))}"><td><b>${esc(ESPS[espDe(c)] || '')}</b> ${tq(c.id)}</td><td>${esc(c.nComp || '')}</td><td>${c.reps.map(p => esc(p.dep)).join(' · ')}</td><td class="n">${c.reps.map(p => fmt(p.l)).join(' · ')}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td colspan="3" style="text-align:right">TOTAL</td><td class="n"><b>${fmt(r.total || r.comps.reduce((a, c) => a + (+c.contador || 0), 0))}</b></td></tr></tfoot></table>
-      <button class="btn ghost" data-c2cor="${esc(x.id)}" style="width:auto;align-self:flex-end;min-height:38px;padding:4px 14px">Corregir</button></div>`; };
-  const bloque = (x, n) => { if (x.recep) return bloqueHecho(x, n);
-    const t = T(x), fs = filas(x), nMax = Math.min(4, Math.max(x.nCompCam || 0, ...(x.comps || []).map(k => k.n || 0)) || (x.comps || []).length || 4);
-    const suma = fs.reduce((a, f) => a + (num((t.f[f.id] || {}).l) || 0), 0);
-    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
-        <button class="lnk" data-c2fuera="${esc(x.id)}" style="margin-left:auto;width:auto;flex:0 0 auto;padding:4px 10px" title="Sacar de la hoja (no se ha descargado)">✕ sacar</button></div>
-      ${fs.map(f => Object.assign(f, { r: t.f[f.id] = t.f[f.id] || {} })).sort((a, c) => (a.r.ord || 99) - (c.r.ord || 99)).map(f => { const r = f.r; if (!r.n) r.n = String((x.comps.find(k => k.id === f.id) || {}).n || '');
-        return r.ord ? `<div class="c2f on ${bgEsp(f.esp)}">
-        <div class="c2c"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tq(f.id)}</div>
-        <div class="c2nc"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: nMax }, (_, k) => String(k + 1)).map(k => `<button class="${r.n === k ? 'on' : ''}" data-c2nc="${esc(x.id)}|${esc(f.id)}|${k}">${k}</button>`).join('')}</div></div>
-        ${depBtns(x, f.id, 'dep', r.dep)}<div class="unit c2l"><input class="sm" inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(f.id)}|l" value="${esc(r.l || '')}" placeholder="0"><span>L</span></div>
-          ${r.arr ? `<div class="c2arr"><span class="tiny">Arrastre a</span>${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}<div class="unit c2l"><input class="sm" inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(f.id)}|arrL" value="${esc(r.arrL || '')}" placeholder="0"><span>L</span></div><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}">✕ quitar arrastre</button></div>`
-            : `<button class="lnk c2mas" data-c2arr="${esc(x.id)}|${esc(f.id)}">+ arrastre</button>`}
-          <button class="lnk c2quita" data-c2ord="${esc(x.id)}|${esc(f.id)}">No era esta (quitar)</button></div>`
-        : `<button class="c2f c2pend ${bgEsp(f.esp)}" data-c2ord="${esc(x.id)}|${esc(f.id)}"><span class="c2c"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tq(f.id)}</span><span class="c2go">Descargo esta</span></button>`; }).join('')}
-      <div class="c2tot"><span class="tiny">Total contador</span><div class="unit"><input class="big" style="font-size:28px" inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
-        <span class="small" data-c2suma="${esc(x.id)}">Suma de parciales: ${fmt(suma)} l</span></div>
-      ${D().oficina ? '' : `<div class="stack" style="gap:4px"><span class="tiny">Firma</span><canvas data-c2pad="${esc(x.id)}" style="width:100%;height:120px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
-        <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" data-c2est="${esc(x.id)}">${FIRMAS['c2|' + x.id] ? 'Firmado ✓' : 'Sin firmar'}</span><button class="btn ghost" data-c2fb="${esc(x.id)}" style="width:auto;min-height:36px;padding:4px 12px">Borrar firma</button></div></div>`}
-      <div data-c2msg="${esc(x.id)}" hidden></div>
-      <button class="btn sec" disabled>Prueba visual · no se guarda (los datos se pasan en Contadores)</button></div>`; };
-  v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small muted" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <b>prueba visual: no se guarda nada</b>. Las descargas se siguen pasando en Contadores.</p></div>
+  const litInp = (x, id, campo, val) => `<div class="unit c2l"><input inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(id)}|${campo}" value="${esc(val || '')}" placeholder="0"><span>L</span></div>`;
+  const bloque = (x, n) => {
+    const t = T(x), fs = filas(x).map(f => Object.assign(f, { r: t.f[f.id] = t.f[f.id] || {} }));
+    const nMax = Math.min(4, Math.max(x.nCompCam || 0, ...(x.comps || []).map(k => k.n || 0)) || (x.comps || []).length || 4);
+    const hechas = fs.filter(f => f.r.ord).sort((a, c) => a.r.ord - c.r.ord), faltan = fs.filter(f => !f.r.ord);
+    const suma = hechas.reduce((a, f) => a + (num(f.r.l) || 0), 0);
+    const fila = f => { const r = f.r; if (r.n == null) r.n = f.n0;
+      return `<tr class="${bgEsp(f.esp)}"><td class="c2tc"><div class="c2nb">${Array.from({ length: nMax }, (_, k) => String(k + 1)).map(k => `<button class="${r.n === k ? 'on' : ''}" data-c2nc="${esc(x.id)}|${esc(f.id)}|${k}">${k}</button>`).join('')}</div></td>
+        <td class="c2tn"><b>${esc((ESPS[f.esp] || f.esp).replace('Oveja D.O.', 'D.O.'))}</b> ${tq(f.id)}</td>
+        <td class="c2tl">${litInp(x, f.id, 'l', r.l)}</td><td class="c2td">${depBtns(x, f.id, 'dep', r.dep)}</td>
+        <td class="c2tx"><button class="lnk" data-c2ord="${esc(x.id)}|${esc(f.id)}" title="No era esta: quitarla">✕</button></td></tr>
+      ${r.arr ? `<tr class="${bgEsp(f.esp)} c2arrrow"><td></td><td class="c2tn small">↳ arrastre</td><td class="c2tl">${litInp(x, f.id, 'arrL', r.arrL)}</td><td class="c2td">${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}</td>
+        <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Quitar arrastre">✕</button></td></tr>`
+        : `<tr class="${bgEsp(f.esp)} c2arrrow"><td></td><td colspan="4"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" style="padding:2px 10px;min-height:30px">+ arrastre</button></td></tr>`}`; };
+    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
+        <button class="lnk" data-c2fuera="${esc(x.id)}" style="margin-left:auto;width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>
+      ${faltan.length ? `<div class="c2pend"><span class="tiny">${hechas.length ? 'Siguiente que descargas' : 'Toca en el orden en que descargas'}</span><div class="row" style="gap:6px;flex-wrap:wrap">${faltan.map(f => `<button class="c2chip ${bgEsp(f.esp)}" data-c2ord="${esc(x.id)}|${esc(f.id)}"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tq(f.id)}</button>`).join('')}</div></div>` : ''}
+      ${hechas.length ? `<table class="c2tab"><thead><tr><th>Comp.</th><th>Cisterna</th><th>Litros</th><th>Depósito</th><th></th></tr></thead><tbody>${hechas.map(fila).join('')}</tbody></table>` : ''}
+      <div class="c2tot"><div><span class="tiny">Total contador</span><div class="unit"><input inputmode="numeric" enterkeyhint="done" style="font-size:24px" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div></div>
+        <span class="small" data-c2suma="${esc(x.id)}">Suma: ${fmt(suma)} l</span></div>
+      ${x.recep ? '<p class="small muted" style="margin:0">Este camión ya está guardado en Contadores: aquí solo es práctica.</p>' : ''}</div>`; };
+  v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small muted" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <b>PRUEBA: no se guarda nada</b> en la hoja ni va al programa; lo que metas se queda solo en esta tablet. Las descargas reales se siguen pasando en Contadores.</p>
+      ${enHoja.length ? '<button class="btn ghost" id="c2vaciar" style="width:auto;min-height:36px;padding:4px 12px;margin-top:6px">Empezar la prueba de cero</button>' : ''}</div>
     ${enHoja.map((x, i) => bloque(x, i + 1)).join('')}
-    ${pend.length ? `<span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span><div class="g2">${pend.map(x => `<button class="farm" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${hayBorrador(x, false) ? ' · <b style="color:var(--warn)">a medias en Contadores</b>' : ''}</span><span class="comps">${(x.comps || []).map(c => tq(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('')}</div>` : (enHoja.length ? '' : '<p class="muted">No hay camiones.</p>')}`;
+    ${enHoja.length ? '<div class="sep-blq"></div>' : ''}
+    <span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span>
+    <div class="g2">${pend.map(x => `<button class="farm${x.recep ? ' done' : ''}" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${x.recep ? ' · ya guardado (práctica)' : ''}</span><span class="comps">${(x.comps || []).map(c => tq(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>`;
   const pinta = () => { c2Escribir(); contadores2(v, u); };
   const xx = id => R.viajes.find(z => z.id === id);
+  if ($('#c2vaciar')) $('#c2vaciar').onclick = () => { if (!confirm2($('#c2vaciar'))) return; st.orden = []; st.t = {}; pinta(); scrollTo(0, 0); };
   v.querySelectorAll('[data-c2add]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.c2add); pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${b.dataset.c2add}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-c2fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.c2fuera; st.orden = st.orden.filter(z => z !== id); delete st.t[id]; pinta(); });
   v.querySelectorAll('[data-c2ord]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2ord.split('|'), t = st.t[vid], r = t.f[cid];
@@ -1606,12 +1605,10 @@ function contadores2(v, u) {
   v.querySelectorAll('[data-c2nc]').forEach(b => b.onclick = () => { const [vid, cid, k] = b.dataset.c2nc.split('|'); st.t[vid].f[cid].n = k; pinta(); });
   v.querySelectorAll('[data-c2dep]').forEach(b => b.onclick = () => { const [vid, cid, campo, s] = b.dataset.c2dep.split('|'); st.t[vid].f[cid][campo] = s; pinta(); });
   v.querySelectorAll('[data-c2arr]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arr.split('|'), r = st.t[vid].f[cid]; r.arr = !r.arr; if (!r.arr) { r.arrDep = ''; r.arrL = ''; } else { const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== r.dep); r.arrDep = mez ? mez.id : ''; } pinta(); });
-  const sumaDe = vid => filas(xx(vid)).reduce((a, f) => a + (num((st.t[vid].f[f.id] || {}).l) || 0), 0);
+  const sumaDe = vid => Object.values(st.t[vid].f).filter(z => z.ord).reduce((a, z) => a + (num(z.l) || 0), 0);
   v.querySelectorAll('[data-c2l]').forEach(inp => { inp.oninput = () => { const [vid, cid, campo] = inp.dataset.c2l.split('|'); st.t[vid].f[cid][campo] = inp.value.replace(/\D/g, ''); c2Escribir();
-    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.textContent = 'Suma de parciales: ' + fmt(sumaDe(vid)) + ' l'; }; });
+    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.textContent = 'Suma: ' + fmt(sumaDe(vid)) + ' l'; }; });
   v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { st.t[inp.dataset.c2tot].total = inp.value.replace(/\D/g, ''); c2Escribir(); });
-  v.querySelectorAll('[data-c2pad]').forEach(cv => { const id = cv.dataset.c2pad; padFirma(cv, 'c2|' + id, v.querySelector(`[data-c2est="${id}"]`), v.querySelector(`[data-c2fb="${id}"]`)); });
-  v.querySelectorAll('[data-c2cor]').forEach(b => b.onclick = () => recepCamion(xx(b.dataset.c2cor)));
   show('vRecep', 'Contadores 2' + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
 }
 /** Doble toque para acciones que quitan algo: el primero pregunta, el segundo hace. */

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=94">
+<link rel="manifest" href="manifest.json?v=95">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -347,7 +347,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v94 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v95 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1367,6 +1367,8 @@ document.addEventListener('focusin', e => { if (e.target.matches('input') && tac
 document.addEventListener('focusout', () => setTimeout(() => { if (!document.activeElement || !document.activeElement.matches('input')) document.body.classList.remove('kb'); }, 60));
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || !e.target.matches('input')) return;
+  // Recepción y agua: Intro guarda el dato y CIERRA el teclado (en la tablet ocupa media pantalla)
+  if (e.target.closest('#vRecepC, #vAgua')) { e.preventDefault(); e.target.dispatchEvent(new Event('change', { bubbles: true })); e.target.blur(); return; }
   const orden = ['lit', 'tmp', 'mue'], i = orden.indexOf(e.target.id);
   if (i < 0) return; e.preventDefault();
   if (i < orden.length - 1) $('#' + orden[i + 1]).focus(); else e.target.blur();
@@ -2125,6 +2127,7 @@ function recepRender() {
   }
   show('vRecepC', (E.porEsp ? 'Recepción calidad' : 'Recepción') + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor
     + (E.porEsp || x.otra ? '' : ` · Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${x.deca || '—'}`));
+  v.querySelectorAll('input').forEach(i => i.setAttribute('enterkeyhint', 'done'));   // la tecla Intro del teclado pone «Hecho»
   { const g = v.querySelector('.recgrid.rc'), d = $('#reDesl');   // flechas solo si hay compartimentos fuera de la pantalla
     if (g && d) { d.hidden = !(g.scrollWidth > g.clientWidth + 4);
       d.querySelectorAll('[data-desl]').forEach(b => b.onclick = () => { const c = g.firstElementChild; g.scrollBy({ left: (+b.dataset.desl) * ((c ? c.getBoundingClientRect().width : 300) + 12), behavior: 'smooth' }); }); } }

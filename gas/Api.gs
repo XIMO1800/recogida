@@ -21,10 +21,10 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, corregir: corregir, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
+      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, historicoCalidad: historicoCalidad, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
-      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
+      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
     const acciones = {};
@@ -39,10 +39,39 @@ function doPost(e) {
     }
     const res = fn(req, quien);
     if (quien !== cond && res && res.ok) res.firmado = String(quien.NOMBRE);
+    // Firma dibujada (lápiz) de la recepción o del registro de calidad: se guarda aparte, en FIRMAS
+    if (res && res.ok && req.firmaImg && /^(guardarRecepcion|guardarRecepCalidad)$/.test(req.accion)) {
+      try { guardarFirma_(req.accion === 'guardarRecepCalidad' ? 'CAL' : 'REC', String((req.recep || {}).viajeId || ''), res.fecha || ahora_('dd/MM/yyyy'), String(quien.NOMBRE), req.firmaImg); }
+      catch (e) { res.avisoFirma = 'La firma no se ha podido guardar: ' + e.message; }
+    }
     return json_(res);
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
+}
+
+/* ───────────── Firmas dibujadas ─────────────
+   Una fila por recepción (REC) o registro de calidad (CAL); al volver a guardar se sustituye. La imagen es un JPEG pequeño en
+   base64. Solo se lee al imprimir el parte (columna de fechas primero, y luego solo las celdas de ese día). */
+const CAB_FIRMAS = ['FECHA', 'HORA', 'TIPO', 'VIAJE_ID', 'USUARIO', 'IMAGEN'];
+function guardarFirma_(tipo, viajeId, fecha, usuario, img) {
+  if (!viajeId) return;
+  if (!/^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(String(img)) || String(img).length > 48000) throw new Error('firma no válida o demasiado grande');
+  const sh = hoja_('FIRMAS', CAB_FIRMAS), n = sh.getLastRow();
+  if (n > 1) {
+    const ids = sh.getRange(2, 3, n - 1, 2).getValues();
+    for (let i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === tipo && String(ids[i][1]) === viajeId) sh.deleteRow(i + 2);
+  }
+  sh.appendRow([String(fecha), ahora_('HH:mm'), tipo, viajeId, usuario, String(img)]);
+  sh.getRange(sh.getLastRow(), 1, 1, 2).setNumberFormat('@').setValues([[String(fecha), ahora_('HH:mm')]]);
+}
+/** Firmas de un día para el parte impreso: { 'REC|viaje' | 'CAL|registro': imagen } */
+function firmasDia(req) {
+  const sh = SS.getSheetByName('FIRMAS'); if (!sh || sh.getLastRow() < 2) return { ok: true, firmas: {} };
+  const n = sh.getLastRow() - 1, f = String(req.fecha || ahora_('dd/MM/yyyy'));
+  const cab = sh.getRange(2, 1, n, 4).getDisplayValues(), out = {};
+  cab.forEach(function (r, i) { if (String(r[0]) === f) out[String(r[2]) + '|' + String(r[3])] = String(sh.getRange(i + 2, 6).getValues()[0][0]); });
+  return { ok: true, firmas: out };
 }
 
 /* ───────────── Acciones ───────────── */
@@ -909,7 +938,7 @@ function guardarRecepcion(req, c) {
     if (prev) actualizar_('RECEPCION_CAMION', prev._fila, cam);
     else { const t = tabla_('RECEPCION_CAMION'); shC.getRange(shC.getLastRow() + 1, 1, 1, t.cab.length).setValues([t.cab.map(function (h) { return cam[h] !== undefined ? String(cam[h]) : ''; })]); }
     exportarDia_(fecha);
-    return { ok: true, fichero: cam.FICHERO, diferencia: cam.DIFERENCIA };
+    return { ok: true, fichero: cam.FICHERO, diferencia: cam.DIFERENCIA, fecha: cam.FECHA };
   } finally { lock.releaseLock(); }
 }
 /** RECEPCIÓN 2 · registro de CALIDAD por especie (FOR PR 7.-02): T, pH, ºD, visual, nº de compartimento de la cisterna, litros,

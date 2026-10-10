@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=87">
+<link rel="manifest" href="manifest.json?v=88">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v87 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v88 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1414,7 +1414,8 @@ async function recepcion(sinCargar) {
   // Lo que ha entrado hoy en cada silo según las recepciones guardadas
   const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => { x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })); });
   (R.agua || []).forEach(a => { silo[a.dep] = (silo[a.dep] || 0) + a.l; });
-  const pend = R.viajes.filter(x => !fuente(x)), hechos = R.viajes.filter(x => fuente(x));
+  const pend = R.viajes.filter(x => !fuente(x)), hechos = R.viajes.filter(x => fuente(x)).map((x, i) => [x, i])   // recibidos: en el orden en que se recepcionaron
+    .sort((a, b) => { const ha = String(fuente(a[0]).hora || '99:99'), hb = String(fuente(b[0]).hora || '99:99'); return ha < hb ? -1 : ha > hb ? 1 : a[1] - b[1]; }).map(z => z[0]);
   const tarjeta = x => `<button class="farm${fuente(x) ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
       <span class="sub">${hayBorrador(x, R2()) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${fuente(x) && D().calidad ? mezclaEstado(x) : ''}</span>
@@ -1624,7 +1625,8 @@ function enlazarParte(v) {
   if ($('#pPrint')) $('#pPrint').onclick = imprimirParte;
 }
 /** Parte en papel con el formato del FOR PR 7.-02: un bloque por camión, una línea por compartimento. */
-function imprimirParte() {
+async function imprimirParte() {
+  let firmas = {}; try { firmas = (await api('firmasDia', { fecha: R.dia })).firmas || {}; } catch (e) { /* sin firmas dibujadas: sale el nombre */ }
   const cams = listaRec().filter(x => fuente(x) && fuente(x).comps.length).sort((a, b) => { const ka = R2() ? ordCal(fuente(a)) : String(fuente(a).hora), kb = R2() ? ordCal(fuente(b)) : String(fuente(b).hora); return ka < kb ? -1 : 1; });
   const P = R.parte || {}, t = totEsp(), logo = ($('.logo img') || {}).src || '';
   const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, num1 = x => x === '' || x == null ? '' : String(x).replace('.', ',');
@@ -1639,7 +1641,7 @@ function imprimirParte() {
         <td class="cis"><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
-        ${i === 0 ? `<td rowspan="${nf}" class="firma"><div class="fu">${esc(src.usuario || '')}${R2() ? '' : ` <small>${esc(src.hora || '')}</small>`}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
+        ${i === 0 ? `<td rowspan="${nf}" class="firma"><div class="fu">${firmas[(R2() ? 'CAL|' : 'REC|') + x.id] ? `<img src="${firmas[(R2() ? 'CAL|' : 'REC|') + x.id]}" style="display:block;margin:0 auto;max-width:100%;max-height:52px">` : ''}${esc(src.usuario || '')}${R2() ? '' : ` <small>${esc(src.hora || '')}</small>`}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
       ${Array.from({ length: nf - comps.length }, () => `<tr class="r"><td class="cis"></td>${vacia}</tr>`).join('')}
       ${src.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(src.obs)}</small></td></tr>` : ''}</tbody></table>`;
   };
@@ -1826,7 +1828,24 @@ function recepCamion(x) {
 /* ── Borradores: lo que se va metiendo en un camión se guarda en la tablet hasta que se pulsa Guardar o «Borrar lo metido».
    Así se puede dejar un camión a medias (ir a Recepción calidad, a otro camión…) y al volver sigue todo como estaba. ── */
 const LS_BORR = 'rl_borradores_v1';
-const FIRMAS = {};   // PIN de firma por camión: se recuerda mientras la app esté abierta (no se guarda en la tablet) y se borra al guardar
+const FIRMAS = {};   // firma dibujada por camión (imagen): se recuerda mientras la app esté abierta y se borra al guardar
+/** Recuadro de firma: se dibuja con el lápiz o el dedo; la imagen se guarda en FIRMAS[clave] al levantar el lápiz. */
+function padFirma(cv, clave) {
+  const r = window.devicePixelRatio || 1, w = cv.clientWidth || 600, h = cv.clientHeight || 170;
+  cv.width = Math.round(w * r); cv.height = Math.round(h * r);
+  const g = cv.getContext('2d'); g.scale(r, r); g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  if (FIRMAS[clave]) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, w, h); im.src = FIRMAS[clave]; }
+  let pinta = false, ult = null, trazo = false;
+  const pt = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+  cv.onpointerdown = e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); pinta = true; ult = pt(e); g.beginPath(); g.arc(ult[0], ult[1], 1.2, 0, 7); g.fillStyle = '#111'; g.fill(); trazo = true; };
+  cv.onpointermove = e => { if (!pinta) return; e.preventDefault(); const p = pt(e); g.beginPath(); g.moveTo(ult[0], ult[1]); g.lineTo(p[0], p[1]); g.stroke(); ult = p; };
+  const fin = () => { if (!pinta) return; pinta = false; if (!trazo) return;
+    const o = document.createElement('canvas'); o.width = 480; o.height = Math.round(480 * h / w);   // imagen pequeña para la hoja
+    const og = o.getContext('2d'); og.fillStyle = '#fff'; og.fillRect(0, 0, o.width, o.height); og.drawImage(cv, 0, 0, o.width, o.height);
+    FIRMAS[clave] = o.toDataURL('image/jpeg', 0.6); const est = $('#reFirmaEst'); if (est) est.textContent = 'Firmado ✓'; };
+  cv.onpointerup = fin; cv.onpointercancel = fin; cv.onpointerleave = fin;
+  const bb = $('#reFirmaBorrar'); if (bb) bb.onclick = () => { delete FIRMAS[clave]; g.clearRect(0, 0, w, h); trazo = false; const est = $('#reFirmaEst'); if (est) est.textContent = 'Sin firmar'; };
+}
 const borrTodos = () => { try { return JSON.parse(localStorage.getItem(LS_BORR) || '{}'); } catch (e) { return {}; } };
 const borrClave = (x, porEsp) => (porEsp ? 'cal' : 'rec') + '|' + R.dia + '|' + x.id;
 const hayBorrador = (x, porEsp) => !!borrTodos()[borrClave(x, porEsp)];
@@ -1912,7 +1931,7 @@ function recepRender() {
       <div><span class="tiny">Parcial contador${ofi && c.decl && !E.porEsp ? ` · cisterna ${fmt(c.decl)} l` : ''}${c.pista ? ` <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.7">· en Recepción: ${fmt(+c.pista)} l</span>` : ''}</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px${c.auto ? ';color:var(--muted);opacity:.55;font-weight:500' : ''}"${c.auto ? ' title="Propuesto: escribe el real"' : ''} data-f="contador" data-i="${i}" inputmode="numeric" value="${esc(c.contador)}" placeholder="${c.pista ? esc(c.pista) : '0'}"><span>L</span></div></div>
       ${c.pista2 && !num(c.contador) ? `<div class="msg warn" style="padding:6px 10px">La cartilla trae ${fmt(c.pista2)} l de ${esc(ESPS[c.esp] || '')}${(E.ya || {})[c.esp] ? ' sin registrar' : ''} y el compartimento ${c.n} admite unos ${fmt(capN[c.n])} l: <b>ha habido un 2º viaje</b>. Escribe lo que se descarga ahora; lo demás, en otro registro de este camión.</div>` : ''}
       ${(() => { const cap = capDe(c), l = num(c.contador) || 0; return cap && l > cap + MARGEN_CAP ? `<div class="msg bad" style="padding:6px 10px">¡No cabe! ${fmt(l)} l de ${esc(ESPS[c.esp] || c.id)} y el compartimento ${nums(c).join(' + ')} de la cisterna admite ${fmt(cap)} l.</div>` : ''; })()}
-      </div><div class="cmid stack">
+      </div><div class="cmid stack" ${E.porEsp ? '' : 'hidden'}>
       <div class="mini5"><label><span class="tiny">T ºC</span><input class="sm" data-f="temp" data-i="${i}" inputmode="decimal" value="${esc(c.temp)}" placeholder="—"></label>
         <label><span class="tiny">pH</span><input class="sm" data-f="ph" data-i="${i}" inputmode="decimal" value="${esc(c.ph)}" placeholder="—"></label>
         <label><span class="tiny">Acidez ºD</span><input class="sm" data-f="dornic" data-i="${i}" inputmode="decimal" value="${esc(c.dornic)}" placeholder="—"></label>
@@ -1943,12 +1962,14 @@ function recepRender() {
       <div class="camgrid">
         <div><span class="tiny">Total contador del camión</span><div class="unit"><input class="big" style="font-size:34px;padding:4px 12px" id="reTot" inputmode="numeric" value="${esc(E.total)}" placeholder="0"><span>L</span></div>
           <div id="reSuma" class="small">${tot ? (Math.round(tot) === Math.round(suma) ? `<span class="d-ok">Cuadra con los parciales (${fmt(suma)} l)</span>` : `<span class="d-bad">No cuadra: parciales ${fmt(suma)} l (dif. ${fmt(tot - suma)} l)</span>`) : `Suma de parciales: ${fmt(suma)} l`}</div></div>
-        <div><span class="tiny">Limpieza cisterna</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.limpieza === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="limpieza" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
-        <div><span class="tiny">Limpieza filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
-        <div><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
+        <div ${E.porEsp ? '' : 'hidden'}><span class="tiny">Limpieza cisterna</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.limpieza === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="limpieza" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
+        <div ${E.porEsp ? '' : 'hidden'}><span class="tiny">Limpieza filtro</span><div class="tg">${['C', 'I'].map(k => `<button class="${E.filtro === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-ci="filtro" data-i="" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>
+        <div ${E.porEsp ? '' : 'hidden'}><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
       </div>
       <div id="reMsg" hidden></div>
-      ${ofi ? '' : `<div class="field" style="max-width:360px"><label class="lbl" for="reFirma">Firma: PIN de quien hace la recepción</label><input class="big" id="reFirma" type="password" inputmode="numeric" autocomplete="off" style="font-size:28px;letter-spacing:.3em" placeholder="••••" value="${esc(FIRMAS[borrClave(x, E.porEsp)] || '')}"></div>`}
+      ${ofi ? '' : `<div class="field" id="reFirmaBox" style="max-width:640px"><span class="lbl">Firma de quien hace la ${E.porEsp ? 'recepción (calidad)' : 'recepción'} · con el lápiz o el dedo</span>
+        <canvas id="reFirmaPad" style="width:100%;height:170px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
+        <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" id="reFirmaEst">${FIRMAS[borrClave(x, E.porEsp)] ? 'Firmado ✓' : 'Sin firmar'}</span><button class="btn ghost" id="reFirmaBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar firma</button></div></div>`}
       <button class="btn" id="reGuardar">${E.porEsp ? (ofi ? 'Guardar registro de calidad' : 'Firmar y guardar registro de calidad') : ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
       <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">
@@ -1995,7 +2016,7 @@ function recepRender() {
     if (E.porComp) { c.esp = ''; c.reps = []; } else if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
   $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => rehacer(recepRender);
   $('#reObs').oninput = e => { E.obs = e.target.value; };
-  if ($('#reFirma')) $('#reFirma').oninput = e => { FIRMAS[borrClave(x, E.porEsp)] = e.target.value.trim(); };
+  if ($('#reFirmaPad')) padFirma($('#reFirmaPad'), borrClave(x, E.porEsp));
   $('#reGuardar').onclick = async () => {
     const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
     const usados = desc.filter(c => num(c.contador) > 0);
@@ -2016,13 +2037,13 @@ function recepRender() {
     if (E.porEsp) {   // Recepción 2: guarda el registro de calidad
       if (!E.limpieza || !E.filtro) return err('Marca la limpieza de la cisterna y la del filtro (C o I).');
       const b = $('#reGuardar'); ocupado(b, 'Guardando…');
-      const firma = ofi ? '' : ($('#reFirma').value || '').trim();
-      if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar el registro.'); }
+      const firmaImg = ofi ? '' : FIRMAS[borrClave(E.x, true)] || '';
+      if (!ofi && !firmaImg) { libre(b); $('#reFirmaBox').scrollIntoView({ block: 'center' }); return err('Firma en el recuadro antes de guardar.'); }
       const recep = { viajeId: E.x.id, fecha: R.esHoy ? '' : R.dia, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, conductor: E.x.conductor,
         comps: usados.map(c => ({ id: c.id, esp: c.esp, ord: c.ord, nComp: c.nComp, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
           reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
-      try { const r = await api('guardarRecepCalidad', { recep, firma }); toast('Registro de calidad guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); borrarBorrador(E.x, true); delete FIRMAS[borrClave(E.x, true)]; R.ed = null; recepcion(); }
-      catch (e) { libre(b); if (/PIN de firma/.test(e.message)) { delete FIRMAS[borrClave(E.x, true)]; $('#reFirma').value = ''; } err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+      try { const r = await api('guardarRecepCalidad', { recep, firmaImg }); toast('Registro de calidad guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); borrarBorrador(E.x, true); delete FIRMAS[borrClave(E.x, true)]; R.ed = null; recepcion(); }
+      catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
       return;
     }
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
@@ -2032,10 +2053,10 @@ function recepRender() {
       comps: usados.map(c => ({ id: c.id, esp: c.esp, decl: c.decl, contador: Math.round(num(c.contador)), nComp: c.nComp, temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
         reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
     const b = $('#reGuardar'); ocupado(b, 'Guardando…');
-    const firma = ofi ? '' : ($('#reFirma').value || '').trim();
-    if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar la recepción.'); }
-    try { const r = await api('guardarRecepcion', { recep, firma }); toast('Recepción guardada' + (r.firmado ? ' · firmada por ' + r.firmado : '') + ' · fichero ' + r.fichero); borrarBorrador(E.x, false); delete FIRMAS[borrClave(E.x, false)]; R.ed = null; recepcion(); }
-    catch (e) { libre(b); if (/PIN de firma/.test(e.message)) { delete FIRMAS[borrClave(E.x, false)]; $('#reFirma').value = ''; } err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+    const firmaImg = ofi ? '' : FIRMAS[borrClave(E.x, false)] || '';
+    if (!ofi && !firmaImg) { libre(b); $('#reFirmaBox').scrollIntoView({ block: 'center' }); return err('Firma en el recuadro antes de guardar.'); }
+    try { const r = await api('guardarRecepcion', { recep, firmaImg }); toast('Recepción guardada' + (r.firmado ? ' · firmada por ' + r.firmado : '') + ' · fichero ' + r.fichero); borrarBorrador(E.x, false); delete FIRMAS[borrClave(E.x, false)]; R.ed = null; recepcion(); }
+    catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
   };
   if ($('#reAnular')) {
     $('#reAnular').onclick = () => { $('#reAnu').hidden = false; $('#reAnular').hidden = true; $('#reAnu').scrollIntoView({ block: 'center' }); $('#reAnuMot').focus(); };
@@ -2058,7 +2079,7 @@ function recepRender() {
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });
-    v.querySelectorAll('.pendc, #reGuardar, #reAnular, #reAnu, [data-unord], .field:has(#reFirma)').forEach(el => { el.hidden = true; });
+    v.querySelectorAll('.pendc, #reGuardar, #reAnular, #reAnu, [data-unord], #reFirmaBox').forEach(el => { el.hidden = true; });
     v.insertAdjacentHTML('afterbegin', '<div class="msg warn" style="margin:0">Calidad: aquí solo se marca la <b>mezcla</b> de cada leche (se guarda al pulsar). Lo demás es de recepción.</div>');
     v.insertAdjacentHTML('beforeend', '<button class="btn sec" id="calVolver">Volver a la lista</button>');
     $('#calVolver').onclick = () => recepcion(true);

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=100">
+<link rel="manifest" href="manifest.json?v=101">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -152,6 +152,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+.plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
 .dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
 .hist tr.tot-sep td{padding:0!important;height:5px;background:var(--brand)!important;border:0!important;border-radius:3px!important}.hist tr.tot-row td{padding-top:12px;padding-bottom:12px;font-weight:800;background:var(--brand-soft);border-color:var(--brand)!important}.hist tr.tot-row td:first-child{border-left-color:var(--brand)}.hist tr.tot-row td:first-child b{color:var(--brand);letter-spacing:.06em}
 .farm.done[data-v2]{background:#fff;border-color:#e3b54d;box-shadow:inset 6px 0 0 #c98a00}.farm.done[data-v2] .st{color:#8a5a00}
@@ -349,7 +350,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v100 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v101 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -395,7 +396,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
   if (U.view === 'vRecepC') guardarBorrador();   // lo metido en el camión se queda guardado en la tablet
   R.modo = R.modo === 'esp' ? '' : 'esp'; R.ed = null; recepcion();
-  toast(R.modo === 'esp' ? 'Recepción calidad' : 'Recepción');
+  toast(R.modo === 'esp' ? 'Recepción' : 'Contadores');
 });
 const CFG = () => D().config;
 const misRutas = () => Object.keys(D().rutas).sort();
@@ -1144,9 +1145,9 @@ function marcoEsc() {
   const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
-  const RC = ['recep2', 'Recepción calidad', 'Registro de calidad por camión', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']];
-  const it = cal ? [RC, HC, ['recep', 'Recepción', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Recepción', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']],
+  const RC = ['recep2', 'Recepción', 'Registro por camión (calidad)', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']];
+  const it = cal ? [RC, HC, ['recep', 'Contadores', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
+    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Contadores', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']],
       RC, ofi && HC, ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
   $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
     <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!/^recep/.test(k) || (k === 'recep2') === (R.modo === 'esp')) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
@@ -1428,7 +1429,7 @@ async function recepcion(sinCargar) {
   const v = $('#vRecep'), u = D().usuario;
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
-    show('vRecep', R.modo === 'esp' ? 'Recepción calidad' : 'Recepción de leche', u.nombre);
+    show('vRecep', R.modo === 'esp' ? 'Recepción' : 'Contadores', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
       R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
       // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
@@ -1482,7 +1483,7 @@ async function recepcion(sinCargar) {
   $('#reSalir').onclick = () => { if (D().oficina) return oficina(true); salir(); };
   enlazarDiaNav();
   enlazarParte(v);
-  show('vRecep', R.modo === 'esp' ? 'Recepción calidad' : 'Recepción de leche', u.nombre);
+  show('vRecep', R.modo === 'esp' ? 'Recepción' : 'Contadores', u.nombre);
 }
 /* ═══════════ Histórico de viajes y DeCA (oficina): todo lo guardado, por fechas ═══════════ */
 const Hh = { desde: '', hasta: '', lista: null, cond: '', q: '' };
@@ -1790,7 +1791,7 @@ function recep2Lista(v, u) {
   if (R.abrirTras) { const x = l.find(z => z.id === R.abrirTras); R.abrirTras = null; if (x && x.cal) return recepCamion2(x); }   // desde el histórico: se abre ese registro
   enlazarDiaNav();
   enlazarParte(v);
-  show('vRecep', 'Recepción calidad', u.nombre);
+  show('vRecep', 'Recepción', u.nombre);
 }
 function recepOtra2() {
   const v = $('#vRecepC'), o = U.otra2 = U.otra2 || { prov: '', mat: '', n: 1 };
@@ -1819,7 +1820,7 @@ function recepCamion2(x) {
   const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
-  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
   conBorrador(x);
   recepRender();
 }
@@ -1961,7 +1962,7 @@ function recepRender() {
     <div class="recgrid rc${E.porEsp ? ' r2' : ''}" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
-        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
+        <div class="cel" style="flex-wrap:nowrap;white-space:nowrap;gap:8px;justify-content:center;align-self:end;min-height:38px;padding-top:0"><b ${E.porComp ? `data-plit="${i}" class="plit${c.tapL ? ' on' : ''}" title="Toca para poner los litros de la cartilla; otra vez, para quitarlos"` : ''}>${esc(ESPS[c.esp] || c.esp || '')}</b>${E.porEsp ? '' : ' ' + tq(c.id)}</div>
         ${E.porComp ? `<div class="cel ncel" style="align-items:center"><span class="tiny">Comp. cisterna</span><b style="font-size:24px">${c.n}</b></div>` : ''}<div class="cel ncel" ${E.porComp ? 'hidden' : ''}><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: E.nMax }, (_, k) => String(k + 1)).map(k => `<button class="${nums(c).includes(k) ? 'on' + (choca(c, k) ? ' bad' : '') : ''}" data-nc="${k}" data-i="${i}" title="Compartimento ${k} de la cisterna (1 = junto a la cabina)${E.porEsp ? '; puedes marcar varios' : ''}">${k}</button>`).join('')}</div></div>
       </div>
       ${nums(c).some(k => choca(c, k)) ? `<div class="msg bad" style="padding:6px 10px">El compartimento ${nums(c).filter(k => choca(c, k)).join(', ')} de la cisterna está puesto también en ${desc.filter(z => z !== c && nums(z).some(k => nums(c).includes(k))).map(z => E.porEsp ? ESPS[z.esp] : z.id).join(', ')}.</div>` : ''}
@@ -2048,6 +2049,13 @@ function recepRender() {
       if (lit > 0 && cap && lit > cap + MARGEN_CAP) c.pista2 = lit; else if (lit > 0) { c.contador = String(lit); c.auto = true; } }
     if (!c.reps.length && R.deps.some(d => String(d.id) === DEP[e])) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; recepRender();
     setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.pesp}"]`); if (inp) enfoca(inp); }, 50); });
+  // Recepción: tocar el nombre de la leche pone los litros de esa especie según la cartilla de la ruta (menos lo ya puesto); otra vez, se quitan
+  v.querySelectorAll('[data-plit]').forEach(b => b.onclick = () => { const c = C(b.dataset.plit);
+    if (c.tapL) { c.contador = ''; c.tapL = false; c.auto = false; return recepRender(); }
+    const e = c.esp, enOtros = desc.filter(z => z !== c && z.esp === e).reduce((a, z) => a + (num(z.contador) || 0), 0);
+    const lit = Math.round((E.cartTap || {})[e] || 0) - Math.round((E.ya || {})[e] || 0) - enOtros;
+    if (!(lit > 0)) { toast('La cartilla no trae más ' + (ESPS[e] || '') + ' para este camión'); return; }
+    c.contador = String(lit); c.tapL = true; c.auto = false; c.pista2 = 0; recepRender(); });
   v.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { const c = C(b.dataset.sel); c.ord = desc.length + 1; recepRender(); setTimeout(() => { const inp = v.querySelector(`[data-f="contador"][data-i="${b.dataset.sel}"]`); if (inp) enfoca(inp); }, 50); });
   v.querySelectorAll('[data-unord]').forEach(b => b.onclick = () => { const c = C(b.dataset.unord), o = c.ord; c.ord = 0; E.comps.forEach(z => { if (z.ord > o) z.ord--; });
     if (E.porComp) { c.esp = ''; c.reps = []; } else if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
@@ -2133,7 +2141,7 @@ function recepRender() {
     $('#reBorrarNo').onclick = () => { $('#reBorrar').hidden = false; $('#reBorrarSi').hidden = true; };
     $('#reBorrarOk').onclick = borrarTodo;
   }
-  show('vRecepC', (E.porEsp ? 'Recepción calidad' : 'Recepción') + (R.esHoy === false ? ' · ' + R.dia : ''), x.conductor + (x.matricula ? ' · ' + x.matricula : '')
+  show('vRecepC', (E.porEsp ? 'Recepción' : 'Contadores') + (R.esHoy === false ? ' · ' + R.dia : ''), x.conductor + (x.matricula ? ' · ' + x.matricula : '')
     + (E.porEsp || x.otra ? '' : ` · Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${x.deca || '—'}`));
   v.querySelectorAll('input').forEach(i => i.setAttribute('enterkeyhint', 'done'));   // la tecla Intro del teclado pone «Hecho»
   { const g = v.querySelector('.recgrid.rc'), d = $('#reDesl');   // flechas solo si hay compartimentos fuera de la pantalla

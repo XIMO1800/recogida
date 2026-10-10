@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=84">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v83 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v84 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -351,6 +351,8 @@ const labelEsp = e => e === 'D' ? 'Oveja D.O.' : (SP[e] || e);
 const D = () => S.datos;
 /* Pantalla siempre encendida en la tablet de recepción (usuarios de RECEPCION o CALIDAD): no se apaga sola mientras la app
    está abierta; se apaga solo con el botón de la tablet. Al volver a encenderla, se vuelve a pedir. */
+// Dejar girar la pantalla también en la app instalada (aunque Android aún tenga el manifiesto antiguo, que la fijaba en vertical)
+try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('any').catch(() => {}); } catch (e) {}
 let bloqueoPantalla = null;
 async function pantallaEncendida() {
   try {

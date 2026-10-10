@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=84">
+<link rel="manifest" href="manifest.json?v=85">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -149,7 +149,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm .name{font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .farm .sub{font-size:14px;color:var(--muted)}
 .farm .st{font-size:15px;font-weight:700;text-align:right;flex:none}
-.farm.done{background:var(--surface2)}
+.farm.done{background:var(--surface2)}.farm.ya{background:#e6f2ea;border-color:#7fb48f;box-shadow:inset 6px 0 0 var(--ok)}.ya-txt{color:var(--ok);font-weight:700}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
 .farm.skip{opacity:.7}
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v84 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v85 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1725,12 +1725,12 @@ function recep2Lista(v, u) {
   });
   R.l2 = l;
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
-  const tarjeta = x => `<button class="farm${x.cal ? ' done' : ''}" data-v2="${esc(x.id)}"><span class="main">
+  const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
-      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? ` · <b>${x.veces === 1 ? '1 viaje' : x.veces + ' viajes'} hoy</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
-      <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : 'Registrar'}</span></button>`;
+      <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : x.veces ? '<span class="ya-txt">Otro viaje</span>' : 'Registrar'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado ${R.esHoy ? 'hoy' : 'el ' + esc(R.dia)} (registro de calidad)</span>
       <div class="tally">${R.deps.map(d => { const k = contenidoDep(d.id); return `<button class="dep-card" data-dep="${esc(d.id)}"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(k.total)}</b>
         <small>${k.tipo ? '<b>' + esc(k.tipo) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(k.esps)}</button>`; }).join('')}</div></div>`;

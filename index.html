@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=89">
+<link rel="manifest" href="manifest.json?v=91">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -298,6 +298,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
     <div class="bar">
       <button class="back" id="back" aria-label="Volver" hidden>‹</button>
       <div class="bar-t"><b id="barTitle">Recogida</b><span id="barSub"></span></div>
+      <button class="back" id="barBorrar" hidden title="Borrar lo metido en este camión (sin guardar)" style="width:auto;padding:0 12px;font-size:20px">🗑</button>
       <button class="decabtn" id="decaBtn" hidden aria-label="Mostrar DeCA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/></svg>DeCA</button>
     </div>
   </div>
@@ -337,7 +338,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v89 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v91 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -482,6 +483,7 @@ function show(v, title, sub) {
   const misma = U.view === v && $('#barTitle').textContent === title && $('#barSub').textContent === (sub || ''), y = window.scrollY;
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   document.body.classList.toggle('ancho', ['vRecep', 'vRecepC', 'vAgua', 'vDep'].includes(v));
+  if ($('#barBorrar')) { $('#barBorrar').hidden = true; $('#barBorrar').onclick = null; }
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || '';
   $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));
@@ -1929,11 +1931,11 @@ function recepRender() {
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);
   const tot = num(E.total) || 0;
   const ci = (name, val, i) => `<div class="row" style="gap:6px">${['C', 'I'].map(k => `<button class="btn ${val === k ? '' : 'sec'}" data-ci="${name}" data-i="${i == null ? '' : i}" data-val="${k}" style="min-height:44px;padding:6px 14px;${val === k && k === 'I' ? 'background:var(--bad)' : ''}">${k === 'C' ? 'C · correcto' : 'I · incorrecto'}</button>`).join('')}</div>`;
-  v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px">
+  v.innerHTML = `<div class="card stack" style="gap:4px;padding:10px 14px" ${E.porEsp || x.otra || x.recep ? '' : 'hidden'}>
       <div class="route-head"><h2 style="font-size:24px"><span class="mono">${esc(x.matricula || '—')}</span> <span class="muted" style="font-size:18px">${esc(x.conductor)}</span></h2></div>
       <p class="small muted">${E.porComp ? (x.otra ? `Otra entrada · ${x.comps.length} compartimento${x.comps.length > 1 ? 's' : ''}` : esc(x.desc || x.comps.length + ' compartimentos')) + (E.viajeRef ? ` · litros propuestos (en gris) de la cartilla del viaje de las ${esc(E.viajeRef)}` : '') : x.otra ? 'Otra entrada' : `Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${esc(x.deca)}`}${x.recep ? ` · <b>ya recibido ${esc(x.recep.hora)}${x.recep.usuario ? ' por ' + esc(x.recep.usuario) : ''}</b>: al guardar se rehace` : ''}</p>
       ${x.otra && !E.porComp ? `<p class="small" style="margin:0">Cisterna externa: cada compartimento con su contador, T, pH y ºD. Para el programa y el laboratorio cuenta como <b>un solo destino por especie</b> (${[...new Set(E.comps.map(c => 'V' + c.esp))].join(', ')}): suma de litros, media ponderada y hasta 3 depósitos.</p>` : ''}
-      <p class="small muted">${E.porComp ? 'Di qué leche lleva cada compartimento y rellena sus datos. Si alguno viene vacío o no se descarga en este viaje, déjalo sin tocar.</p>' : ''}<p class="small muted" ${E.porComp ? 'hidden' : ''}>Toca cada compartimento <b>cuando empieces a descargarlo</b> (así queda el orden real). Al terminar, el <b>total</b> del contador.</p></div>
+      <p class="small muted">${E.porComp ? 'Di qué leche lleva cada compartimento y rellena sus datos. Si alguno viene vacío o no se descarga en este viaje, déjalo sin tocar.</p>' : ''}</div>
     <div class="recgrid rc" style="--n:${Math.min(Math.max(E.comps.length, 1), 4)}">${desc.map(c => [c, E.comps.indexOf(c)]).map(([c, i]) => `<div class="card stack ${bgEsp(c.esp)}" style="border-left:6px solid var(--cs,#a39a9c);gap:0;padding:0"><div class="ctop stack">
       <div class="chead">
         ${E.porComp ? '' : `<span class="ordd" title="Orden de descarga">${c.ord}º</span>`}
@@ -2097,17 +2099,27 @@ function recepRender() {
     v.insertAdjacentHTML('beforeend', '<button class="btn sec" id="calVolver">Volver a la lista</button>');
     $('#calVolver').onclick = () => recepcion(true);
   }
-  if (E.tocado && !soloCal) {   // hay datos metidos sin guardar: aviso arriba y botón para borrarlos
-    v.insertAdjacentHTML('afterbegin', `<div class="msg warn" style="margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap" id="reBorrBox">
-      <span style="flex:1 1 220px"><b>A medias, sin guardar.</b> ${E.recuperado ? 'Recuperado lo metido a las ' + esc(E.recuperado) + '. ' : ''}Se queda en esta tablet aunque salgas, hasta que pulses Guardar.</span>
-      <button class="btn ghost" id="reBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar lo metido</button>
-      <span id="reBorrarSi" hidden><b>¿Seguro?</b> <button class="btn" id="reBorrarOk" style="width:auto;min-height:40px;padding:4px 14px;background:var(--bad)">Sí, borrar</button>
-      <button class="btn ghost" id="reBorrarNo" style="width:auto;min-height:40px;padding:4px 14px">No</button></span></div>`);
+  const borrarTodo = () => { borrarBorrador(x, E.porEsp); delete FIRMAS[borrClave(x, E.porEsp)]; toast('Borrado lo metido'); const x0 = Object.assign({}, x); R.ed = null; E.porComp ? recepCamion2(x0) : recepCamion(x0); };
+  if (E.tocado && !soloCal && !E.porEsp) U.borrarBarra = borrarTodo; else U.borrarBarra = null;
+  if (E.tocado && !soloCal && E.porEsp) {   // hay datos metidos sin guardar: papelera junto a la matrícula para borrarlos
+    const rh = v.querySelector('.route-head');
+    rh.style.cssText += ';display:flex;align-items:center;gap:10px';
+    rh.insertAdjacentHTML('beforeend', `<span style="margin-left:auto;display:flex;align-items:center;gap:8px" id="reBorrBox">
+      <button class="btn ghost" id="reBorrar" title="Borrar lo metido en este camión (sin guardar)" style="width:auto;min-height:40px;padding:4px 12px;font-size:20px">🗑</button>
+      <span id="reBorrarSi" hidden style="display:flex;align-items:center;gap:6px"><b>¿Borrar lo metido?</b> <button class="btn" id="reBorrarOk" style="width:auto;min-height:40px;padding:4px 14px;background:var(--bad)">Sí</button>
+      <button class="btn ghost" id="reBorrarNo" style="width:auto;min-height:40px;padding:4px 14px">No</button></span></span>`);
     $('#reBorrar').onclick = () => { $('#reBorrar').hidden = true; $('#reBorrarSi').hidden = false; };
     $('#reBorrarNo').onclick = () => { $('#reBorrar').hidden = false; $('#reBorrarSi').hidden = true; };
-    $('#reBorrarOk').onclick = () => { borrarBorrador(x, E.porEsp); delete FIRMAS[borrClave(x, E.porEsp)]; toast('Borrado lo metido'); const x0 = Object.assign({}, x); R.ed = null; E.porComp ? recepCamion2(x0) : recepCamion(x0); };
+    $('#reBorrarOk').onclick = borrarTodo;
   }
-  show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor);
+  show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor
+    + (E.porEsp || x.otra ? '' : ` · Ruta ${String(x.rutas).split(',').map(r => +r).join(' y ')} · DeCA ${x.deca || '—'}`));
+  if (U.borrarBarra) {   // Recepción: papelera en la franja roja; primer toque pregunta, segundo borra
+    const bb = $('#barBorrar'); bb.hidden = false; bb.textContent = '🗑'; bb.style.background = '';
+    bb.onclick = () => { if (bb.dataset.ok === '1') { bb.dataset.ok = ''; return U.borrarBarra(); }
+      bb.dataset.ok = '1'; bb.textContent = '¿Borrar lo metido? Toca otra vez'; bb.style.background = 'var(--bad)'; bb.style.fontSize = '15px';
+      clearTimeout(bb.t); bb.t = setTimeout(() => { bb.dataset.ok = ''; bb.textContent = '🗑'; bb.style.background = ''; bb.style.fontSize = '20px'; }, 4000); };
+  }
   guardarBorrador();
 }
 

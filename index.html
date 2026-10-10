@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=111">
+<link rel="manifest" href="manifest.json?v=112">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -164,7 +164,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .c2nb button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.c2tn{font-size:16px;white-space:nowrap;text-align:left}.c2tl{width:24%}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 30px 5px 10px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:left}.c2l span,.c2tot .unit span{right:10px;font-size:16px}
 .c2td{width:34%}.c2deps{display:flex;gap:3px}.c2deps button{flex:1;min-width:0;min-height:40px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:17px;font-family:var(--mono)}
 .c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}.c2tx{width:1%}
-.c2ht{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}.c2ht .unit{width:150px}.c2ht input{width:100%;font-size:20px;font-weight:700;padding:3px 28px 3px 8px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2ht .unit span{right:9px;font-size:15px}.c2cuad{min-height:14px;text-transform:none;letter-spacing:0}.c2acc{display:flex;gap:4px;align-items:center}.c2acc .lnk{padding:4px 8px;min-height:34px;white-space:nowrap}
+.c2ht{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}.c2ht .unit{width:180px}.c2ht input{width:100%;font-size:20px;font-weight:700;padding:3px 28px 3px 8px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2ht .unit span{right:9px;font-size:15px}.c2cuad{min-height:14px;text-transform:none;letter-spacing:0}.c2acc{display:flex;gap:4px;align-items:center}.c2acc .lnk{padding:4px 8px;min-height:34px;white-space:nowrap}
 
 .sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
@@ -369,7 +369,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v111 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v112 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1581,7 +1581,7 @@ function contadores2(v, u) {
       ${r.arr ? `<tr class="${bgEsp(f.esp)} c2arrrow"><td></td><td class="c2tn small">↳ arrastre</td><td class="c2tl">${litInp(x, f.id, 'arrL', r.arrL)}</td><td class="c2td">${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}</td>
         <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Quitar arrastre">✕</button></td></tr>`
         : ''}`; };
-    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
+    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
         <div class="c2ht"><span class="tiny">Total contador</span><div class="unit"><input inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
           <span class="tiny c2cuad" data-c2suma="${esc(x.id)}">${c2Cuad(t.total, suma)}</span></div>
         <button class="lnk" data-c2fuera="${esc(x.id)}" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>

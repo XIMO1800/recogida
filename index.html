@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=86">
+<link rel="manifest" href="manifest.json?v=87">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -324,7 +324,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v86 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v87 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -365,9 +365,10 @@ document.addEventListener('visibilitychange', pantallaEncendida);
 ['click', 'touchstart'].forEach(t => document.addEventListener(t, pantallaEncendida, { passive: true }));
 setInterval(pantallaEncendida, 60000);
 /* Pruebas: quien hace recepción toca el logotipo en la lista de Recepción y pasa a Recepción calidad (y al revés).
-   Solo desde la lista, para no perder un camión a medio rellenar. */
+   Desde un camión a medias también: lo metido se queda en la tablet (borrador) y se recupera al volver a abrirlo. */
 document.addEventListener('click', e => {
-  if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || U.view !== 'vRecep') return;
+  if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
+  if (U.view === 'vRecepC') guardarBorrador();   // lo metido en el camión se queda guardado en la tablet
   R.modo = R.modo === 'esp' ? '' : 'esp'; R.ed = null; recepcion();
   toast(R.modo === 'esp' ? 'Recepción calidad' : 'Recepción');
 });
@@ -1416,7 +1417,7 @@ async function recepcion(sinCargar) {
   const pend = R.viajes.filter(x => !fuente(x)), hechos = R.viajes.filter(x => fuente(x));
   const tarjeta = x => `<button class="farm${fuente(x) ? ' done' : ''}" data-v="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula)}</span> · ${esc(x.conductor)}${x.otra ? '' : ' · ruta ' + String(x.rutas).split(',').map(r => +r).join(' y ')}</span>
-      <span class="sub">${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${fuente(x) && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${hayBorrador(x, R2()) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.fecha !== hoyTxt ? esc(x.fecha) + ' · ' : ''}${x.otra ? 'Otra entrada' : 'DeCA ' + esc(x.deca) + (/CURSO/.test(x.estado) ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : '')}${fuente(x) && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${(R2() && !x.otra ? espViaje(x).map(e => prefViaje(x) + e) : fuente(x) ? fuente(x).comps.map(c => c.id) : x.comps.map(c => c.id)).map(tq).join(' ')}</span></span>
       <span class="st num">${fuente(x) ? `${fmt(fuente(x).total || fuente(x).comps.reduce((a, c) => a + c.contador, 0))} l<br><span class="small">${esc(fuente(x).hora)}</span>` : R2() ? 'Registrar' : 'Recibir'}</span></button>`;
   const depHtml = `<div class="card stack"><span class="lbl">Depósitos de leche · entrado hoy</span>
@@ -1729,7 +1730,7 @@ function recep2Lista(v, u) {
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
-      <span class="sub">${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
       <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : x.veces ? '<span class="ya-txt">Otro viaje</span>' : 'Registrar'}</span></button>`;
@@ -1781,6 +1782,7 @@ function recepCamion2(x) {
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
   R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  conBorrador(x);
   recepRender();
 }
 function recepCamion(x) {
@@ -1818,8 +1820,36 @@ function recepCamion(x) {
   base.forEach(b => { if (!comps.find(c => c.id === b.id)) comps.push({ id: b.id, esp: b.esp, decl: b.decl, nComp: nBase(b.id), ord: 0, contador: litR1(b.esp), auto: !!litR1(b.esp), pista: '', temp: '', ph: '', dornic: '', visual: '', reps: depDe(b.esp) }); });
   if (x.unico) comps.forEach(c => { c.ord = 1; });
   R.ed = { x, comps, porEsp, nMax: Math.min(4, x.otra ? 4 : (Math.max(x.nCompCam || 0, ...base0.map(b => b.n || 0)) || base0.length)), total: prev && prev.total ? String(prev.total) : '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
+  conBorrador(x);
   recepRender();
 }
+/* ── Borradores: lo que se va metiendo en un camión se guarda en la tablet hasta que se pulsa Guardar o «Borrar lo metido».
+   Así se puede dejar un camión a medias (ir a Recepción calidad, a otro camión…) y al volver sigue todo como estaba. ── */
+const LS_BORR = 'rl_borradores_v1';
+const FIRMAS = {};   // PIN de firma por camión: se recuerda mientras la app esté abierta (no se guarda en la tablet) y se borra al guardar
+const borrTodos = () => { try { return JSON.parse(localStorage.getItem(LS_BORR) || '{}'); } catch (e) { return {}; } };
+const borrClave = (x, porEsp) => (porEsp ? 'cal' : 'rec') + '|' + R.dia + '|' + x.id;
+const hayBorrador = (x, porEsp) => !!borrTodos()[borrClave(x, porEsp)];
+function guardarBorrador() {
+  const E = R.ed; if (!E || !E.tocado) return;
+  const t = borrTodos(); t[borrClave(E.x, E.porEsp)] = { ed: E, h: new Date().toTimeString().slice(0, 5), dia: R.dia };
+  try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {}
+}
+function borrarBorrador(x, porEsp) { const t = borrTodos(); delete t[borrClave(x, porEsp)]; try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {} }
+function conBorrador(x) {   // al abrir un camión: si hay algo a medias, se recupera tal cual
+  const b = borrTodos()[borrClave(x, R.ed.porEsp)];
+  if (b && b.ed) R.ed = Object.assign(b.ed, { x: Object.assign({}, b.ed.x, x), tocado: true, recuperado: b.h });
+}
+(() => {   // los borradores de hace más de 3 días se tiran
+  const t = borrTodos(), lim = Date.now() - 3 * 864e5; let cambia = false;
+  Object.keys(t).forEach(k => { const [d, m, y] = String(t[k].dia || '').split('/').map(Number); if (!y || new Date(y, m - 1, d).getTime() < lim) { delete t[k]; cambia = true; } });
+  if (cambia) try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {}
+})();
+['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, e => {
+  if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar')) return;
+  if (ev === 'click' && !e.target.closest('button')) return;
+  R.ed.tocado = true; setTimeout(guardarBorrador, 0);
+}, true));
 function recepRender() {
   const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
@@ -1918,7 +1948,7 @@ function recepRender() {
         <div><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
       </div>
       <div id="reMsg" hidden></div>
-      ${ofi ? '' : `<div class="field" style="max-width:360px"><label class="lbl" for="reFirma">Firma: PIN de quien hace la recepción</label><input class="big" id="reFirma" type="password" inputmode="numeric" autocomplete="off" style="font-size:28px;letter-spacing:.3em" placeholder="••••"></div>`}
+      ${ofi ? '' : `<div class="field" style="max-width:360px"><label class="lbl" for="reFirma">Firma: PIN de quien hace la recepción</label><input class="big" id="reFirma" type="password" inputmode="numeric" autocomplete="off" style="font-size:28px;letter-spacing:.3em" placeholder="••••" value="${esc(FIRMAS[borrClave(x, E.porEsp)] || '')}"></div>`}
       <button class="btn" id="reGuardar">${E.porEsp ? (ofi ? 'Guardar registro de calidad' : 'Firmar y guardar registro de calidad') : ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
       <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">
@@ -1965,6 +1995,7 @@ function recepRender() {
     if (E.porComp) { c.esp = ''; c.reps = []; } else if (x.otra) E.comps.splice(E.comps.indexOf(c), 1); recepRender(); });
   $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => rehacer(recepRender);
   $('#reObs').oninput = e => { E.obs = e.target.value; };
+  if ($('#reFirma')) $('#reFirma').oninput = e => { FIRMAS[borrClave(x, E.porEsp)] = e.target.value.trim(); };
   $('#reGuardar').onclick = async () => {
     const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
     const usados = desc.filter(c => num(c.contador) > 0);
@@ -1990,8 +2021,8 @@ function recepRender() {
       const recep = { viajeId: E.x.id, fecha: R.esHoy ? '' : R.dia, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs, matricula: E.x.matricula, conductor: E.x.conductor,
         comps: usados.map(c => ({ id: c.id, esp: c.esp, ord: c.ord, nComp: c.nComp, contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
           reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
-      try { const r = await api('guardarRecepCalidad', { recep, firma }); toast('Registro de calidad guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); R.ed = null; recepcion(); }
-      catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+      try { const r = await api('guardarRecepCalidad', { recep, firma }); toast('Registro de calidad guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); borrarBorrador(E.x, true); delete FIRMAS[borrClave(E.x, true)]; R.ed = null; recepcion(); }
+      catch (e) { libre(b); if (/PIN de firma/.test(e.message)) { delete FIRMAS[borrClave(E.x, true)]; $('#reFirma').value = ''; } err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
       return;
     }
     if (!(tot > 0) && E.x.otra && usados.length === 1) { E.total = String(suma); return recepRender(), $('#reGuardar').click(); }   // otra entrada: el total es el parcial
@@ -2003,8 +2034,8 @@ function recepRender() {
     const b = $('#reGuardar'); ocupado(b, 'Guardando…');
     const firma = ofi ? '' : ($('#reFirma').value || '').trim();
     if (!ofi && !firma) { libre(b); $('#reFirma').focus(); return err('Escribe tu PIN para firmar la recepción.'); }
-    try { const r = await api('guardarRecepcion', { recep, firma }); toast('Recepción guardada' + (r.firmado ? ' · firmada por ' + r.firmado : '') + ' · fichero ' + r.fichero); R.ed = null; recepcion(); }
-    catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+    try { const r = await api('guardarRecepcion', { recep, firma }); toast('Recepción guardada' + (r.firmado ? ' · firmada por ' + r.firmado : '') + ' · fichero ' + r.fichero); borrarBorrador(E.x, false); delete FIRMAS[borrClave(E.x, false)]; R.ed = null; recepcion(); }
+    catch (e) { libre(b); if (/PIN de firma/.test(e.message)) { delete FIRMAS[borrClave(E.x, false)]; $('#reFirma').value = ''; } err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
   };
   if ($('#reAnular')) {
     $('#reAnular').onclick = () => { $('#reAnu').hidden = false; $('#reAnular').hidden = true; $('#reAnu').scrollIntoView({ block: 'center' }); $('#reAnuMot').focus(); };
@@ -2032,7 +2063,18 @@ function recepRender() {
     v.insertAdjacentHTML('beforeend', '<button class="btn sec" id="calVolver">Volver a la lista</button>');
     $('#calVolver').onclick = () => recepcion(true);
   }
+  if (E.tocado && !soloCal) {   // hay datos metidos sin guardar: aviso arriba y botón para borrarlos
+    v.insertAdjacentHTML('afterbegin', `<div class="msg warn" style="margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap" id="reBorrBox">
+      <span style="flex:1 1 220px"><b>A medias, sin guardar.</b> ${E.recuperado ? 'Recuperado lo metido a las ' + esc(E.recuperado) + '. ' : ''}Se queda en esta tablet aunque salgas, hasta que pulses Guardar.</span>
+      <button class="btn ghost" id="reBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar lo metido</button>
+      <span id="reBorrarSi" hidden><b>¿Seguro?</b> <button class="btn" id="reBorrarOk" style="width:auto;min-height:40px;padding:4px 14px;background:var(--bad)">Sí, borrar</button>
+      <button class="btn ghost" id="reBorrarNo" style="width:auto;min-height:40px;padding:4px 14px">No</button></span></div>`);
+    $('#reBorrar').onclick = () => { $('#reBorrar').hidden = true; $('#reBorrarSi').hidden = false; };
+    $('#reBorrarNo').onclick = () => { $('#reBorrar').hidden = false; $('#reBorrarSi').hidden = true; };
+    $('#reBorrarOk').onclick = () => { borrarBorrador(x, E.porEsp); delete FIRMAS[borrClave(x, E.porEsp)]; toast('Borrado lo metido'); const x0 = Object.assign({}, x); R.ed = null; E.porComp ? recepCamion2(x0) : recepCamion(x0); };
+  }
   show('vRecepC', 'Recepción' + (R.esHoy === false ? ' · ' + R.dia : ''), (x.matricula || '') + ' · ' + x.conductor);
+  guardarBorrador();
 }
 
 

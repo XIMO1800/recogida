@@ -6,7 +6,7 @@
   "start_url": "/recogida/",
   "scope": "/recogida/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f2efee",
   "theme_color": "#862133",
   "icons": [

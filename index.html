@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=118">
+<link rel="manifest" href="manifest.json?v=119">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -370,7 +370,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v118 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v119 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1586,7 +1586,7 @@ function contadores2(v, u) {
       ${r.arr ? `<tr class="${bgEsp(f.esp)} c2arrrow"><td></td><td class="c2tn small">↳ arrastre</td><td class="c2tl">${litInp(x, f.id, 'arrL', r.arrL)}</td><td class="c2td">${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}</td><td class="c2ta"></td>
         <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Quitar arrastre">✕</button></td></tr>`
         : ''}`; };
-    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span></span>
+    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b>${x.otra ? '' : ` <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>`}</span>
         <div class="c2ht"><span class="tiny">Total contador</span><div class="unit"><input inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
           <span class="tiny c2cuad" data-c2suma="${esc(x.id)}">${c2Cuad(t.total, suma)}</span></div>
         <button class="lnk" data-c2fuera="${esc(x.id)}" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>

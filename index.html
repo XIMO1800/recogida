@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=106">
+<link rel="manifest" href="manifest.json?v=108">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -154,6 +154,16 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+/* Contadores 2 (hoja en vertical) */
+.c2b{gap:8px;padding:10px 12px;border-top:5px solid var(--brand)}.c2b.hecho{border-top-color:#c98a00}
+.c2h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:18px}.c2n{background:var(--brand);color:#fff;border-radius:8px;padding:0 9px;font-weight:800}
+.c2f{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:8px;border-radius:12px;background:var(--cf,#fff);border:1.5px solid var(--cb,var(--line));border-left:6px solid var(--cs,#a39a9c)}
+.c2f:not(.on){opacity:.85}.c2ord{min-height:44px;border-radius:10px;border:2px dashed var(--line);background:#fff;font-weight:800;font-size:18px;font-family:inherit}.c2f.on .c2ord{border-style:solid;border-color:var(--brand);color:var(--brand)}
+.c2c{font-size:18px}.c2nc{display:flex;flex-direction:column;gap:2px}.c2nc .ncb{min-width:0}.c2nc .ncb button{min-width:38px}.c2pend{width:100%;cursor:pointer;font:inherit;text-align:left;opacity:.9}.c2go{font-weight:700;color:var(--brand);justify-self:end}.c2quita{grid-column:1/-1;justify-self:end}.c2deps{display:flex;gap:5px;grid-column:1/-1}.c2deps button{flex:1;min-height:44px;border-radius:10px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:19px;font-family:var(--mono)}
+.c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}
+.c2l{grid-column:1/-1}.c2l input{font-size:26px}.c2arr{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;border-top:1px dashed var(--cb,var(--line));padding-top:6px}.c2mas{grid-column:1/-1;justify-self:start}
+.c2tot{display:flex;flex-direction:column;gap:2px}.c2t{width:100%;border-collapse:collapse}.c2t th,.c2t td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}.c2t .n{text-align:right}.c2t td.c2o{font-weight:800}.c2t tbody tr{background:var(--cf,#fff)}
+
 .sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
 .dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
@@ -357,7 +367,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v106 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v108 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -402,8 +412,8 @@ setInterval(pantallaEncendida, 60000);
 document.addEventListener('click', e => {
   if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
   if (U.view === 'vRecepC') guardarBorrador();   // lo metido en el camión se queda guardado en la tablet
-  R.modo = R.modo === 'esp' ? '' : 'esp'; R.ed = null; recepcion();
-  toast(R.modo === 'esp' ? 'Recepción' : 'Contadores');
+  R.modo = R.modo === 'esp' ? '' : R.modo === 'c2' ? 'esp' : 'c2'; R.ed = null; recepcion();   // Recepción → Contadores → Contadores 2 → Recepción
+  toast(R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' ? 'Contadores 2' : 'Contadores');
 });
 const CFG = () => D().config;
 const misRutas = () => Object.keys(D().rutas).sort();
@@ -1379,7 +1389,7 @@ document.addEventListener('focusout', () => setTimeout(() => { if (!document.act
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || !e.target.matches('input')) return;
   // Recepción y agua: Intro guarda el dato y CIERRA el teclado (en la tablet ocupa media pantalla)
-  if (e.target.closest('#vRecepC, #vAgua')) { e.preventDefault(); e.target.dispatchEvent(new Event('change', { bubbles: true })); e.target.blur(); return; }
+  if (e.target.closest('#vRecepC, #vAgua, #vRecep')) { e.preventDefault(); e.target.dispatchEvent(new Event('change', { bubbles: true })); e.target.blur(); return; }
   const orden = ['lit', 'tmp', 'mue'], i = orden.indexOf(e.target.id);
   if (i < 0) return; e.preventDefault();
   if (i < orden.length - 1) $('#' + orden[i + 1]).focus(); else e.target.blur();
@@ -1436,7 +1446,7 @@ async function recepcion(sinCargar) {
   const v = $('#vRecep'), u = D().usuario;
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
-    show('vRecep', R.modo === 'esp' ? 'Recepción' : 'Contadores', u.nombre);
+    show('vRecep', R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' ? 'Contadores 2' : 'Contadores', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
       R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
       // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
@@ -1447,6 +1457,7 @@ async function recepcion(sinCargar) {
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   if (R2()) return recep2Lista(v, u);
+  if (R.modo === 'c2') return contadores2(v, u);
   const hoyTxt = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
   // Lo que ha entrado hoy en cada silo según las recepciones guardadas
   const silo = {}; R.viajes.filter(x => x.recep && x.recep.comps).forEach(x => { x.recep.comps.forEach(c => c.reps.forEach(p => { silo[p.dep] = (silo[p.dep] || 0) + p.l; })); });
@@ -1537,6 +1548,74 @@ async function historico(recargar) {
   });
   show('vHisto', 'Histórico y DeCA', D().usuario.nombre);
 }
+
+/* ═══════════ CONTADORES 2 (prueba): la hoja del día en vertical, como el papel «Registro litros contador» ═══════════
+   Cada camión que llega se añade debajo del anterior (así queda el orden de llegada). En su bloque, cada leche (destino) con su
+   orden de descarga, depósito y litros, y su arrastre si lo hay; abajo el total y la firma. Cada camión se guarda al firmarlo y
+   va al programa de gestión igual que desde Contadores (mismo guardado). Lo que se va metiendo se queda en la tablet. */
+const C2 = { st: null };
+const c2Clave = () => 'rl_c2_' + R.dia;
+function c2Leer() { try { return JSON.parse(localStorage.getItem(c2Clave()) || '{}'); } catch (e) { return {}; } }
+function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
+function contadores2(v, u) {
+  const st = C2.st = c2Leer(); st.orden = st.orden || []; st.t = st.t || {};
+  // los ya recibidos que no estén en la hoja (p. ej. hechos desde Contadores) entran por su hora
+  R.viajes.filter(x => x.recep && !st.orden.includes(x.id)).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1).forEach(x => st.orden.push(x.id));
+  st.orden = st.orden.filter(id => R.viajes.some(x => x.id === id)); c2Escribir();
+  const enHoja = st.orden.map(id => R.viajes.find(x => x.id === id)), pend = R.viajes.filter(x => !x.recep && !st.orden.includes(x.id));
+  const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
+  const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0 }));
+  const silos = R.deps.map(d => d.id);
+  const depBtns = (x, id, campo, val, quita) => `<div class="c2deps">${silos.map(s => `<button class="${String(val) === String(s) ? 'on' : ''}" ${s === quita ? 'disabled' : ''} data-c2dep="${esc(x.id)}|${esc(id)}|${campo}|${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
+  const bloqueHecho = (x, n) => { const r = x.recep;
+    return `<div class="card stack c2b hecho"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span><span class="reg-ok" style="margin-left:auto">✓ GUARDADO ${esc(r.hora || '')}</span></div>
+      <table class="c2t"><thead><tr><th>Cisterna</th><th>Comp.</th><th>Depósito</th><th class="n">Litros</th></tr></thead><tbody>
+      ${r.comps.map((c, i) => `<tr class="${bgEsp(espDe(c))}"><td><b>${esc(ESPS[espDe(c)] || '')}</b> ${tq(c.id)}</td><td>${esc(c.nComp || '')}</td><td>${c.reps.map(p => esc(p.dep)).join(' · ')}</td><td class="n">${c.reps.map(p => fmt(p.l)).join(' · ')}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="3" style="text-align:right">TOTAL</td><td class="n"><b>${fmt(r.total || r.comps.reduce((a, c) => a + (+c.contador || 0), 0))}</b></td></tr></tfoot></table>
+      <button class="btn ghost" data-c2cor="${esc(x.id)}" style="width:auto;align-self:flex-end;min-height:38px;padding:4px 14px">Corregir</button></div>`; };
+  const bloque = (x, n) => { if (x.recep) return bloqueHecho(x, n);
+    const t = T(x), fs = filas(x), nMax = Math.min(4, Math.max(x.nCompCam || 0, ...(x.comps || []).map(k => k.n || 0)) || (x.comps || []).length || 4);
+    const suma = fs.reduce((a, f) => a + (num((t.f[f.id] || {}).l) || 0), 0);
+    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="mono muted">${esc(x.matricula || '')}</span> <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
+        <button class="lnk" data-c2fuera="${esc(x.id)}" style="margin-left:auto;width:auto;flex:0 0 auto;padding:4px 10px" title="Sacar de la hoja (no se ha descargado)">✕ sacar</button></div>
+      ${fs.map(f => Object.assign(f, { r: t.f[f.id] = t.f[f.id] || {} })).sort((a, c) => (a.r.ord || 99) - (c.r.ord || 99)).map(f => { const r = f.r; if (!r.n) r.n = String((x.comps.find(k => k.id === f.id) || {}).n || '');
+        return r.ord ? `<div class="c2f on ${bgEsp(f.esp)}">
+        <div class="c2c"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tq(f.id)}</div>
+        <div class="c2nc"><span class="tiny">Comp. cisterna</span><div class="ncb">${Array.from({ length: nMax }, (_, k) => String(k + 1)).map(k => `<button class="${r.n === k ? 'on' : ''}" data-c2nc="${esc(x.id)}|${esc(f.id)}|${k}">${k}</button>`).join('')}</div></div>
+        ${depBtns(x, f.id, 'dep', r.dep)}<div class="unit c2l"><input class="sm" inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(f.id)}|l" value="${esc(r.l || '')}" placeholder="0"><span>L</span></div>
+          ${r.arr ? `<div class="c2arr"><span class="tiny">Arrastre a</span>${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}<div class="unit c2l"><input class="sm" inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(f.id)}|arrL" value="${esc(r.arrL || '')}" placeholder="0"><span>L</span></div><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}">✕ quitar arrastre</button></div>`
+            : `<button class="lnk c2mas" data-c2arr="${esc(x.id)}|${esc(f.id)}">+ arrastre</button>`}
+          <button class="lnk c2quita" data-c2ord="${esc(x.id)}|${esc(f.id)}">No era esta (quitar)</button></div>`
+        : `<button class="c2f c2pend ${bgEsp(f.esp)}" data-c2ord="${esc(x.id)}|${esc(f.id)}"><span class="c2c"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tq(f.id)}</span><span class="c2go">Descargo esta</span></button>`; }).join('')}
+      <div class="c2tot"><span class="tiny">Total contador</span><div class="unit"><input class="big" style="font-size:28px" inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
+        <span class="small" data-c2suma="${esc(x.id)}">Suma de parciales: ${fmt(suma)} l</span></div>
+      ${D().oficina ? '' : `<div class="stack" style="gap:4px"><span class="tiny">Firma</span><canvas data-c2pad="${esc(x.id)}" style="width:100%;height:120px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
+        <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" data-c2est="${esc(x.id)}">${FIRMAS['c2|' + x.id] ? 'Firmado ✓' : 'Sin firmar'}</span><button class="btn ghost" data-c2fb="${esc(x.id)}" style="width:auto;min-height:36px;padding:4px 12px">Borrar firma</button></div></div>`}
+      <div data-c2msg="${esc(x.id)}" hidden></div>
+      <button class="btn sec" disabled>Prueba visual · no se guarda (los datos se pasan en Contadores)</button></div>`; };
+  v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small muted" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <b>prueba visual: no se guarda nada</b>. Las descargas se siguen pasando en Contadores.</p></div>
+    ${enHoja.map((x, i) => bloque(x, i + 1)).join('')}
+    ${pend.length ? `<span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span><div class="g2">${pend.map(x => `<button class="farm" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${hayBorrador(x, false) ? ' · <b style="color:var(--warn)">a medias en Contadores</b>' : ''}</span><span class="comps">${(x.comps || []).map(c => tq(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('')}</div>` : (enHoja.length ? '' : '<p class="muted">No hay camiones.</p>')}`;
+  const pinta = () => { c2Escribir(); contadores2(v, u); };
+  const xx = id => R.viajes.find(z => z.id === id);
+  v.querySelectorAll('[data-c2add]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.c2add); pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${b.dataset.c2add}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
+  v.querySelectorAll('[data-c2fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.c2fuera; st.orden = st.orden.filter(z => z !== id); delete st.t[id]; pinta(); });
+  v.querySelectorAll('[data-c2ord]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2ord.split('|'), t = st.t[vid], r = t.f[cid];
+    if (r.ord) { const o = r.ord; Object.values(t.f).forEach(z => { if (z.ord > o) z.ord--; }); r.ord = 0; }
+    else r.ord = Math.max(0, ...Object.values(t.f).map(z => z.ord || 0)) + 1; pinta(); });
+  v.querySelectorAll('[data-c2nc]').forEach(b => b.onclick = () => { const [vid, cid, k] = b.dataset.c2nc.split('|'); st.t[vid].f[cid].n = k; pinta(); });
+  v.querySelectorAll('[data-c2dep]').forEach(b => b.onclick = () => { const [vid, cid, campo, s] = b.dataset.c2dep.split('|'); st.t[vid].f[cid][campo] = s; pinta(); });
+  v.querySelectorAll('[data-c2arr]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arr.split('|'), r = st.t[vid].f[cid]; r.arr = !r.arr; if (!r.arr) { r.arrDep = ''; r.arrL = ''; } else { const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== r.dep); r.arrDep = mez ? mez.id : ''; } pinta(); });
+  const sumaDe = vid => filas(xx(vid)).reduce((a, f) => a + (num((st.t[vid].f[f.id] || {}).l) || 0), 0);
+  v.querySelectorAll('[data-c2l]').forEach(inp => { inp.oninput = () => { const [vid, cid, campo] = inp.dataset.c2l.split('|'); st.t[vid].f[cid][campo] = inp.value.replace(/\D/g, ''); c2Escribir();
+    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.textContent = 'Suma de parciales: ' + fmt(sumaDe(vid)) + ' l'; }; });
+  v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { st.t[inp.dataset.c2tot].total = inp.value.replace(/\D/g, ''); c2Escribir(); });
+  v.querySelectorAll('[data-c2pad]').forEach(cv => { const id = cv.dataset.c2pad; padFirma(cv, 'c2|' + id, v.querySelector(`[data-c2est="${id}"]`), v.querySelector(`[data-c2fb="${id}"]`)); });
+  v.querySelectorAll('[data-c2cor]').forEach(b => b.onclick = () => recepCamion(xx(b.dataset.c2cor)));
+  show('vRecep', 'Contadores 2' + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
+}
+/** Doble toque para acciones que quitan algo: el primero pregunta, el segundo hace. */
+function confirm2(b) { if (b.dataset.ok === '1') return true; b.dataset.ok = '1'; const t = b.textContent; b.textContent = '¿Seguro? Toca otra vez'; setTimeout(() => { b.dataset.ok = ''; b.textContent = t; }, 3000); return false; }
 /* ═══════════ Histórico del registro de calidad (Recepción 2): todos los registros por fechas ═══════════ */
 const H2 = { desde: '', hasta: '', lista: null, q: '' };
 async function historico2(recargar) {
@@ -1874,7 +1953,8 @@ function recepCamion(x) {
 const LS_BORR = 'rl_borradores_v1';
 const FIRMAS = {};   // firma dibujada por camión (imagen): se recuerda mientras la app esté abierta y se borra al guardar
 /** Recuadro de firma: se dibuja con el lápiz o el dedo; la imagen se guarda en FIRMAS[clave] al levantar el lápiz. */
-function padFirma(cv, clave) {
+function padFirma(cv, clave, estEl, borrEl) {
+  const EST = () => estEl || $('#reFirmaEst');
   const r = window.devicePixelRatio || 1, w = cv.clientWidth || 600, h = cv.clientHeight || 170;
   cv.width = Math.round(w * r); cv.height = Math.round(h * r);
   const g = cv.getContext('2d'); g.scale(r, r); g.lineWidth = 2.6; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
@@ -1886,9 +1966,9 @@ function padFirma(cv, clave) {
   const fin = () => { if (!pinta) return; pinta = false; if (!trazo) return;
     const o = document.createElement('canvas'); o.width = 480; o.height = Math.round(480 * h / w);   // imagen pequeña para la hoja
     const og = o.getContext('2d'); og.fillStyle = '#fff'; og.fillRect(0, 0, o.width, o.height); og.drawImage(cv, 0, 0, o.width, o.height);
-    FIRMAS[clave] = o.toDataURL('image/jpeg', 0.6); const est = $('#reFirmaEst'); if (est) est.textContent = 'Firmado ✓'; };
+    FIRMAS[clave] = o.toDataURL('image/jpeg', 0.6); const est = EST(); if (est) est.textContent = 'Firmado ✓'; };
   cv.onpointerup = fin; cv.onpointercancel = fin; cv.onpointerleave = fin;
-  const bb = $('#reFirmaBorrar'); if (bb) bb.onclick = () => { delete FIRMAS[clave]; g.clearRect(0, 0, w, h); trazo = false; const est = $('#reFirmaEst'); if (est) est.textContent = 'Sin firmar'; };
+  const bb = borrEl || $('#reFirmaBorrar'); if (bb) bb.onclick = () => { delete FIRMAS[clave]; g.clearRect(0, 0, w, h); trazo = false; const est = EST(); if (est) est.textContent = 'Sin firmar'; };
 }
 const borrTodos = () => { try { return JSON.parse(localStorage.getItem(LS_BORR) || '{}'); } catch (e) { return {}; } };
 const borrClave = (x, porEsp) => (porEsp ? 'cal' : 'rec') + '|' + R.dia + '|' + x.id;

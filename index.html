@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=95">
+<link rel="manifest" href="manifest.json?v=96">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -152,6 +152,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+.hist tr.tot-sep td{padding:0!important;height:5px;background:var(--brand)!important;border:0!important;border-radius:3px!important}.hist tr.tot-row td{padding-top:12px;padding-bottom:12px;font-weight:800;background:var(--brand-soft);border-color:var(--brand)!important}.hist tr.tot-row td:first-child{border-left-color:var(--brand)}.hist tr.tot-row td:first-child b{color:var(--brand);letter-spacing:.06em}
 .farm.done[data-v2]{background:#fff;border-color:#e3b54d;box-shadow:inset 6px 0 0 #c98a00}.farm.done[data-v2] .st{color:#8a5a00}
 .farm.skip{opacity:.7}
 .farm.skip .st{color:var(--muted)}
@@ -347,7 +348,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v95 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v96 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1937,7 +1938,7 @@ function recepRender() {
     return `<span class="lbl">Cuadre del camión · como el registro de litros contador</span>
       <div style="overflow-x:auto"><table class="hist" style="width:100%"><thead><tr><th style="text-align:left">Cisterna</th>${['Litros contador', 'Litros cartilla', 'Dif. cont./cartilla', 'Litros cisterna', 'Dif. cont./cisterna'].map(th).join('')}</tr></thead><tbody>
       ${F.map(f => `<tr class="${bgEsp(f.e)}"><td style="border-left:6px solid var(--cs)"><b>${esc(ESPS[f.e])}</b> <span class="small muted">${f.ids.map(esc).join(' · ')}</span></td>${td(f.cont)}${td(f.cart)}${dd(f.cont, f.cart, false, f.completa)}${td(f.cist)}${dd(f.cont, f.cist, true, true)}</tr>`).join('')}
-      <tr><td><b>TOTAL</b></td>${td(T.cont)}${td(T.cart)}${dd(T.cont, T.cart, true, T.completa)}${td(T.cist)}${dd(T.cont, T.cist, true, true)}</tr></tbody></table></div>
+      <tr class="tot-sep"><td colspan="6"></td></tr><tr class="tot-row"><td><b>TOTAL</b></td>${td(T.cont)}${td(T.cart)}${dd(T.cont, T.cart, true, T.completa)}${td(T.cist)}${dd(T.cont, T.cist, true, true)}</tr></tbody></table></div>
       <p class="small muted" style="margin:0">Contador y cisterna: solo los compartimentos ya descargados. La diferencia con la cartilla sale cuando está descargada toda esa especie. En verde si la diferencia es pequeña (≤ 30 l o 1,5 %).</p>`;
   };
   const suma = desc.reduce((a, c) => a + (num(c.contador) || 0), 0);

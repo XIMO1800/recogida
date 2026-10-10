@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=99">
+<link rel="manifest" href="manifest.json?v=100">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -349,7 +349,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v99 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v100 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -447,6 +447,7 @@ async function api(accion, datos) {
   if (!S.dev) { S.dev = 'D' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); persistir(); }
   const r = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ accion, pin: S.pin, dev: S.dev }, datos)) });
   const j = await r.json();
+  if (j.apiVer && j.apiVer !== U.apiVer) { U.apiVer = j.apiVer; const v = $('#ver'); if (v) { v.textContent = VERSION.split(' ')[0] + ' · API ' + j.apiVer; v.title = VERSION + ' · API ' + j.apiVer; } }
   if (!j.ok) {
     if (j.error === 'PIN incorrecto' && accion !== 'login') { pinCaducado(); throw new Error('El PIN ha cambiado. Escribe el nuevo.'); }
     throw new Error(j.error || 'Error del servidor');

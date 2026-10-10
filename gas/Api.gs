@@ -14,6 +14,9 @@ function doGet(e) {
   return json_({ ok: true, app: 'RECOGIDA LECHE', hora: ahora_('dd/MM/yyyy HH:mm') });
 }
 
+/** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
+const API_VERSION = 2;
+
 function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
@@ -39,6 +42,7 @@ function doPost(e) {
     }
     const res = fn(req, quien);
     if (quien !== cond && res && res.ok) res.firmado = String(quien.NOMBRE);
+    if (res && typeof res === 'object') res.apiVer = API_VERSION;
     // Firma dibujada (lápiz) de la recepción o del registro de calidad: se guarda aparte, en FIRMAS
     if (res && res.ok && req.firmaImg && /^(guardarRecepcion|guardarRecepCalidad)$/.test(req.accion)) {
       try { guardarFirma_(req.accion === 'guardarRecepCalidad' ? 'CAL' : 'REC', String((req.recep || {}).viajeId || ''), res.fecha || ahora_('dd/MM/yyyy'), String(quien.NOMBRE), req.firmaImg); }

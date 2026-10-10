@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=115">
+<link rel="manifest" href="manifest.json?v=116">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -161,7 +161,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .c2tab{width:100%;border-collapse:separate;border-spacing:0 3px}.c2tab th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 6px}
 .c2tab td{background:var(--cf,#fff);padding:5px 6px;vertical-align:middle}.c2tab tr:not(.c2arrrow) td{border-top:1.5px solid var(--cb,var(--line))}.c2tab tr td:first-child{border-left:6px solid var(--cs,#a39a9c)}
 .c2tab tr.c2arrrow td{padding-top:0}.c2tc{width:1%}.c2or{display:flex;align-items:center;gap:6px}.c2or b{font-size:20px;min-width:30px;color:var(--brand)}.c2mv{display:flex;flex-direction:column;gap:2px}.c2mv button{width:34px;height:22px;border:1.5px solid var(--line);border-radius:6px;background:#fff;font-size:11px;line-height:1;padding:0}.c2mv button:disabled{opacity:.25}.c2nb{display:flex;gap:3px}.c2nb button{min-width:34px;min-height:40px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-weight:800;font-size:16px;font-family:inherit}
-.c2nb button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.c2tn{font-size:16px;white-space:nowrap;text-align:left}.c2tl{width:22%}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.c2tab .unit.c2l span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}.c2tab th.c2c{text-align:center}
+.c2nb button.on{background:var(--brand);color:#fff;border-color:var(--brand)}.c2tn{font-size:16px;white-space:nowrap;text-align:left}.c2cn{display:flex;align-items:center;justify-content:space-between;gap:6px}.c2nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.c2h{flex-wrap:nowrap!important}.c2h .c2ht,.c2h .lnk{flex:0 0 auto}.c2orow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.c2orow>b{width:92px;font-size:15px}.c2tl{width:22%}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.c2tab .unit.c2l span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}.c2tab th.c2c{text-align:center}
 .c2td{width:34%}.c2deps{display:flex;gap:3px}.c2deps button{flex:1;min-width:0;min-height:40px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:17px;font-family:var(--mono)}
 .c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}.c2tx{width:1%;text-align:right}.c2ta{width:1%;text-align:center}.c2mas{width:34px;height:34px;border-radius:9px;border:1.5px dashed rgba(0,0,0,.18);background:transparent;font-size:22px;font-weight:700;line-height:1;padding:0;color:var(--muted);cursor:pointer}
 .c2otra{display:flex;flex-direction:column;gap:8px}.c2otra input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.c2otra .c2es{display:flex;gap:6px;flex-wrap:wrap}.c2otra .c2es button{min-width:64px}.c2sel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:34px}
@@ -370,7 +370,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v115 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v116 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1578,14 +1578,14 @@ function contadores2(v, u) {
     const suma = hechas.reduce((a, f) => a + (num(f.r.l) || 0) + (f.r.arr ? num(f.r.arrL) || 0 : 0), 0);
     const fila = f => { const r = f.r; if (r.n == null) r.n = f.n0;
       return `<tr class="${bgEsp(f.esp)}"><td class="c2tc"><div class="c2or"><b>${r.ord}º</b><span class="c2mv"><button data-c2mv="${esc(x.id)}|${esc(f.id)}|-1" ${r.ord === 1 ? 'disabled' : ''} title="Subir">▲</button><button data-c2mv="${esc(x.id)}|${esc(f.id)}|1" ${r.ord === hechas.length ? 'disabled' : ''} title="Bajar">▼</button></span></div></td>
-        <td class="c2tn"><b>${esc((ESPS[f.esp] || f.esp).replace('Oveja D.O.', 'D.O.'))}</b> ${tqc(f.id)}</td>
+        <td class="c2tn"><div class="c2cn"><b>${esc((ESPS[f.esp] || f.esp).replace('Oveja D.O.', 'D.O.'))}</b> ${tqc(f.id)}</div></td>
         <td class="c2tl">${litInp(x, f.id, 'l', r.l)}</td><td class="c2td">${depBtns(x, f.id, 'dep', r.dep)}</td>
         <td class="c2ta">${r.arr ? '' : `<button class="c2mas" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Añadir arrastre">+</button>`}</td>
         <td class="c2tx"><button class="lnk" data-c2ord="${esc(x.id)}|${esc(f.id)}" title="No era esta: quitarla">✕</button></td></tr>
       ${r.arr ? `<tr class="${bgEsp(f.esp)} c2arrrow"><td></td><td class="c2tn small">↳ arrastre</td><td class="c2tl">${litInp(x, f.id, 'arrL', r.arrL)}</td><td class="c2td">${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}</td><td class="c2ta"></td>
         <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Quitar arrastre">✕</button></td></tr>`
         : ''}`; };
-    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><b>${esc(x.conductor)}</b> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span>
+    return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b> <span class="muted">· ${x.otra ? 'otra entrada' : 'ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}</span></span>
         <div class="c2ht"><span class="tiny">Total contador</span><div class="unit"><input inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
           <span class="tiny c2cuad" data-c2suma="${esc(x.id)}">${c2Cuad(t.total, suma)}</span></div>
         <button class="lnk" data-c2fuera="${esc(x.id)}" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>
@@ -1600,21 +1600,18 @@ function contadores2(v, u) {
     <div class="g2">${pend.map(x => `<button class="farm${x.recep ? ' done' : ''}" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${x.recep ? ' · ya guardado (práctica)' : ''}</span><span class="comps">${(x.comps || []).map(c => tqc(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>
     ${C2.otra ? `<div class="card c2otra" id="c2otraF"><span class="lbl" style="margin:0">Otra entrada</span>
       <input id="c2oN" placeholder="Nombre (quién trae la leche)" value="${esc(C2.otra.nom || '')}" enterkeyhint="done" autocomplete="off">
-      <span class="tiny">Qué trae · toca una vez por cada cisterna</span>
-      <div class="c2es">${[['C', 'cabra'], ['V', 'vaca'], ['D', 'D.O.'], ['O', 'oveja']].map(([e, t]) => `<button class="c2chip ${bgEsp(e)}" data-c2oe="${e}"><b>V${e}</b> ${t}</button>`).join('')}</div>
-      <div class="c2sel" id="c2oSel">${C2.otra.sel.length ? C2.otra.sel.map((c, i) => `<button class="c2chip ${bgEsp(c[1])}" data-c2oq="${i}" title="Quitar">${tqc(c)} ✕</button>`).join('') : '<span class="muted small">Ninguna todavía</span>'}</div>
-      <div class="row" style="gap:8px"><button class="btn" id="c2oOk" ${C2.otra.sel.length ? '' : 'disabled'}>Añadir a la hoja</button><button class="btn ghost" id="c2oNo">Cancelar</button></div></div>`
+      <span class="tiny">Qué trae en cada cisterna · deja vacías las que no lleve</span>
+      ${[0, 1, 2, 3].map(i => `<div class="c2orow"><b>Cisterna ${i + 1}</b>${[['C', 'cabra'], ['V', 'vaca'], ['D', 'D.O.'], ['O', 'oveja']].map(([e, t]) => `<button class="c2chip ${C2.otra.sel[i] === e ? bgEsp(e) : ''}" style="${C2.otra.sel[i] === e ? 'outline:2.5px solid var(--brand)' : 'opacity:.75'}" data-c2oe="${i}|${e}"><b>V${e}</b> ${t}</button>`).join('')}</div>`).join('')}
+      <div class="row" style="gap:8px"><button class="btn" id="c2oOk" ${C2.otra.sel.some(Boolean) ? '' : 'disabled'}>Añadir a la hoja</button><button class="btn ghost" id="c2oNo">Cancelar</button></div></div>`
       : '<button class="btn ghost" id="c2otra" style="margin-top:8px">+ Otra entrada (camión de fuera)</button>'}`;
   const pinta = () => { c2Escribir(); contadores2(v, u); };
   const xx = id => todos.find(z => z.id === id);
-  if ($('#c2otra')) $('#c2otra').onclick = () => { C2.otra = { nom: '', sel: [] }; contadores2(v, u); setTimeout(() => { const f = $('#c2otraF'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#c2oN').focus(); } }, 60); };
+  if ($('#c2otra')) $('#c2otra').onclick = () => { C2.otra = { nom: '', sel: ['', '', '', ''] }; contadores2(v, u); setTimeout(() => { const f = $('#c2otraF'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#c2oN').focus(); } }, 60); };
   if ($('#c2oN')) $('#c2oN').oninput = e => { C2.otra.nom = e.target.value; };
-  v.querySelectorAll('[data-c2oe]').forEach(b => b.onclick = () => { const e = b.dataset.c2oe, base = 'V' + e, k = C2.otra.sel.filter(c => c.startsWith(base)).length;
-    C2.otra.sel.push(k ? base + (k + 1) : base); contadores2(v, u); });
-  v.querySelectorAll('[data-c2oq]').forEach(b => b.onclick = () => { C2.otra.sel.splice(+b.dataset.c2oq, 1); contadores2(v, u); });
+  v.querySelectorAll('[data-c2oe]').forEach(b => b.onclick = () => { const [i, e] = b.dataset.c2oe.split('|'); C2.otra.sel[+i] = C2.otra.sel[+i] === e ? '' : e; contadores2(v, u); });
   if ($('#c2oNo')) $('#c2oNo').onclick = () => { C2.otra = null; contadores2(v, u); };
   if ($('#c2oOk')) $('#c2oOk').onclick = () => { const nom = (C2.otra.nom || '').trim(); if (!nom) { toast('Pon el nombre'); $('#c2oN').focus(); return; }
-    const x = { id: 'X' + Date.now().toString(36).toUpperCase(), otra: true, conductor: nom, matricula: '', rutas: '', comps: C2.otra.sel.map(c => ({ id: c, esp: c[1], decl: 0, n: 0 })) };
+    const x = { id: 'X' + Date.now().toString(36).toUpperCase(), otra: true, conductor: nom, matricula: '', rutas: '', comps: c2Ids(C2.otra.sel).map((c, i) => ({ id: c, esp: c[1], decl: 0, n: i + 1 })) };
     st.ext.push(x); st.orden.push(x.id); C2.otra = null; pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${x.id}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); };
   if ($('#c2vaciar')) $('#c2vaciar').onclick = () => { if (!confirm2($('#c2vaciar'))) return; st.orden = []; st.t = {}; st.ext = []; C2.otra = null; pinta(); scrollTo(0, 0); };
   v.querySelectorAll('[data-c2add]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.c2add); pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${b.dataset.c2add}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
@@ -1634,6 +1631,8 @@ function contadores2(v, u) {
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); });
   show('vRecep', 'Contadores 2' + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
 }
+/** Otra entrada: cada cisterna V + especie (VC, VV, VD, VO); si se repite la especie, numeradas: VC1, VC2… */
+function c2Ids(sel) { const es = sel.filter(Boolean), k = {}; return es.map(e => { const n = es.filter(z => z === e).length; k[e] = (k[e] || 0) + 1; return 'V' + e + (n > 1 ? k[e] : ''); }); }
 /** Bajo el total: si cuadra con la suma de los litros de las filas, o cuánto falta/sobra */
 function c2Cuad(total, suma) { const t = num(total) || 0; if (!suma) return ''; if (!t) return 'filas: ' + fmt(suma) + ' l';
   const d = Math.round(t - suma); return d === 0 ? '<span class="d-ok">✓ cuadra</span>' : `<span class="d-bad">filas ${fmt(suma)} · dif. ${d > 0 ? '+' : ''}${fmt(d)}</span>`; }

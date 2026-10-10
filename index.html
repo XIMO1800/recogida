@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=98">
+<link rel="manifest" href="manifest.json?v=99">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -152,6 +152,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+.dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
 .hist tr.tot-sep td{padding:0!important;height:5px;background:var(--brand)!important;border:0!important;border-radius:3px!important}.hist tr.tot-row td{padding-top:12px;padding-bottom:12px;font-weight:800;background:var(--brand-soft);border-color:var(--brand)!important}.hist tr.tot-row td:first-child{border-left-color:var(--brand)}.hist tr.tot-row td:first-child b{color:var(--brand);letter-spacing:.06em}
 .farm.done[data-v2]{background:#fff;border-color:#e3b54d;box-shadow:inset 6px 0 0 #c98a00}.farm.done[data-v2] .st{color:#8a5a00}
 .farm.skip{opacity:.7}
@@ -348,7 +349,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v98 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v99 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1541,7 +1542,9 @@ async function historico2(recargar) {
   const fil = H2.lista.filter(x => !q || [x.fecha, x.matricula, x.conductor, x.usuario].join(' ').toLowerCase().includes(q));
   const tot = {}; fil.forEach(x => x.comps.forEach(c => { tot[c.esp] = (tot[c.esp] || 0) + c.l; }));
   const mzTxt = x => { const cs = x.comps.filter(c => 'DOC'.includes(c.esp)); if (!cs.length) return ''; const mal = cs.some(c => c.mezcla === 'I'), falta = cs.filter(c => !c.mezcla).length;
-    return mal ? '<b style="color:var(--bad)">incorrecta</b>' : falta ? `<span style="color:var(--warn)">faltan ${falta}</span>` : '<b style="color:var(--ok)">✓</b>'; };
+    return mal ? '<b style="color:var(--bad)">incorrecta</b>' : falta ? `<span style="color:var(--warn)" title="Compartimentos de oveja, D.O. o cabra a los que calidad aún no ha puesto la mezcla (C/I) con la analítica">sin marcar ${falta} de ${cs.length}</span>` : '<b style="color:var(--ok)">✓ correcta</b>'; };
+  // agrupado por día: una franja con el día, cuántos registros y los litros
+  const porDia = []; fil.forEach(x => { let g = porDia[porDia.length - 1]; if (!g || g.f !== x.fecha) porDia.push(g = { f: x.fecha, xs: [] }); g.xs.push(x); });
   v.innerHTML = `<div class="card stack">
       <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="field"><label class="lbl" for="h2Des">Desde</label><input type="date" id="h2Des" class="sm" value="${H2.desde}"></div>
@@ -1551,17 +1554,20 @@ async function historico2(recargar) {
       </div>
       <p class="small muted" style="margin:0">${fil.length} registros · ${ORD_ESP.filter(e => tot[e]).map(e => `${esc(ESPS[e])} ${fmt(tot[e])} l`).join(' · ') || 'sin litros'}</p></div>
     <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Camión</th><th>Conductor</th><th>Compartimentos</th><th class="n">Litros</th><th>Limpieza</th><th>Mezcla</th><th>Verificado</th><th></th></tr></thead><tbody>
-      ${fil.map(x => `<tr><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.matricula)}</td><td><b>${esc(x.conductor)}</b></td>
+      ${porDia.map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} registro${g.xs.length > 1 ? 's' : ''} · ${fmt(g.xs.reduce((a, z) => a + z.litros, 0))} l
+        <button class="btn ghost" data-h2="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día y su parte</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h2id="${esc(x.id)}" data-h2f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.matricula)}</td><td><b>${esc(x.conductor)}</b></td>
         <td>${x.comps.slice().sort((a, b) => a.n - b.n).map(c => `<span class="tank sp-${esc(c.esp)}" style="font-size:11px">${esc(c.n)} · ${esc(ESPS[c.esp] || c.esp)}</span>`).join(' ')}</td>
         <td class="n"><b>${fmt(x.litros)}</b></td><td class="small">${esc(x.limpieza || '—')} / ${esc(x.filtro || '—')}</td><td class="small">${mzTxt(x)}</td>
         <td class="small">${x.verificado ? esc(x.verificado) : '<span class="muted">—</span>'}</td>
-        <td style="white-space:nowrap"><button class="btn ghost" data-h2="${esc(x.fecha)}" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Ver día</button></td></tr>`).join('') || '<tr><td colspan="9" class="muted">No hay registros de calidad en esas fechas.</td></tr>'}
+        <td style="white-space:nowrap"><button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button></td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay registros de calidad en esas fechas.</td></tr>'}
     </tbody></table></div>`;
   $('#h2Des').onchange = e => { H2.desde = e.target.value; }; $('#h2Has').onchange = e => { H2.hasta = e.target.value; };
   $('#h2Bus').onclick = () => historico2(true);
   $('#h2Q').oninput = e => { H2.q = e.target.value; clearTimeout(H2.t); H2.t = setTimeout(() => { historico2(); const i = $('#h2Q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
   // «Ver día»: abre Recepción 2 en esa fecha (ahí se ve cada registro, se marca la mezcla y se imprime el parte)
-  v.querySelectorAll('[data-h2]').forEach(b => b.onclick = () => { R.modo = 'esp'; R.fecha = b.dataset.h2; R.ed = null; recepcion(); });
+  v.querySelectorAll('[data-h2]').forEach(b => b.onclick = e => { e.stopPropagation(); R.modo = 'esp'; R.fecha = b.dataset.h2; R.ed = null; recepcion(); });
+  // tocar una fila abre ESE registro (su camión, con todos sus datos), no la lista del día
+  v.querySelectorAll('[data-h2id]').forEach(tr => tr.onclick = () => { R.modo = 'esp'; R.fecha = tr.dataset.h2f; R.ed = null; R.abrirTras = tr.dataset.h2id; recepcion(); });
   show('vHisto2', 'Histórico de calidad', D().usuario.nombre);
 }
 /* Repintar una pantalla al salir de una casilla sin perder el sitio: si se ha pulsado otra casilla o un botón,
@@ -1780,6 +1786,7 @@ function recep2Lista(v, u) {
   v.querySelectorAll('[data-v2]').forEach(b => { const x = l.find(z => z.id === b.dataset.v2); if (puede || x.cal) b.onclick = () => recepCamion2(x); else b.style.cursor = 'default'; });
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
   if ($('#r2Otra')) $('#r2Otra').onclick = () => recepOtra2();
+  if (R.abrirTras) { const x = l.find(z => z.id === R.abrirTras); R.abrirTras = null; if (x && x.cal) return recepCamion2(x); }   // desde el histórico: se abre ese registro
   enlazarDiaNav();
   enlazarParte(v);
   show('vRecep', 'Recepción calidad', u.nombre);

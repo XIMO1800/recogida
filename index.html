@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=92">
+<link rel="manifest" href="manifest.json?v=93">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -149,9 +149,10 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .farm .name{font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .farm .sub{font-size:14px;color:var(--muted)}
 .farm .st{font-size:15px;font-weight:700;text-align:right;flex:none}
-.farm.done{background:var(--surface2)}.farm.ya{background:#e6f2ea;border-color:#7fb48f;box-shadow:inset 6px 0 0 var(--ok)}.ya-txt{color:var(--ok);font-weight:700}
+.farm.done{background:var(--surface2)}.farm.ya{background:#fff}.ya-txt{color:#8a5a00;font-weight:700}.reg-ok{display:inline-block;background:#c98a00;color:#fff;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:700;margin-right:6px}
 .farm.done .n{color:var(--ok)}
 .farm.done .st{color:var(--ok)}
+.farm.done[data-v2]{background:#fff;border-color:#e3b54d;box-shadow:inset 6px 0 0 #c98a00}.farm.done[data-v2] .st{color:#8a5a00}
 .farm.skip{opacity:.7}
 .farm.skip .st{color:var(--muted)}
 .farm.next{border-color:var(--brand);border-width:2px;background:var(--brand-soft)}
@@ -342,7 +343,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v92 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v93 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1750,7 +1751,7 @@ function recep2Lista(v, u) {
   R.l2 = l;
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
-      <span class="name"><span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
+      <span class="name">${x.cal ? '<span class="reg-ok">✓ REGISTRADO</span>' : ''}<span class="mono">${esc(x.matricula || '—')}</span> · ${esc(x.conductor || '')}</span>
       <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
@@ -1761,9 +1762,10 @@ function recep2Lista(v, u) {
   const diaNav = ofi || cal ? diaNavHtml() : '';
   const pend = l.filter(x => !x.cal), hechos = l.filter(x => x.cal);
   const puede = (R.esHoy || ofi) && editable;
-  const camHtml = `${puede ? `<span class="lbl">Camiones</span><div class="g2">${pend.map(tarjeta).join('')}
-      <button class="farm r2otra" id="r2Otra"><span class="main"><span class="name">+ Otra entrada</span><span class="sub">Cisterna de otro proveedor</span></span></button></div>` : ''}
-    ${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}`;
+  // Primero lo ya registrado (para ver de un vistazo qué está hecho) y debajo los camiones para registrar
+  const camHtml = `${hechos.length ? `<span class="lbl">Registrados${R.esHoy ? ' hoy' : ' el ' + esc(R.dia)} · ${hechos.length}</span><div class="g2">${hechos.map(tarjeta).join('')}</div>` : (R.esHoy ? '' : '<p class="small muted">Ese día no hay registros de calidad.</p>')}
+    ${puede ? `<span class="lbl">Camiones para registrar</span><div class="g2">${pend.map(tarjeta).join('')}
+      <button class="farm r2otra" id="r2Otra"><span class="main"><span class="name">+ Otra entrada</span><span class="sub">Cisterna de otro proveedor</span></span></button></div>` : ''}`;
   const parte = cal || ofi ? parteHtml() : '';
   v.innerHTML = esEsc() && (cal || ofi)
     ? `${diaNav}<div class="esc2"><div class="stack">${depHtml}${camHtml}</div><div class="stack">${parte}</div></div>`

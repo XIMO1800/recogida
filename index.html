@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=155">
+<link rel="manifest" href="manifest.json?v=156">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v155 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v156 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1863,7 +1863,7 @@ function recepcion3(v, u) {
   const compsDe = x => x.comps && x.comps.length ? x.comps.slice(0, 4) : [1, 2, 3, 4].map(n => ({ n: String(n), cap: 0 }));
   // propuesto: el compartimento que tuvo esa leche la última vez en ese camión (si no lo ha cogido ya otra)
   const nDef = (x, t, e) => { const ya = Object.values(t.f).flatMap(z => z.n || []), ok = compsDe(x).map(k => k.n);
-    return String((x.ult || {})[e] || '').split(/[,\s]+/).filter(k => ok.includes(k) && !ya.includes(k)); };
+    return String((x.ult || {})[e] || '').split(/[,\s]+/).filter(k => ok.includes(k) && !ya.includes(k)).slice(0, 1); };
   const capDe = (x, r) => compsDe(x).filter(k => (r.n || []).includes(k.n)).reduce((a, k) => a + (k.cap || 0), 0);
   const noCabe = (x, r) => { const c = capDe(x, r), l = num(r.l) || 0; return c > 0 && l > c + 200; };
   const ci = (x, campo, val, e) => `<span class="r3ci">${['C', 'I'].map(k => `<button class="${val === k ? 'on' + (k === 'I' ? ' mal' : '') : ''}" data-r3ci="${esc(x.id)}|${e || ''}|${campo}|${k}">${k}</button>`).join('')}</span>`;
@@ -1914,7 +1914,7 @@ function recepcion3(v, u) {
   v.querySelectorAll('[data-r3n]').forEach(b => b.onclick = () => { const [id, e, k] = b.dataset.r3n.split('|'), r = st.t[id].f[e];
     // un compartimento de la cisterna es de una sola leche
     Object.values(st.t[id].f).forEach(z => { if (z !== r) z.n = z.n.filter(q => q !== k); });
-    r.n = r.n.includes(k) ? r.n.filter(q => q !== k) : r.n.concat(k).sort(); pinta(); });
+    r.n = r.n.includes(k) ? [] : [k]; pinta(); });   // cada leche va en UN compartimento (y cada compartimento lleva una sola leche)
   v.querySelectorAll('[data-r3dep]').forEach(b => b.onclick = () => { const [id, e, s] = b.dataset.r3dep.split('|'); st.t[id].f[e].dep = s; pinta(); });
   v.querySelectorAll('[data-r3cart]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3cart.split('|'), x = xx(id), r = st.t[id].f[e], l = Math.round((x.cart || {})[e] || 0);
     if (r.l && r.cartPuesto) { r.l = ''; r.cartPuesto = false; return pinta(); } if (!l) return toast('La cartilla no trae ' + NOM[e]); r.l = String(l); r.cartPuesto = true; pinta(); });

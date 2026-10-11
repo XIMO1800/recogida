@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=122">
+<link rel="manifest" href="manifest.json?v=123">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -371,7 +371,9 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v122 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+/** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
+const CONTADORES_1 = false;
+const VERSION = 'v123 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -416,7 +418,7 @@ setInterval(pantallaEncendida, 60000);
 document.addEventListener('click', e => {
   if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
   if (U.view === 'vRecepC') guardarBorrador();   // lo metido en el camión se queda guardado en la tablet
-  R.modo = R.modo === 'esp' ? '' : R.modo === 'c2' ? 'esp' : 'c2'; R.ed = null; recepcion();   // Recepción → Contadores → Contadores 2 → Recepción
+  R.modo = CONTADORES_1 ? (R.modo === 'esp' ? '' : R.modo === 'c2' ? 'esp' : 'c2') : (R.modo === 'esp' ? 'c2' : 'esp'); R.ed = null; recepcion();   // Contadores 2 ↔ Recepción (con CONTADORES_1: también Contadores)
   toast(R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' ? 'Contadores 2' : 'Contadores');
 });
 const CFG = () => D().config;
@@ -532,7 +534,7 @@ $('#back').onclick = () => {
   if (U.view === 'vOfiV') return oficina(true);
   if (U.view === 'vHisto') return oficina(true);
   if (U.view === 'vHisto2') { R.modo = 'esp'; return recepcion(); }
-  if (U.view === 'vHisto3') { R.modo = ''; return recepcion(); }
+  if (U.view === 'vHisto3') { R.modo = CONTADORES_1 ? '' : 'c2'; return recepcion(); }
   if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
   if (U.view === 'vAgua' || U.view === 'vDep') return recepcion(true);
   if (U.view === 'vRecep' && D().oficina) return oficina(true);
@@ -1169,11 +1171,12 @@ function marcoEsc() {
   const cal = !!S.datos.calidad && !ofi;
   // Dos tarjetas: RECOGIDA (rutas e histórico con DeCA; solo oficina) y RECEPCIÓN (contadores, agua, su histórico; y la recepción de calidad con el suyo)
   const MODO = { recep: '', c2: 'c2', recep2: 'esp' };
-  const CO = ['recep', 'Contadores', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], C2b = ['c2', 'Contadores 2', 'Hoja como el papel · prueba', ['vRecep']],
+  const CO = ['recep', 'Contadores', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], C2b = ['c2', CONTADORES_1 ? 'Contadores 2' : 'Contadores', 'Hoja como el papel', ['vRecep']],
     AG = ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']], H3 = ['histo3', 'Histórico contadores', 'Camiones descargados por días', ['vHisto3']],
     RC = ['recep2', 'Recepción', 'Registro por camión (calidad)', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico recepción', 'Registros de calidad por días', ['vHisto2']];
+  if (!CONTADORES_1) { CO.splice(0, 4, ...C2b); C2b.length = 0; }   // Contadores 2 pasa a ser «Contadores»
   const grupos = [ofi && ['Recogida', [['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['histo', 'Histórico y DeCA', 'Viajes por días', ['vHisto']]]],
-    ['Recepción', [CO, C2b, !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC].filter(Boolean)]].filter(Boolean);
+    ['Recepción', [CO, C2b.length && C2b, !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC].filter(Boolean)]].filter(Boolean);
   const btn = ([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')) ? 'on' : ''}">${t}<small>${sub}</small></button>`;
   $('#side').innerHTML = `<div class="side-t">Recogida y recepción<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
     ${grupos.map(([t, it]) => `<div class="navg"><div class="navgt">${t}</div><nav class="nav">${it.map(btn).join('')}</nav></div>`).join('')}
@@ -1453,10 +1456,11 @@ function recepDep(dep) {
   show('vDep', 'Depósito ' + dep, D().usuario.nombre);
 }
 async function recepcion(sinCargar) {
+  if (!R.modo && !CONTADORES_1) R.modo = 'c2';
   const v = $('#vRecep'), u = D().usuario;
   if (!sinCargar || !R.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
-    show('vRecep', R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' ? 'Contadores 2' : 'Contadores', u.nombre);
+    show('vRecep', R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' && CONTADORES_1 ? 'Contadores 2' : 'Contadores', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
       R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
       // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
@@ -1627,7 +1631,7 @@ function contadores2(v, u) {
   const hoja = st.orden.map((id, pos) => { if (esAg(id)) { const b = bloqueAg(id, ++nA, ses, pos); ses = []; return b; }
     const x = todos.find(z => z.id === id); ses.push(x); return bloque(x, ++nC); }).join('');
   const sinAgua = ses.length;
-  v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small muted" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <b>PRUEBA: no se guarda nada</b> en la hoja ni va al programa; lo que metas se queda solo en esta tablet. Las descargas reales se siguen pasando en Contadores.</p>
+  v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small muted" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <b>Todavía no se guarda nada</b> en la hoja ni va al programa: lo que metas se queda solo en esta tablet.</p>
       ${st.orden.length ? '<button class="btn ghost" id="c2vaciar" style="width:auto;min-height:36px;padding:4px 12px;margin-top:6px">Empezar la prueba de cero</button>' : ''}</div>
     ${hoja}
     ${enHoja.length ? `<button class="btn sec" id="c2agua" style="margin:2px 0 4px">+ Agua de arrastre${sinAgua ? ` (cierra ${sinAgua === 1 ? 'el último camión' : 'los ' + sinAgua + ' últimos camiones'})` : ''}</button>` : ''}
@@ -1688,7 +1692,7 @@ function contadores2(v, u) {
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); }; });
   v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { const vid = inp.dataset.c2tot; st.t[vid].total = inp.value.replace(/\D/g, ''); c2Escribir();
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); });
-  show('vRecep', 'Contadores 2' + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
+  show('vRecep', (CONTADORES_1 ? 'Contadores 2' : 'Contadores') + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
 }
 /** Otra entrada: cada cisterna V + especie (VC, VV, VD, VO); si se repite la especie, numeradas: VC1, VC2… */
 function c2Ids(sel) { const es = sel.filter(Boolean), k = {}; return es.map(e => { const n = es.filter(z => z === e).length; k[e] = (k[e] || 0) + 1; return 'V' + e + (n > 1 ? k[e] : ''); }); }
@@ -1726,12 +1730,12 @@ async function historico3(recargar) {
       <p class="small muted" style="margin:0">${fil.length} camiones · ${ORD_ESP.filter(e => tot[e]).map(e => `${esc(ESPS[e])} ${fmt(tot[e])} l`).join(' · ') || 'sin litros'}</p></div>
     <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Hora</th><th>Camión</th><th>Conductor</th><th>Cisternas · litros → depósito</th><th class="n">Contador</th><th class="n">Dif.</th><th>Firma</th><th></th></tr></thead><tbody>
       ${porDiaH(fil).map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} ${g.xs.length > 1 ? 'camiones' : 'camión'} · ${fmt(g.xs.reduce((a, z) => a + z.total, 0))} l${aguaDe(g.f) ? ` · agua ${fmt(aguaDe(g.f))} l` : ''}
-        <button class="btn ghost" data-h3="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h3id="${esc(x.id)}" data-h3f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.hora)}</td><td class="mono">${esc(x.matricula)}</td>
+        ${CONTADORES_1 ? `<button class="btn ghost" data-h3="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día</button>` : ''}</td></tr>` + g.xs.map(x => `<tr class="h2fila" ${CONTADORES_1 ? `data-h3id="${esc(x.id)}" data-h3f="${esc(x.fecha)}" style="cursor:pointer"` : ''}><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.hora)}</td><td class="mono">${esc(x.matricula)}</td>
         <td><b>${esc(x.conductor)}</b>${x.otra ? ' <span class="small muted">· otra entrada</span>' : x.ruta ? ` <span class="small muted">· ruta ${esc(String(x.ruta).split(',').map(z => +z).join(' y '))}</span>` : ''}</td>
         <td>${x.comps.slice().sort((a, b) => a.ord - b.ord).map(c => `<span class="h3c">${tq(c.id)} ${fmt(c.contador)} → ${deps(c)}</span>`).join(' ')}</td>
         <td class="n"><b>${fmt(x.total)}</b></td><td class="n small">${x.dif ? `<b style="color:var(--bad)">${x.dif > 0 ? '+' : ''}${fmt(x.dif)}</b>` : '<span class="muted">—</span>'}</td>
         <td class="small">${esc(x.usuario || '—')}</td>
-        <td style="white-space:nowrap"><button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button></td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay descargas en esas fechas.</td></tr>'}
+        <td style="white-space:nowrap">${CONTADORES_1 ? '<button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button>' : ''}</td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay descargas en esas fechas.</td></tr>'}
     </tbody></table></div>`;
   $('#h3Des').onchange = e => { H3.desde = e.target.value; }; $('#h3Has').onchange = e => { H3.hasta = e.target.value; };
   $('#h3Bus').onclick = () => historico3(true);

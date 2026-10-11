@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=149">
+<link rel="manifest" href="manifest.json?v=150">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v149 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v150 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2127,7 +2127,7 @@ async function imprimirParte() {
   const P = R.parte || {}, t = totEsp(), logo = ($('.logo img') || {}).src || '';
   const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, num1 = x => x === '' || x == null ? '' : String(x).replace('.', ',');
   // Recepción: el registro va por camión; la ruta es la del viaje de ese día con esa matrícula
-  const rutaR2 = x => { const vj = (R.viajes || []).find(z => !z.otra && z.rutas && normMat(z.matricula) === normMat(x.matricula)); return vj ? ' · ruta ' + rutasTxt(vj) : ''; };
+  const rutaR2 = x => { const vj = (R.viajes || []).find(z => !z.otra && z.rutas && normMat(z.matricula) === normMat(x.matricula)); return vj ? rutasTxt(vj) : ''; };
   const bloque = x => {
     const src = fuente(x);
     const base = x.comps || [], comps = src.comps.slice().sort((a, b) => ORD_ESP.indexOf(espDe(a)) - ORD_ESP.indexOf(espDe(b)));
@@ -2135,7 +2135,7 @@ async function imprimirParte() {
     const total = src.total || src.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
     const nf = Math.max(4, comps.length), vacia = '<td></td>'.repeat(11);   // siempre 4 filas como mínimo, todas iguales
     return `<table class="b"><colgroup>${[11, 12, 6, 6, 6, 6, 6, 7, 5, 7, 5, 8, 15].map(w => `<col style="width:${w}%">`).join('')}</colgroup><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
-      ${comps.map((c, i) => `<tr class="r">${i === 0 ? `<td class="prov" rowspan="${nf}"><b>${esc(x.otra ? x.conductor : R2() ? x.conductor + rutaR2(x) : x.conductor + ' · ruta ' + rutasTxt(x))}</b><br>Matrícula:<br>${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
+      ${comps.map((c, i) => `<tr class="r">${i === 0 ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor)}</b>${!x.otra && (R2() ? rutaR2(x) : rutasTxt(x)) ? `<br><span style="white-space:nowrap">Ruta ${esc(R2() ? rutaR2(x) : rutasTxt(x))}</span>` : ''}<br>Matrícula:<br>${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
         <td class="cis"><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>

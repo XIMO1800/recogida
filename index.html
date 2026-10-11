@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=139">
+<link rel="manifest" href="manifest.json?v=140">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v139 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v140 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1835,11 +1835,14 @@ function r3Leer() { try { return JSON.parse(localStorage.getItem(r3Clave()) || '
 function r3Escribir() { try { localStorage.setItem(r3Clave(), JSON.stringify(R3.st)); } catch (e) {} }
 function recepcion3(v, u) {
   const st = R3.st = r3Leer(); st.orden = st.orden || []; st.t = st.t || {}; st.ext = st.ext || [];
-  const todos = R.viajes.concat(st.ext); st.orden = st.orden.filter(id => todos.some(x => x.id === id));
+  // Los camiones habituales (como en Recepción); si hoy tienen viaje, con su conductor, ruta, leches y cartilla
+  const habituales = (R.camiones || []).map(t => { const vj = R.viajes.find(z => !z.otra && normMat(z.matricula) === normMat(t.matricula));
+    return { id: 'T' + normMat(t.matricula), matricula: t.matricula, conductor: vj ? vj.conductor : t.conductor, rutas: vj ? vj.rutas : '', cart: vj ? vj.cart : {}, esps: vj && espViaje(vj).length ? espViaje(vj) : ORD_ESP.slice(), nCompCam: t.nComp || 0, desc: t.desc || '' }; });
+  const todos = habituales.concat(st.ext); st.orden = st.orden.filter(id => todos.some(x => x.id === id));
   const xx = id => todos.find(x => x.id === id), silos = R.deps.map(d => d.id), DEP = { D: '3', O: '4', V: '2', C: '1' };
   const NOM = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' };
   const T = x => { const t = st.t[x.id] = st.t[x.id] || { f: {}, lim: '', fil: '' };
-    (x.otra ? x.esps || [] : espViaje(x)).forEach(e => { if (!t.f[e]) t.f[e] = { n: [], l: '', dep: R.deps.some(d => String(d.id) === DEP[e]) ? DEP[e] : '', t: '', ph: '', d: '', vis: '' }; }); return t; };
+    (x.esps || []).forEach(e => { if (!t.f[e]) t.f[e] = { n: [], l: '', dep: R.deps.some(d => String(d.id) === DEP[e]) ? DEP[e] : '', t: '', ph: '', d: '', vis: '' }; }); return t; };
   const nComp = x => Math.min(4, Math.max(3, x.nCompCam || 0, ...((R.camiones || []).filter(c => normMat(c.matricula) === normMat(x.matricula)).map(c => c.nComp || 0))));
   const ci = (x, campo, val, e) => `<span class="r3ci">${['C', 'I'].map(k => `<button class="${val === k ? 'on' + (k === 'I' ? ' mal' : '') : ''}" data-r3ci="${esc(x.id)}|${e || ''}|${campo}|${k}">${k}</button>`).join('')}</span>`;
   const inp = (x, e, campo, val, ph, mode) => `<input class="r3i" inputmode="${mode || 'decimal'}" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|${campo}" value="${esc(val || '')}" placeholder="${ph}">`;
@@ -1855,22 +1858,27 @@ function recepcion3(v, u) {
           <label class="r3dep"><span class="tiny">Depósito</span><div class="c2deps">${silos.map(s => `<button class="${String(r.dep) === String(s) ? 'on' : ''}" data-r3dep="${esc(x.id)}|${e}|${esc(s)}">${esc(s)}</button>`).join('')}</div></label></div></div>`; };
     const falta = ORD_ESP.filter(e => !t.f[e]);
     return `<div class="card stack c2b r3b" data-r3b="${esc(x.id)}">
-      <div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b>${x.otra ? '' : ` <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>`} <span class="mono r3mat">${esc(x.matricula || '')}</span></span>
+      <div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b>${x.otra || !x.rutas ? '' : ` <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>`} <span class="mono r3mat">${esc(x.matricula || '')}</span></span>
         <button class="lnk" data-r3fuera="${esc(x.id)}" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>
       <div class="r3lim"><label><span class="tiny">Limpieza cisterna</span>${ci(x, 'lim', t.lim)}</label><label><span class="tiny">Filtro</span>${ci(x, 'fil', t.fil)}</label>
         ${falta.length ? `<span class="r3mas">${falta.map(e => `<button class="lnk" data-r3add="${esc(x.id)}|${e}">+ ${NOM[e]}</button>`).join('')}</span>` : ''}</div>
       ${es.map(fila).join('')}
       <div class="r3pie"><div class="c2firma"><canvas data-r3pad="${esc(x.id)}"></canvas><div class="row" style="justify-content:space-between;align-items:center"><span class="tiny" data-r3fe="${esc(x.id)}">${FIRMAS['r3|' + R.dia + '|' + x.id] ? 'Firmado ✓' : 'Firma'}</span><button class="lnk" data-r3fb="${esc(x.id)}" style="width:auto;padding:2px 8px">Borrar firma</button></div></div>
         <div class="r3tot"><span class="tiny">Total</span><b class="num" data-r3tot="${esc(x.id)}">${fmt(tot)} L</b></div></div></div>`; };
-  const enHoja = st.orden.map(xx), pend = R.viajes.filter(x => !st.orden.includes(x.id) && !x.otra);
+  const enHoja = st.orden.map(xx), pend = habituales.filter(x => !st.orden.includes(x.id));
   const totEsp = {}; enHoja.forEach(x => { const t = T(x); ORD_ESP.forEach(e => { if (t.f[e]) totEsp[e] = (totEsp[e] || 0) + (num(t.f[e].l) || 0); }); });
-  v.innerHTML = `<div class="msg warn" style="margin:0">Recepción 2 · <b>prueba</b>: no se guarda nada en la hoja; lo que metas se queda solo en esta tablet.</div>
+  const depsR3 = () => { const k = {}; R.deps.forEach(d => { k[d.id] = { l: 0, esps: [] }; });
+    st.orden.forEach(id => { const t = st.t[id]; if (t) ORD_ESP.forEach(e => { const r = t.f[e], n = r ? Math.round(num(r.l) || 0) : 0; if (n && k[r.dep]) { k[r.dep].l += n; if (!k[r.dep].esps.includes(e)) k[r.dep].esps.push(e); } }); });
+    const tipo = es => !es.length ? '' : es.every(e => e === 'D') ? 'Oveja D.O.' : es.every(e => e === 'D' || e === 'O') ? 'Oveja' : es.length === 1 ? NOM[es[0]] : 'Mezcla';
+    return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card" style="cursor:default"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l)}</b><small>${tipo(z.esps) ? '<b>' + esc(tipo(z.esps)) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(z.esps)}</div>`; }).join(''); };
+  v.innerHTML = `<div class="msg warn" style="margin:0;padding:6px 10px">Recepción 2 · <b>prueba</b>: no se guarda nada en la hoja; se queda solo en esta tablet.</div>
+    <div class="card stack"><span class="lbl">Depósitos de leche</span><div class="tally" id="r3deps">${depsR3()}</div></div>
     ${enHoja.map((x, i) => bloque(x, i + 1)).join('')}
     ${enHoja.length ? `<div class="card stack"><span class="lbl">Total litros leche recepcionada</span><div class="r3te" id="r3te">${ORD_ESP.map(e => `<div class="${bgEsp(e)}"><span class="tiny">${NOM[e]}</span><b class="num">${fmt(totEsp[e] || 0)}</b></div>`).join('')}</div>
       <button class="btn ghost" id="r3vaciar" style="width:auto;min-height:36px;padding:4px 12px">Empezar la prueba de cero</button></div>` : ''}
     ${enHoja.length ? '<div class="sep-blq"></div>' : ''}
-    <span class="lbl blq">Llega un camión · tócalo para añadirlo</span>
-    <div class="g2">${pend.map(x => `<button class="farm" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">Ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span><span class="comps">${espViaje(x).map(e => `<span class="tank sp-${e}">${NOM[e]}</span>`).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>
+    <span class="lbl blq">Camiones disponibles</span>
+    <div class="g2">${pend.map(x => `<button class="farm" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.rutas ? 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ') + ' · ' : ''}${esc(x.desc)}</span><span class="comps">${x.rutas ? x.esps.map(e => `<span class="tank sp-${e}">${NOM[e]}</span>`).join(' ') : Array.from({ length: Math.min(4, x.nCompCam || 3) }, (_, i) => `<span class="tank">${i + 1}</span>`).join(' ')}</span></span><span class="st num">Registrar</span></button>`).join('') || '<p class="muted">No hay camiones.</p>'}</div>
     ${R3.otra ? `<div class="card c2otra"><span class="lbl" style="margin:0">Otra entrada</span><input id="r3oN" placeholder="Proveedor" value="${esc(R3.otra.nom || '')}" autocomplete="off" enterkeyhint="done"><input id="r3oM" placeholder="Matrícula" value="${esc(R3.otra.mat || '')}" autocomplete="off" enterkeyhint="done">
       <div class="c2es">${ORD_ESP.map(e => `<button class="c2chip ${R3.otra.es.includes(e) ? bgEsp(e) : ''}" style="${R3.otra.es.includes(e) ? 'outline:2.5px solid var(--brand)' : 'opacity:.75'}" data-r3oe="${e}">${NOM[e]}</button>`).join('')}</div>
       <div class="row" style="gap:8px"><button class="btn" id="r3oOk">Añadir</button><button class="btn ghost" id="r3oNo">Cancelar</button></div></div>` : '<button class="btn ghost" id="r3otra" style="margin-top:8px">+ Otra entrada (camión de fuera)</button>'}`;
@@ -1888,7 +1896,7 @@ function recepcion3(v, u) {
     if (r.l && r.cartPuesto) { r.l = ''; r.cartPuesto = false; return pinta(); } if (!l) return toast('La cartilla no trae ' + NOM[e]); r.l = String(l); r.cartPuesto = true; pinta(); });
   const vivo = id => { const t = st.t[id], x = xx(id); if (!t || !x) return; const el = v.querySelector(`[data-r3tot="${id}"]`); if (el) el.textContent = fmt(ORD_ESP.reduce((a, e) => a + (t.f[e] ? num(t.f[e].l) || 0 : 0), 0)) + ' L';
     const te = {}; st.orden.forEach(z => { const tt = st.t[z]; if (tt) ORD_ESP.forEach(e => { if (tt.f[e]) te[e] = (te[e] || 0) + (num(tt.f[e].l) || 0); }); });
-    v.querySelectorAll('#r3te b').forEach((b, k) => { b.textContent = fmt(te[ORD_ESP[k]] || 0); }); };
+    v.querySelectorAll('#r3te b').forEach((b, k) => { b.textContent = fmt(te[ORD_ESP[k]] || 0); }); const dd = $('#r3deps'); if (dd) dd.innerHTML = depsR3(); };
   v.querySelectorAll('[data-r3i]').forEach(i => i.oninput = () => { const [id, e, campo] = i.dataset.r3i.split('|'); st.t[id].f[e][campo] = campo === 'l' || campo === 'd' ? i.value.replace(/\D/g, '') : i.value.replace(/[^\d.,]/g, ''); if (campo === 'l') st.t[id].f[e].cartPuesto = false; r3Escribir(); vivo(id); });
   v.querySelectorAll('[data-r3pad]').forEach(cv => { const id = cv.dataset.r3pad; padFirma(cv, 'r3|' + R.dia + '|' + id, v.querySelector(`[data-r3fe="${id}"]`), v.querySelector(`[data-r3fb="${id}"]`)); });
   if ($('#r3vaciar')) $('#r3vaciar').onclick = () => { if (!confirm2($('#r3vaciar'))) return; st.orden = []; st.t = {}; st.ext = []; R3.otra = null; pinta(); scrollTo(0, 0); };

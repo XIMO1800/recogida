@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=120">
+<link rel="manifest" href="manifest.json?v=121">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -370,7 +370,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v120 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v121 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1664,9 +1664,14 @@ function contadores2(v, u) {
   v.querySelectorAll('[data-c2arr]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arr.split('|'), r = st.t[vid].f[cid]; r.arr = !r.arr; if (!r.arr) { r.arrDep = ''; r.arrL = ''; r.arrPos = ''; pinta(); return; }
     // ¿por delante o por detrás? Si la anterior (en orden) fue a otro depósito, vengo de él: el arrastre va arriba, a ese depósito.
     // Si no, es la cola de esta: abajo, al depósito de la siguiente (o al de mezcla si aún no se sabe).
-    const f = st.t[vid].f, prev = Object.values(f).find(z => z.ord && z.ord === r.ord - 1), next = Object.values(f).find(z => z.ord && z.ord === r.ord + 1);
+    // La anterior de la primera cisterna es la última del camión de antes en la hoja (salvo que entre medias haya agua: la tubería quedó limpia).
+    const f = st.t[vid].f, next = Object.values(f).find(z => z.ord && z.ord === r.ord + 1);
+    let prev = Object.values(f).find(z => z.ord && z.ord === r.ord - 1);
+    if (!prev && r.ord === 1) { const i = st.orden.indexOf(vid), pid = i > 0 ? st.orden[i - 1] : '';
+      if (pid && !esAg(pid) && st.t[pid]) prev = Object.values(st.t[pid].f).filter(z => z.ord).sort((a, c) => c.ord - a.ord)[0]; }
+    const deDonde = prev ? (prev.arr && prev.arrPos !== 'ant' && prev.arrDep ? prev.arrDep : prev.dep) : '';   // último depósito al que fue leche
     const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== r.dep);
-    if (prev && prev.dep && prev.dep !== r.dep) { r.arrPos = 'ant'; r.arrDep = prev.dep; }
+    if (deDonde && deDonde !== r.dep) { r.arrPos = 'ant'; r.arrDep = deDonde; }
     else { r.arrPos = 'post'; r.arrDep = next && next.dep && next.dep !== r.dep ? next.dep : (mez ? mez.id : ''); }
     pinta(); });
   v.querySelectorAll('[data-c2arrpos]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arrpos.split('|'), r = st.t[vid].f[cid]; r.arrPos = r.arrPos === 'ant' ? 'post' : 'ant'; pinta(); });

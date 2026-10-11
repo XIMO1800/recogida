@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=138">
+<link rel="manifest" href="manifest.json?v=139">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v138 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v139 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1195,7 +1195,7 @@ function marcoEsc() {
     <div style="flex:1"></div><div class="sbot"><button class="navb" id="sideAct">Actualizar</button><button class="navb" id="sideSalir">Salir</button></div>`;
   { const g = grupos.find(([, it]) => it.some(([k, , , vs]) => vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')))); $('#hZ').textContent = g ? g[0] : ''; }
   { const h = $('.top'); if (h && h.offsetHeight) $('#side').style.setProperty('--hdrH', h.offsetHeight + 'px'); }
-  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; recepcion(); },
+  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; C2.solo = null; recepcion(); },
     recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); ir[b.dataset.nav](); });
   $('#sideAct').onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vHisto2') return historico2(true); if (U.view === 'vHisto3') return historico3(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
@@ -1705,8 +1705,9 @@ function contadores2(v, u) {
       <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">${a.manual ? `<button class="btn ghost" data-c2agr="${esc(id)}" style="width:auto;min-height:36px;padding:4px 12px">Volver a la propuesta</button>` : ''}
 </div></div>`; };
   let nC = 0, nA = 0, ses = [];
-  const hoja = st.orden.map((id, pos) => { if (esAg(id)) { const b = bloqueAg(id, ++nA, ses, pos); ses = []; return b; }
-    const x = todos.find(z => z.id === id); ses.push(x); return bloque(x, ++nC); }).join('');
+  const bloques = st.orden.map((id, pos) => { if (esAg(id)) { const b = bloqueAg(id, ++nA, ses, pos); ses = []; return [id, b]; }
+    const x = todos.find(z => z.id === id); ses.push(x); return [id, bloque(x, ++nC)]; }), hoja = bloques.map(z => z[1]).join('');
+  if (C2.solo && !bloques.some(z => z[0] === C2.solo)) C2.solo = null;   // desde el histórico: solo ese camión
   const sinAgua = ses.length;
   // EL PARTE: lo que se envía al cerrarlo y si ya está enviado tal cual
   let PT; const pt = () => {
@@ -1757,6 +1758,9 @@ function contadores2(v, u) {
       ${[0, 1, 2, 3].map(i => `<div class="c2orow"><b>Cisterna ${i + 1}</b>${[['C', 'cabra'], ['V', 'vaca'], ['D', 'D.O.'], ['O', 'oveja']].map(([e, t]) => `<button class="c2chip ${C2.otra.sel[i] === e ? bgEsp(e) : ''}" style="${C2.otra.sel[i] === e ? 'outline:2.5px solid var(--brand)' : 'opacity:.75'}" data-c2oe="${i}|${e}"><b>V${e}</b> ${t}</button>`).join('')}</div>`).join('')}
       <div class="row" style="gap:8px"><button class="btn" id="c2oOk" ${C2.otra.sel.some(Boolean) ? '' : 'disabled'}>Añadir a la hoja</button><button class="btn ghost" id="c2oNo">Cancelar</button></div></div>`
       : '<button class="btn ghost" id="c2otra" style="margin-top:8px">+ Otra entrada (camión de fuera)</button>'}`;
+  if (C2.solo) v.innerHTML = `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" id="c2entera" style="width:auto;min-height:40px;padding:4px 16px">Ver la hoja entera del ${esc(R.dia)}</button>
+      ${R.esHoy === false ? '<button class="btn ghost" id="c2hoy" style="width:auto;min-height:40px;padding:4px 14px">Ir a hoy</button>' : ''}${editable ? '' : '<span class="small muted">Solo lectura.</span>'}</div>${bloques.find(z => z[0] === C2.solo)[1]}`;
+  if ($('#c2entera')) $('#c2entera').onclick = () => { C2.solo = null; contadores2(v, u); scrollTo(0, 0); };
   const pinta = () => { c2Escribir(); contadores2(v, u); };
   const xx = id => todos.find(z => z.id === id);
   if ($('#c2otra')) $('#c2otra').onclick = () => { C2.otra = { nom: '', sel: ['', '', '', ''] }; contadores2(v, u); setTimeout(() => { const f = $('#c2otraF'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#c2oN').focus(); } }, 60); };
@@ -1818,7 +1822,7 @@ function contadores2(v, u) {
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(); }; });
   v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { const vid = inp.dataset.c2tot; st.t[vid].total = inp.value.replace(/\D/g, ''); c2Escribir();
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(); });
-  if ($('#c2hoy')) $('#c2hoy').onclick = () => { R.fecha = ''; recepcion(); };
+  if ($('#c2hoy')) $('#c2hoy').onclick = () => { R.fecha = ''; C2.solo = null; recepcion(); };
   show('vRecep', (CONTADORES_1 ? 'Contadores 2' : 'Contadores') + ' · ' + String(R.dia).slice(0, 5) + (R.esHoy === false ? '/' + String(R.dia).slice(-4) : ''), u.nombre); vivo();
   if (R.abrirTras) { const id = R.abrirTras; R.abrirTras = null; setTimeout(() => { const el = v.querySelector(`[data-c2b="${id}"]`); if (el) { el.scrollIntoView({ block: 'start' }); el.classList.add('c2luz'); setTimeout(() => el.classList.remove('c2luz'), 2500); } }, 80); }
 }
@@ -1944,8 +1948,8 @@ async function historico3(recargar) {
   $('#h3Q').oninput = e => { H3.q = e.target.value; clearTimeout(H3.t); H3.t = setTimeout(() => { historico3(); const i = $('#h3Q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
   // «Ver el día»: Contadores en esa fecha (depósitos, camiones recibidos y agua). Tocar una fila abre ESE camión.
   const md = CONTADORES_1 ? '' : 'c2';   // la hoja de contadores de ese día, con ese camión a la vista
-  v.querySelectorAll('[data-h3]').forEach(b => b.onclick = e => { e.stopPropagation(); R.modo = md; R.fecha = b.dataset.h3; R.ed = null; recepcion(); });
-  v.querySelectorAll('[data-h3id]').forEach(tr => tr.onclick = () => { R.modo = md; R.fecha = tr.dataset.h3f; R.ed = null; R.abrirTras = tr.dataset.h3id; recepcion(); });
+  v.querySelectorAll('[data-h3]').forEach(b => b.onclick = e => { e.stopPropagation(); R.modo = md; R.fecha = b.dataset.h3; R.ed = null; C2.solo = null; recepcion(); });
+  v.querySelectorAll('[data-h3id]').forEach(tr => tr.onclick = () => { R.modo = md; R.fecha = tr.dataset.h3f; R.ed = null; C2.solo = md === 'c2' ? tr.dataset.h3id : null; R.abrirTras = md === 'c2' ? null : tr.dataset.h3id; recepcion(); });
   show('vHisto3', 'Histórico de contadores', D().usuario.nombre);
 }
 async function historico2(recargar) {

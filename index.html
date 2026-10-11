@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=129">
+<link rel="manifest" href="manifest.json?v=130">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -247,8 +247,8 @@ body{margin:0}
 
 /* ═══ Escritorio: oficina y recepción en pantalla de ordenador (≥ 1100 px) ═══ */
 #side{display:none}
-body.esc #side{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:232px;background:linear-gradient(180deg,var(--brand-deep) 0%,var(--brand-deep) 30%,var(--brand) 100%);overflow-y:auto;color:#fff;z-index:6;padding:18px 12px;gap:4px}
-body.esc .top{margin-left:232px}
+body.esc #side{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:265px;background:#3a0a0f;overflow-y:auto;color:#fff;z-index:6;padding:0 12px 12px;gap:4px}
+body.esc .top{margin-left:265px}
 body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
 /* Tablet en horizontal (recepción): logotipo, versión, título y estado en UNA sola franja roja, para dejar sitio a los contadores */
 @media (orientation:landscape) and (min-width:700px) and (max-width:1099px){
@@ -275,7 +275,7 @@ body.esc .top-in,body.esc.ancho .top-in{max-width:none;padding-inline:28px}
 }
 .desliza{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:-4px}
 .desliza .btn{width:auto;min-height:40px;padding:2px 22px;font-size:24px;line-height:1}
-body.esc .app,body.esc.ancho .app{max-width:none;margin-left:232px;padding:20px 28px 48px}
+body.esc .app,body.esc.ancho .app{max-width:none;margin-left:265px;padding:20px 28px 48px}
 body.esc .solo-movil{display:none!important}
 body.esc .agGrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
 body.esc .agGrid .agDer{position:sticky;top:12px}
@@ -285,7 +285,7 @@ body.esc .agGrid .tally b{font-size:15px!important}
 body.esc .agGrid .agDer .card{padding:14px 16px}
 .side-t{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1;padding:4px 10px 14px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px}
 .side-t small{display:block;font-family:var(--body);font-size:13px;font-weight:500;opacity:.75;margin-top:4px}
-.nav{display:flex;flex-direction:column;gap:2px}.navg{background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.22));border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:8px 6px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.18)}.navg .nav button{padding:7px 10px;font-size:16px;color:#fff}.navg .nav button small{font-size:12.5px;opacity:.75}body.esc .bar-t span{font-size:18px;font-weight:700;opacity:1}body.esc .top .bar-t{gap:14px}body.esc #vRecepC{zoom:.88}.navg .nav button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.side-logo{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 4px 12px}.side-logo .logo{padding:6px 14px;border-radius:10px;cursor:pointer}.side-logo .logo img{height:46px}.side-logo small{font-size:12px;opacity:.8;text-align:center}.side-t{text-align:center;font-size:21px!important;border-bottom:0!important;padding:4px 6px 14px!important}body.esc .brand .logo,body.esc .brand .ver,body.esc .brand .app-name{display:none}body.esc .brand{justify-content:flex-end}.navgt{font-size:15px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);padding:2px 6px 7px;margin:0 6px 6px;border-bottom:2px solid var(--gold)}
+.nav{display:flex;flex-direction:column;gap:2px}.navg{background:var(--brand-deep);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:4px 4px 6px;box-shadow:0 4px 14px rgba(0,0,0,.35);margin-bottom:16px}.navg .nav{gap:4px}.navg .nav button{padding:4px 12px;line-height:1.18;font-size:18px;white-space:normal;color:rgba(255,255,255,.88)}.navg .nav button small{font-size:13.5px;opacity:.85}body.esc .bar-t span{font-size:18px;font-weight:700;opacity:1}body.esc .top .bar-t{gap:14px}body.esc #vRecepC{zoom:.88}.side-logo{min-height:var(--hdrH,104px);margin:0 0 10px;padding:10px 10px 14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;flex:none;border-bottom:1px solid rgba(196,149,43,.5)}.side-logo .logo{padding:5px 14px;border-radius:9px;cursor:pointer}.side-logo .logo img{height:50px}.side-logo small{font-size:14px;opacity:.92;font-weight:500;line-height:1.2;text-align:center}.side-t{text-align:center;font-size:21px!important;border-bottom:0!important;padding:0 10px 6px!important;margin-bottom:4px!important}#side .sbot{display:grid;grid-template-columns:1fr 1fr;gap:6px}#side .sbot .navb{margin:0;font-size:16px;text-align:center;padding:9px 6px}body.esc #hZ{display:inline-block;align-self:flex-start;font-size:19px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f3d27a;line-height:1.2;margin-bottom:2px}#hZ{display:none}body.esc .top .bar-t{flex-direction:column!important;align-items:flex-start!important;gap:2px!important}body.esc .bar-t b{font-size:26px!important}body.esc .brand .logo,body.esc .brand .ver,body.esc .brand .app-name{display:none}body.esc .brand{justify-content:flex-end}.navgt{font-family:var(--display);font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);padding:5px 10px 4px;margin:0 4px 3px;border-bottom:2px solid rgba(196,149,43,.75)}
 .nav button,.navb{display:block;width:100%;text-align:left;background:transparent;border:0;color:rgba(255,255,255,.82);padding:11px 12px;border-radius:10px;font-weight:600;font-size:15.5px}
 .nav button:hover,.navb:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav button.on{background:rgba(255,255,255,.15);color:#fff;box-shadow:inset 3px 0 0 var(--gold)}
@@ -329,7 +329,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
     </div>
     <div class="bar">
       <button class="back" id="back" aria-label="Volver" hidden>‹</button>
-      <div class="bar-t"><b id="barTitle">Recogida</b><span id="barSub"></span></div>
+      <div class="bar-t"><span id="hZ"></span><b id="barTitle">Recogida</b><span id="barSub"></span></div>
       <button class="back" id="barBorrar" hidden title="Borrar lo metido en este camión (sin guardar)" style="width:auto;padding:0 12px;font-size:20px">🗑</button>
       <button class="decabtn" id="decaBtn" hidden aria-label="Mostrar DeCA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/></svg>DeCA</button>
     </div>
@@ -373,7 +373,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v129 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v130 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1182,7 +1182,9 @@ function marcoEsc() {
   $('#side').innerHTML = `<div class="side-logo"><span class="logo"><img src="${logoSrc}" alt="El Hidalgo"></span><small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'} · ${esc(String(VERSION).split(' ')[0])}</small></div>
     <div class="side-t">Recogida y recepción</div>
     ${grupos.map(([t, it]) => `<div class="navg"><div class="navgt">${t}</div><nav class="nav">${it.map(btn).join('')}</nav></div>`).join('')}
-    <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
+    <div style="flex:1"></div><div class="sbot"><button class="navb" id="sideAct">Actualizar</button><button class="navb" id="sideSalir">Salir</button></div>`;
+  { const g = grupos.find(([, it]) => it.some(([k, , , vs]) => vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')))); $('#hZ').textContent = g ? g[0] : ''; }
+  { const h = $('.top'); if (h && h.offsetHeight) $('#side').style.setProperty('--hdrH', h.offsetHeight + 'px'); }
   const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; recepcion(); },
     recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); ir[b.dataset.nav](); });

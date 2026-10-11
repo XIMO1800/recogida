@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=126">
+<link rel="manifest" href="manifest.json?v=127">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -285,7 +285,7 @@ body.esc .agGrid .tally b{font-size:15px!important}
 body.esc .agGrid .agDer .card{padding:14px 16px}
 .side-t{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1;padding:4px 10px 14px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px}
 .side-t small{display:block;font-family:var(--body);font-size:13px;font-weight:500;opacity:.75;margin-top:4px}
-.nav{display:flex;flex-direction:column;gap:2px}.navg{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;margin-bottom:10px}.navg .nav button{padding:7px 10px}.navg .nav button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.navgt{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);padding:4px 10px 6px}
+.nav{display:flex;flex-direction:column;gap:2px}.navg{background:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.10));border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:8px 6px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.18)}.navg .nav button{padding:7px 10px;font-size:16px;color:#fff}.navg .nav button small{font-size:12.5px;opacity:.75}body.esc .bar-t span{font-size:18px;font-weight:700;opacity:1}body.esc .top .bar-t{gap:14px}body.esc #vRecepC{zoom:.88}.navg .nav button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.navgt{font-size:15px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);padding:2px 6px 7px;margin:0 6px 6px;border-bottom:2px solid var(--gold)}
 .nav button,.navb{display:block;width:100%;text-align:left;background:transparent;border:0;color:rgba(255,255,255,.82);padding:11px 12px;border-radius:10px;font-weight:600;font-size:15.5px}
 .nav button:hover,.navb:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav button.on{background:rgba(255,255,255,.15);color:#fff;box-shadow:inset 3px 0 0 var(--gold)}
@@ -373,7 +373,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v126 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v127 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -417,7 +417,7 @@ setInterval(pantallaEncendida, 60000);
    Desde un camión a medias también: lo metido se queda en la tablet (borrador) y se recupera al volver a abrirlo. */
 document.addEventListener('click', e => {
   if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
-  if (U.view === 'vRecepC') guardarBorrador();   // lo metido en el camión se queda guardado en la tablet
+  if (U.view === 'vRecepC') { if (!salirSinGuardar()) return; guardarBorrador(); }   // lo metido en un camión sin guardar se queda en la tablet
   R.modo = CONTADORES_1 ? (R.modo === 'esp' ? '' : R.modo === 'c2' ? 'esp' : 'c2') : (R.modo === 'esp' ? 'c2' : 'esp'); R.ed = null; recepcion();   // Contadores 2 ↔ Recepción (con CONTADORES_1: también Contadores)
   toast(R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' ? 'Contadores 2' : 'Contadores');
 });
@@ -535,7 +535,7 @@ $('#back').onclick = () => {
   if (U.view === 'vHisto') return oficina(true);
   if (U.view === 'vHisto2') { R.modo = 'esp'; return recepcion(); }
   if (U.view === 'vHisto3') { R.modo = CONTADORES_1 ? '' : 'c2'; return recepcion(); }
-  if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
+  if (U.view === 'vRecepC') { if (!salirSinGuardar()) return; R.ed = null; return recepcion(true); }
   if (U.view === 'vAgua' || U.view === 'vDep') return recepcion(true);
   if (U.view === 'vRecep' && D().oficina) return oficina(true);
   if (U.view === 'vHist') { if (U.histI != null) { U.histI = null; return histRender(); } return rutas(); }
@@ -1183,8 +1183,8 @@ function marcoEsc() {
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
   const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; recepcion(); },
     recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
-  $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { cerrarDrawer(); ir[b.dataset.nav](); });
-  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vHisto2') return historico2(true); if (U.view === 'vHisto3') return historico3(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
+  $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); ir[b.dataset.nav](); });
+  $('#sideAct').onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vHisto2') return historico2(true); if (U.view === 'vHisto3') return historico3(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
   $('#sideSalir').onclick = salir;
   if (['vOfi', 'vRecep', 'vAgua', 'vHisto', 'vHisto2', 'vHisto3'].includes(v)) $('#back').hidden = true;
 }
@@ -2201,14 +2201,17 @@ function padFirma(cv, clave, estEl, borrEl) {
 const borrTodos = () => { try { return JSON.parse(localStorage.getItem(LS_BORR) || '{}'); } catch (e) { return {}; } };
 const borrClave = (x, porEsp) => (porEsp ? 'cal' : 'rec') + '|' + R.dia + '|' + x.id;
 const hayBorrador = (x, porEsp) => !!borrTodos()[borrClave(x, porEsp)];
+/** Un registro YA GUARDADO no deja borrador: lo que se toque y no se guarde se pierde al salir (lo de la hoja no cambia). */
+const edGuardado = E => !!(E && E.x && (E.porEsp ? E.x.cal : E.x.recep));
 function guardarBorrador() {
-  const E = R.ed; if (!E || !E.tocado) return;
+  const E = R.ed; if (!E || !E.tocado || edGuardado(E)) return;
   const t = borrTodos(); t[borrClave(E.x, E.porEsp)] = { ed: E, h: new Date().toTimeString().slice(0, 5), dia: R.dia };
   try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {}
 }
 function borrarBorrador(x, porEsp) { const t = borrTodos(); delete t[borrClave(x, porEsp)]; try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {} }
 function conBorrador(x) {   // al abrir un camión: si hay algo a medias, se recupera tal cual
   const b = borrTodos()[borrClave(x, R.ed.porEsp)];
+  if (b && edGuardado(R.ed)) { borrarBorrador(x, R.ed.porEsp); return; }   // de versiones anteriores: se tira, manda lo guardado
   if (b && b.ed) R.ed = Object.assign(b.ed, { x: Object.assign({}, b.ed.x, x), tocado: true, recuperado: b.h });
 }
 (() => {   // los borradores de hace más de 3 días se tiran
@@ -2220,7 +2223,14 @@ function conBorrador(x) {   // al abrir un camión: si hay algo a medias, se rec
   if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar')) return;
   if (ev === 'click' && !e.target.closest('button')) return;
   R.ed.tocado = true; setTimeout(guardarBorrador, 0);
+  const mm = $('#reMod'); if (mm && mm.hidden && edGuardado(R.ed)) { mm.hidden = false; mm.className = 'msg warn'; mm.style.margin = '0'; mm.textContent = '● Has cambiado algo en este registro ya guardado. No se guarda hasta que pulses Guardar; si sales sin guardar, se queda como estaba.'; }
 }, true));
+/** Salir de un registro guardado con cambios sin guardar: el primer toque avisa, el segundo sale y los descarta. */
+function salirSinGuardar() {
+  const E = R.ed; if (U.view !== 'vRecepC' || !E || !E.tocado || !edGuardado(E)) return true;
+  if (U.avisoSalir && Date.now() - U.avisoSalir < 5000) { U.avisoSalir = 0; toast('Cambios descartados: queda lo guardado'); return true; }
+  U.avisoSalir = Date.now(); toast('Hay cambios sin guardar. Pulsa Guardar, o vuelve a tocar para salir sin guardarlos.'); return false;
+}
 function recepRender() {
   const E = R.ed, x = E.x, v = $('#vRecepC'), ofi = !!D().oficina;
   // Un solo parte: recepción apunta lo suyo; calidad entra al mismo sitio y solo puede marcar la mezcla (C/I) de cada leche
@@ -2325,6 +2335,7 @@ function recepRender() {
       ${ofi ? '' : `<div class="field" id="reFirmaBox" style="max-width:640px"><span class="lbl">Firma de quien hace la ${E.porEsp ? 'recepción (calidad)' : 'recepción'} · con el lápiz o el dedo</span>
         <canvas id="reFirmaPad" style="width:100%;height:170px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
         <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" id="reFirmaEst">${FIRMAS[borrClave(x, E.porEsp)] ? 'Firmado ✓' : 'Sin firmar'}</span><button class="btn ghost" id="reFirmaBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar firma</button></div></div>`}
+      ${E.tocado && edGuardado(E) ? '<div class="msg warn" id="reMod" style="margin:0">● Has cambiado algo en este registro ya guardado. No se guarda hasta que pulses Guardar; si sales sin guardar, se queda como estaba.</div>' : '<div id="reMod" hidden></div>'}
       <button class="btn" id="reGuardar">${E.porEsp ? (ofi ? 'Guardar registro de calidad' : 'Firmar y guardar registro de calidad') : ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
       <div class="card stack" id="reAnu" hidden style="border:2px solid var(--bad)">

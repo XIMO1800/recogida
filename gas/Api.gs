@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 5;
+const API_VERSION = 6;
 
 function doPost(e) {
   try {
@@ -429,12 +429,12 @@ function historicoContadores(req, c) {
   const d = fechaNum_(req.desde) || fechaNum_(Utilities.formatDate(antes, TZ, 'dd/MM/yyyy')), h = fechaNum_(req.hasta) || fechaNum_(Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy'));
   const dentro = function (x) { const f = fechaNum_(x); return f && f >= d && f <= h ? f : 0; };
   const filas = {}; tabla_('RECEPCIONES').filas.forEach(function (r) { if (dentro(r.FECHA)) (filas[r.VIAJE_ID] = filas[r.VIAJE_ID] || []).push(r); });
-  const lista = [];
+  const lista = [], rutasV = {}; tabla_('VIAJES').filas.forEach(function (v) { rutasV[v.VIAJE_ID] = String(v.RUTAS || ''); });   // todas las rutas del viaje (5 y 6), no solo el prefijo
   tabla_('RECEPCION_CAMION').filas.forEach(function (r, i) {
     const f = dentro(r.FECHA); if (!f) return;
     const o = recepObj_(filas[r.VIAJE_ID], r);
     lista.push({ id: String(r.VIAJE_ID), fecha: String(r.FECHA), f: f, i: i, hora: String(r.HORA || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''),
-      ruta: String(r.RUTA || ''), deca: String(r.DECA_NUM || ''), otra: /^X/.test(String(r.VIAJE_ID)), usuario: String(r.USUARIO || ''), fichero: String(r.FICHERO || ''),
+      ruta: rutasV[r.VIAJE_ID] || String(r.RUTA || ''), deca: String(r.DECA_NUM || ''), otra: /^X/.test(String(r.VIAJE_ID)), usuario: String(r.USUARIO || ''), fichero: String(r.FICHERO || ''),
       total: o.total || o.comps.reduce(function (a, k) { return a + k.contador; }, 0), dif: numES_(r.DIFERENCIA),
       comps: o.comps.map(function (k) { return { id: k.id, esp: k.esp, ord: k.ord, contador: k.contador, reps: k.reps }; }) });
   });

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=146">
+<link rel="manifest" href="manifest.json?v=147">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v146 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v147 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2008,9 +2008,9 @@ async function historico2(recargar) {
         <div class="field" style="flex:1;min-width:200px"><label class="lbl" for="h2Q">Buscar matrícula, conductor, fecha…</label><input id="h2Q" class="sm" style="font-family:var(--body)" value="${esc(H2.q)}"></div>
       </div>
       <p class="small muted" style="margin:0">${fil.length} registros · ${ORD_ESP.filter(e => tot[e]).map(e => `${esc(ESPS[e])} ${fmt(tot[e])} l`).join(' · ') || 'sin litros'}</p></div>
-    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Camión</th><th>Conductor</th><th>Compartimentos</th><th class="n">Litros</th><th>Limpieza</th><th>Mezcla</th><th>Verificado</th><th></th></tr></thead><tbody>
+    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Conductor</th><th>Camión</th><th>Compartimentos</th><th class="n">Litros</th><th>Limpieza</th><th>Mezcla</th><th>Verificado</th><th></th></tr></thead><tbody>
       ${porDia.map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} registro${g.xs.length > 1 ? 's' : ''} · ${fmt(g.xs.reduce((a, z) => a + z.litros, 0))} l
-        <button class="btn ghost" data-h2="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día y su parte</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h2id="${esc(x.id)}" data-h2f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.matricula)}</td><td><b>${esc(x.conductor)}</b></td>
+        <button class="btn ghost" data-h2="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día y su parte</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h2id="${esc(x.id)}" data-h2f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td><b style="font-size:16px">${esc(x.conductor)}</b></td><td class="mono">${esc(x.matricula)}</td>
         <td>${x.comps.slice().sort((a, b) => a.n - b.n).map(c => `<span class="tank sp-${esc(c.esp)}" style="font-size:11px">${esc(c.n)} · ${esc(ESPS[c.esp] || c.esp)}</span>`).join(' ')}</td>
         <td class="n"><b>${fmt(x.litros)}</b></td><td class="small">${esc(x.limpieza || '—')} / ${esc(x.filtro || '—')}</td><td class="small">${mzTxt(x)}</td>
         <td class="small">${x.verificado ? esc(x.verificado) : '<span class="muted">—</span>'}</td>

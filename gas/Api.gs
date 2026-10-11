@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 4;
+const API_VERSION = 5;
 
 function doPost(e) {
   try {
@@ -698,7 +698,7 @@ const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUAR
 const CAB_RCAL = ['FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN', 'ID', 'ESPECIE', 'N_COMP_CISTERNA', 'LITROS', 'DEPOSITOS',
   'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
-const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA'];
+const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'];
 const CAB_VENTA = ['ID', 'FECHA', 'HORA', 'DEPOSITO', 'ESPECIE', 'LITROS', 'CLIENTE', 'USUARIO'];
 const CAB_RECEP_CAM = ['VIAJE_ID', 'FECHA', 'HORA', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'TOTAL_CONTADOR', 'SUMA_PARCIALES', 'DIFERENCIA',
   'LIMPIEZA_CISTERNA', 'FILTRO', 'OBSERVACIONES', 'USUARIO', 'FICHERO', 'LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'];
@@ -870,7 +870,7 @@ function recepViajes(req, c) {
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
   return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
-    mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || '') },
+    mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
     aguaHoy: tabla_('AGUA').filas.filter(function (r) { return r.FECHA === fechas[0]; })
@@ -970,27 +970,30 @@ function guardarRecep_(r, c, opt) {
     return { ok: true, fichero: cam.FICHERO, diferencia: cam.DIFERENCIA, fecha: cam.FECHA };
   }
 }
-/** PARTE DE CONTADORES: el día entero de una vez, al cerrarlo (o al reenviarlo con cambios). Cada camión con su hora de llegada,
- *  en el orden de la hoja; el agua (AG1, AG2) como uno más. Lo que ese día estaba guardado y ya no viene en el parte se quita
- *  (queda apuntado en CAMBIOS). Quién lo hace = el PIN con el que se entró. Al final se rehace el fichero D del día. */
+/** PARTE DE CONTADORES: el día entero de una vez. La tablet lo manda sola mientras se trabaja (solo los camiones terminados y que
+ *  cuadran; los que están a medias van en «mantener» y conservan lo que ya hubiera) y al cerrarlo (cerrar: todos). Cada camión con
+ *  su hora de llegada, en el orden de la hoja; el agua (AG1, AG2) como uno más. Lo que ese día estaba guardado y ya no viene se
+ *  quita (al cerrar queda apuntado en CAMBIOS). Quién lo hace = el PIN con el que se entró. Al final se rehace el fichero D del día,
+ *  que el programa puede recoger cuando quiera (lo machaca con lo último). */
 function guardarParte(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(30000);
   try {
-    const fecha = fechaAtrasada_(req.fecha, c), cams = req.camiones || [], agua = req.agua || [];
-    if (!cams.length) throw new Error('El parte no tiene ningún camión.');
+    const fecha = fechaAtrasada_(req.fecha, c), cams = req.camiones || [], agua = req.agua || [], cerrar = !!req.cerrar;
+    if (cerrar && !cams.length) throw new Error('El parte no tiene ningún camión.');
     const ids = {}; cams.forEach(function (r) { if (ids[r.viajeId]) throw new Error('Un camión está dos veces en el parte.'); ids[r.viajeId] = 1; });
+    const mantener = {}; (req.mantener || []).forEach(function (id) { mantener[id] = 1; });
     ['AG1', 'AG2'].forEach(function (cod) { const ds = {}; agua.forEach(function (a) { if (a.cod === cod && Number(a.l) > 0) ds[String(a.dep).trim()] = 1; });
       if (Object.keys(ds).length > 3) throw new Error(cod + ' va a ' + Object.keys(ds).length + ' depósitos: el programa admite como máximo 3. Junta el agua en 3.'); });
     if (agua.some(function (a) { return !/^AG[12]$/.test(a.cod); })) throw new Error('El programa solo admite dos aguas al día (AG1 y AG2).');
     // Lo que estaba guardado ese día y ya no está en el parte
     const shR = hoja_('RECEPCIONES', CAB_RECEP), shC = hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
-    const fuera = tabla_('RECEPCION_CAMION').filas.filter(function (x) { return String(x.FECHA) === fecha && !ids[x.VIAJE_ID]; });
+    const fuera = tabla_('RECEPCION_CAMION').filas.filter(function (x) { return String(x.FECHA) === fecha && !ids[x.VIAJE_ID] && !mantener[x.VIAJE_ID]; });
     if (fuera.length) {
       const quitar = {}; fuera.forEach(function (x) { quitar[x.VIAJE_ID] = 1; });
       tabla_('RECEPCIONES').filas.filter(function (x) { return quitar[x.VIAJE_ID]; }).map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { shR.deleteRow(f); });
       fuera.map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { shC.deleteRow(f); });
       const shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
-      fuera.forEach(function (x) { shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), String(x.VIAJE_ID), String(x.DECA_NUM || ''), fecha,
+      if (cerrar) fuera.forEach(function (x) { shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), String(x.VIAJE_ID), String(x.DECA_NUM || ''), fecha,
         nombreDia_(fecha), String(x.MATRICULA || '') + ' ' + String(x.CONDUCTOR || ''), 'RECEPCIÓN QUITADA DEL PARTE', String(x.TOTAL_CONTADOR || ''), 'QUITADA', 'Ya no está en el parte de contadores']]); });
     }
     cams.forEach(function (r) { guardarRecep_(r, c, { fecha: fecha, hora: /^\d{1,2}:\d{2}$/.test(String(r.hora || '')) ? String(r.hora) : ahora_('HH:mm') }); });
@@ -1005,11 +1008,11 @@ function guardarParte(req, c) {
       shA.getRange(f0, 1, valores.length, 1).setNumberFormat('@'); shA.getRange(f0, 3, valores.length, 1).setNumberFormat('@');
       shA.getRange(f0, 1, valores.length, CAB_AGUA.length).setValues(valores);
     }
-    hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA'], 'HORA_VERIFICACION');
+    hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'], 'HORA_VERIFICACION');
     const hora = ahora_('dd/MM/yyyy HH:mm');
-    parteDia_(fecha, { CONTADORES_POR: String(c.NOMBRE), CONTADORES_HORA: hora });
+    parteDia_(fecha, cerrar ? { CONTADORES_POR: String(c.NOMBRE), CONTADORES_HORA: hora, CONTADORES_ENVIO: hora } : { CONTADORES_ENVIO: hora });
     exportarDia_(fecha);
-    return { ok: true, fichero: nombre, fecha: fecha, camiones: cams.length, quitados: fuera.length, por: String(c.NOMBRE), hora: hora };
+    return { ok: true, fichero: nombre, fecha: fecha, camiones: cams.length, quitados: fuera.length, por: String(c.NOMBRE), hora: hora, cerrado: cerrar };
   } finally { lock.releaseLock(); }
 }
 /** RECEPCIÓN 2 · registro de CALIDAD por especie (FOR PR 7.-02): T, pH, ºD, visual, nº de compartimento de la cisterna, litros,

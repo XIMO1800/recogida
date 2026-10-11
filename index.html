@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=125">
+<link rel="manifest" href="manifest.json?v=126">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -373,7 +373,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v125 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v126 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1578,7 +1578,23 @@ function c2DeRecep(x) {
   return t;
 }
 function c2Leer() { try { return JSON.parse(localStorage.getItem(c2Clave()) || '{}'); } catch (e) { return {}; } }
-function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
+function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} if (R.modo === 'c2') c2Programar(); }
+/* ENVÍO SOLO: unos 30 s después del último cambio se manda el parte (los camiones terminados que cuadran; los que están a medias
+   conservan lo que ya hubiera en la hoja) y se rehace el fichero del día, para que oficina lo pueda recoger cuando quiera. */
+function c2Programar(ms) { clearTimeout(C2.tA); C2.pend = true; C2.tA = setTimeout(c2Auto, ms == null ? 30000 : ms); }
+async function c2Auto() {
+  clearTimeout(C2.tA); if (!C2.pt || R.modo !== 'c2' || !C2.st) return;
+  if (C2.enviando) return c2Programar(5000);
+  const P = C2.pt(); if (!P.editable || P.hAuto === C2.st.envH) { C2.pend = false; return; }
+  C2.enviando = true;
+  try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua });
+    const prev = C2.st.envIds || []; C2.st.envIds = P.completos.map(z => z.viajeId).concat(P.mantener.filter(id => prev.includes(id) || (R.viajes.find(z => z.id === id) || {}).recep));
+    C2.st.envH = P.hAuto; C2.st.envHora = String(r.hora).slice(-5); C2.st.envN = C2.st.envIds.length; C2.err = ''; C2.pend = false;
+    try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
+  catch (e) { C2.err = esRed(e) ? 'sin conexión, se reintenta' : e.message; c2Programar(60000); }
+  finally { C2.enviando = false; if (C2.vivo) C2.vivo(); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && C2.pend) c2Auto(); });   // se apaga la pantalla o se sale: se manda ya
 function contadores2(v, u) {
   const tqc = id => /^V[CVDO]\d*$/.test(id) ? `<span class="tank sp-${id[1]}">${esc(id)}</span>` : tq(id);   // otra entrada: VC, VV, VD, VO
   // Cada camión se guarda al firmarlo (hoja y fichero D del programa, como en el Contadores de antes); el agua, con su botón.
@@ -1621,7 +1637,7 @@ function contadores2(v, u) {
     const cart = Object.values(x.cart || {}).reduce((a, n) => a + (n || 0), 0), cist = hechas.reduce((a, f) => a + (f.decl || 0), 0);
     const recep = { viajeId: x.id, fecha: R.esHoy ? '' : R.dia, total: tot, cuadre: x.otra ? null : { cartilla: Math.round(cart), cisterna: Math.round(cist) }, limpieza: '', filtro: '', obs: '',
       matricula: x.matricula || '', proveedor: x.otra ? x.conductor : '', ruta: x.ruta || '', hora: t.hora || '', comps };
-    return { recep, err, avisos, huella };
+    return { recep, err, avisos, huella, cuadra: !err && tot === suma };
   };
   const depBtns = (x, id, campo, val, quita) => `<div class="c2deps">${silos.map(s => `<button class="${String(val) === String(s) ? 'on' : ''}" ${s === quita ? 'disabled' : ''} data-c2dep="${esc(x.id)}|${esc(id)}|${campo}|${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
   const litInp = (x, id, campo, val) => `<div class="unit c2l"><input inputmode="numeric" enterkeyhint="done" data-c2l="${esc(x.id)}|${esc(id)}|${campo}" value="${esc(val || '')}" placeholder="0"><span>L</span></div>`;
@@ -1679,8 +1695,9 @@ function contadores2(v, u) {
   const sinAgua = ses.length;
   // EL PARTE: lo que se envía al cerrarlo y si ya está enviado tal cual
   let PT; const pt = () => {
-    const camiones = [], err = [], avisos = [], ags = st.orden.filter(esAg);
-    st.orden.filter(id => !esAg(id)).forEach(id => { const x = todos.find(z => z.id === id), P = payload(x); if (P.err) err.push(`${x.conductor}: ${P.err}`); P.avisos.forEach(t => avisos.push(`${x.conductor}: ${t}`)); camiones.push(P.recep); });
+    const camiones = [], err = [], avisos = [], ags = st.orden.filter(esAg), completos = [], mantener = [], aMedias = [];
+    st.orden.filter(id => !esAg(id)).forEach(id => { const x = todos.find(z => z.id === id), P = payload(x); if (P.err) err.push(`${x.conductor}: ${P.err}`); P.avisos.forEach(t => avisos.push(`${x.conductor}: ${t}`)); camiones.push(P.recep);
+      if (P.cuadra) completos.push(P.recep); else { mantener.push(x.id); aMedias.push(x.conductor); } });
     if (ags.length > 2) err.push('El programa solo admite dos aguas al día (AG1 y AG2): junta o saca alguna.');
     const agua = []; ags.slice(0, 2).forEach((id, k) => { Object.entries(AV[id].vals).forEach(([dep, l]) => { if (l > 0) agua.push({ cod: 'AG' + (k + 1), dep, l, desde: k ? AV[id].desde : '' }); }); });
     if (!camiones.length) err.push('No hay ningún camión en la hoja.');
@@ -1688,19 +1705,24 @@ function contadores2(v, u) {
     if (quedan.length && R.dia === hoyF) avisos.push(`Quedan camiones de hoy sin pasar a la hoja: ${quedan.map(x => x.conductor).join(', ')}.`);
     if (!ags.length && camiones.length) avisos.push('No has puesto el agua de arrastre.');
     const huella = JSON.stringify([camiones.map(r => [r.viajeId, r.total, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), agua.map(a => [a.cod, a.dep, a.l])]);
-    if (st.srv && !st.ok && (R.parte || {}).cerradoPor) st.ok = huella;   // lo que hay es lo que vino de la hoja: ya está enviado
+    const hAuto = JSON.stringify([completos.map(r => [r.viajeId, r.total, r.hora, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), mantener, agua.map(a => [a.cod, a.dep, a.l])]);
+    if (st.srv && (R.parte || {}).cerradoPor && !st.ok) st.ok = huella;   // lo que hay es lo que vino de la hoja: ya está enviado
+    if (st.srv && ((R.parte || {}).envio || (R.parte || {}).cerradoPor) && !st.envH) { st.envH = hAuto; st.envHora = String(R.parte.envio || R.parte.horaCierre).slice(-5); st.envIds = completos.map(z => z.viajeId).concat(mantener.filter(id => (todos.find(z => z.id === id) || {}).recep)); st.envN = st.envIds.length; }
     st.srv = 0;
-    PT = { camiones, agua, err, avisos, huella }; return PT; };
-  const estParte = () => { const pp = R.parte || {};
-    return st.ok && st.ok === PT.huella && pp.cerradoPor ? `<span class="c2ok">✓ Parte enviado</span> <span class="muted">· ${esc(pp.cerradoPor)} · ${esc(String(pp.horaCierre).slice(-5))}</span>`
-      : pp.cerradoPor ? `<span class="c2mod">● Hay cambios sin enviar</span> <span class="muted">· enviado antes por ${esc(pp.cerradoPor)} a las ${esc(String(pp.horaCierre).slice(-5))}</span>`
-      : '<span class="muted">Parte sin enviar: se guarda todo al cerrarlo</span>'; };
+    PT = { camiones, agua, err, avisos, huella, completos, mantener, aMedias, hAuto, editable }; return PT; };
+  C2.pt = pt;
+  const estParte = () => { const pp = R.parte || {}, al = PT.hAuto === st.envH;
+    const env = st.envH ? `${al ? '<span class="c2ok">✓ Enviado</span>' : '<span class="c2mod">● Enviado</span>'} ${esc(st.envHora || '')} · ${st.envN || 0} ${st.envN === 1 ? 'camión' : 'camiones'} en el fichero` : '<span class="muted">Aún no enviado</span>';
+    const pen = PT.aMedias.length ? ` · ${PT.aMedias.length} a medias (${esc(PT.aMedias.join(', '))})` : '';
+    const ya = !al ? (C2.err ? ` · <b style="color:var(--bad)">no se ha podido enviar: ${esc(C2.err)}</b>` : ' · <span class="muted">se envía en unos segundos…</span>') : '';
+    const cer = pp.cerradoPor ? ` · <b>${st.ok === PT.huella ? 'Cerrado' : 'Cerrado (con cambios después)'}</b> por ${esc(pp.cerradoPor)} a las ${esc(String(pp.horaCierre).slice(-5))}` : '';
+    return env + pen + ya + cer; };
   pt(); c2Escribir();
   v.innerHTML = `<div class="card" style="padding:8px 12px"><p class="small" style="margin:0">Hoja de contadores del ${esc(R.dia)} · <span id="c2cEst">${estParte()}</span></p></div>
     ${hoja}
     ${enHoja.length ? `<button class="btn sec" id="c2agua" style="margin:2px 0 4px">+ Agua de arrastre${sinAgua ? ` (cierra ${sinAgua === 1 ? 'el último camión' : 'los ' + sinAgua + ' últimos camiones'})` : ''}</button>` : ''}
-    ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Enviar el parte con los cambios' : 'Cerrar el parte y enviar al programa'}</button>
-      <div id="c2cMsg" hidden></div><p class="small muted" style="margin:0">Guarda todos los camiones y el agua del día en la hoja y rehace el fichero para el programa. Se puede volver a enviar si cambias algo.</p></div>` : ''}
+    ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Volver a cerrar el parte' : 'Cerrar el parte del día'}</button>
+      <div id="c2cMsg" hidden></div><p class="small muted" style="margin:0">El parte se va enviando solo según se meten los datos (los camiones terminados y que cuadran), así que oficina puede recoger el fichero cuando quiera. Al terminar el día, ciérralo: queda apuntado quién y a qué hora, y entran también los que no cuadran.</p></div>` : ''}
     ${st.orden.length ? '<div class="sep-blq"></div>' : ''}
     <span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span>
     <div class="g2">${pend.map(x => `<button class="farm" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${x.fecha && x.fecha !== R.dia ? ' · del ' + esc(x.fecha) : ''}${/CURSO/.test(x.estado || '') ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : ''}</span><span class="comps">${(x.comps || []).map(c => tqc(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>
@@ -1737,8 +1759,10 @@ function contadores2(v, u) {
     if (PT.err.length) return msg(PT.err.map(esc).join('<br>'));
     if (PT.avisos.length && b.dataset.ok !== PT.huella) { b.dataset.ok = PT.huella; return msg(PT.avisos.map(esc).join('<br>') + '<br><b>Revisa; si está bien, pulsa otra vez.</b>', 'warn'); }
     ocupado(b, 'Enviando…');
-    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua });
-      st.ok = PT.huella; st.fuera = []; c2Escribir(); toast(`Parte enviado · ${r.camiones} camión${r.camiones > 1 ? 'es' : ''} · fichero ${r.fichero}`); recepcion(); }
+    clearTimeout(C2.tA);
+    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua, cerrar: true });
+      st.ok = PT.huella; st.envH = PT.hAuto; st.envHora = String(r.hora).slice(-5); st.envIds = PT.camiones.map(z => z.viajeId); st.envN = PT.camiones.length; st.fuera = []; C2.err = ''; c2Escribir(); C2.pend = false; clearTimeout(C2.tA);
+      toast(`Parte cerrado · ${r.camiones} ${r.camiones > 1 ? 'camiones' : 'camión'} · fichero ${r.fichero}`); recepcion(); }
     catch (e) { libre(b); msg(esc(esRed(e) ? 'Sin conexión: no se ha enviado. Vuelve a pulsar cuando haya red.' : e.message)); } };
   v.querySelectorAll('[data-c2add]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.c2add); st.fuera = st.fuera.filter(z => z !== b.dataset.c2add); (st.t[b.dataset.c2add] = st.t[b.dataset.c2add] || { f: {}, total: '' }).hora = new Date().toTimeString().slice(0, 5); pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${b.dataset.c2add}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-c2ord]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2ord.split('|'), t = st.t[vid], r = t.f[cid];
@@ -1762,12 +1786,13 @@ function contadores2(v, u) {
     else { r.arrPos = 'post'; r.arrDep = next && next.dep && next.dep !== r.dep ? next.dep : (mez ? mez.id : ''); }
     pinta(); });
   v.querySelectorAll('[data-c2arrpos]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arrpos.split('|'), r = st.t[vid].f[cid]; r.arrPos = r.arrPos === 'ant' ? 'post' : 'ant'; pinta(); });
-  const vivo = () => { pt(); const e = $('#c2cEst'); if (e) e.innerHTML = estParte(); };   // estado del parte mientras se teclea
+  const vivo = () => { pt(); const e = $('#c2cEst'); if (e && document.body.contains(e)) e.innerHTML = estParte(); };   // estado del parte mientras se teclea
+  C2.vivo = vivo;
   const sumaDe = vid => Object.values(st.t[vid].f).filter(z => z.ord).reduce((a, z) => a + (num(z.l) || 0) + (z.arr ? num(z.arrL) || 0 : 0), 0);
   v.querySelectorAll('[data-c2l]').forEach(inp => { inp.oninput = () => { const [vid, cid, campo] = inp.dataset.c2l.split('|'); st.t[vid].f[cid][campo] = inp.value.replace(/\D/g, ''); c2Escribir();
-    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(vid); }; });
+    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(); }; });
   v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { const vid = inp.dataset.c2tot; st.t[vid].total = inp.value.replace(/\D/g, ''); c2Escribir();
-    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(vid); });
+    const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(); });
   show('vRecep', (CONTADORES_1 ? 'Contadores 2' : 'Contadores') + (R.esHoy === false ? ' · ' + R.dia : ''), u.nombre);
 }
 /** Otra entrada: cada cisterna V + especie (VC, VV, VD, VO); si se repite la especie, numeradas: VC1, VC2… */

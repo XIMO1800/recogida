@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=151">
+<link rel="manifest" href="manifest.json?v=152">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v151 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v152 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2229,7 +2229,7 @@ function recep2Lista(v, u) {
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name">${x.cal ? '<span class="reg-ok">✓ REGISTRADO</span>' : ''}${esc(x.conductor || '')} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '—')}</span></span>
-      <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${x.cal ? ((R.firmados || new Set()).has('CAL|' + x.id) ? ' · <span class="fir-ok">✍ firmado</span>' : ' · <b class="fir-no">✗ sin firma</b>') : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}${x.cal ? ((R.firmados || new Set()).has('CAL|' + x.id) ? ' · <span class="fir-ok">✍ firmado</span>' : ' · <b class="fir-no">✗ sin firma</b>') : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
       <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : x.veces ? '<span class="ya-txt">Otro viaje</span>' : 'Registrar'}</span></button>`;

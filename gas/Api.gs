@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 2;
+const API_VERSION = 3;
 
 function doPost(e) {
   try {
@@ -24,10 +24,10 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
+      OFICINA: { login: loginOficina, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
-      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
+      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      RECEPCION: { login: loginRecepcion, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
     const acciones = {};
@@ -420,6 +420,27 @@ function historicoCalidad(req, c) {
   });
   const lista = orden.map(function (id) { return regs[id]; }).sort(function (a, b) { return b.f - a.f; });
   return { ok: true, registros: lista };
+}
+/** Histórico de contadores: cada camión recibido (RECEPCION_CAMION) entre dos fechas (por defecto, el último mes), con lo que
+ *  descargó cada compartimento y a qué depósitos (RECEPCIONES), y el agua de arrastre de cada día (AGUA). Solo lectura. */
+function historicoContadores(req, c) {
+  hoja_('RECEPCIONES', CAB_RECEP); hoja_('RECEPCION_CAMION', CAB_RECEP_CAM); hoja_('AGUA', CAB_AGUA);
+  const hoy = new Date(), antes = new Date(); antes.setMonth(hoy.getMonth() - 1);
+  const d = fechaNum_(req.desde) || fechaNum_(Utilities.formatDate(antes, TZ, 'dd/MM/yyyy')), h = fechaNum_(req.hasta) || fechaNum_(Utilities.formatDate(hoy, TZ, 'dd/MM/yyyy'));
+  const dentro = function (x) { const f = fechaNum_(x); return f && f >= d && f <= h ? f : 0; };
+  const filas = {}; tabla_('RECEPCIONES').filas.forEach(function (r) { if (dentro(r.FECHA)) (filas[r.VIAJE_ID] = filas[r.VIAJE_ID] || []).push(r); });
+  const lista = [];
+  tabla_('RECEPCION_CAMION').filas.forEach(function (r, i) {
+    const f = dentro(r.FECHA); if (!f) return;
+    const o = recepObj_(filas[r.VIAJE_ID], r);
+    lista.push({ id: String(r.VIAJE_ID), fecha: String(r.FECHA), f: f, i: i, hora: String(r.HORA || ''), matricula: String(r.MATRICULA || ''), conductor: String(r.CONDUCTOR || ''),
+      ruta: String(r.RUTA || ''), deca: String(r.DECA_NUM || ''), otra: /^X/.test(String(r.VIAJE_ID)), usuario: String(r.USUARIO || ''), fichero: String(r.FICHERO || ''),
+      total: o.total || o.comps.reduce(function (a, k) { return a + k.contador; }, 0), dif: numES_(r.DIFERENCIA),
+      comps: o.comps.map(function (k) { return { id: k.id, esp: k.esp, ord: k.ord, contador: k.contador, reps: k.reps }; }) });
+  });
+  lista.sort(function (a, b) { return (b.f - a.f) || (a.hora < b.hora ? -1 : a.hora > b.hora ? 1 : a.i - b.i); });
+  const agua = {}; tabla_('AGUA').filas.forEach(function (a) { if (!dentro(a.FECHA)) return; const k = String(a.FECHA); (agua[k] = agua[k] || []).push({ cod: String(a.CODIGO), dep: String(a.DEPOSITO), l: numES_(a.LITROS) }); });
+  return { ok: true, registros: lista, agua: agua };
 }
 function historicoViajes(req, c) {
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=121">
+<link rel="manifest" href="manifest.json?v=122">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -169,7 +169,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 
 .sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
-.dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
+.h3c{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;margin:1px 8px 1px 0;font-size:13px}.dt tr.h2dia td{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:15px;border-top:3px solid var(--brand);padding:8px 10px}.dt tr.h2fila:hover td{background:#faf5f6}
 .hist tr.tot-sep td{padding:0!important;height:5px;background:var(--brand)!important;border:0!important;border-radius:3px!important}.hist tr.tot-row td{padding-top:12px;padding-bottom:12px;font-weight:800;background:var(--brand-soft);border-color:var(--brand)!important}.hist tr.tot-row td:first-child{border-left-color:var(--brand)}.hist tr.tot-row td:first-child b{color:var(--brand);letter-spacing:.06em}
 .farm.done[data-v2]{background:#fff;border-color:#e3b54d;box-shadow:inset 6px 0 0 #c98a00}.farm.done[data-v2] .st{color:#8a5a00}
 .farm.skip{opacity:.7}
@@ -285,7 +285,7 @@ body.esc .agGrid .tally b{font-size:15px!important}
 body.esc .agGrid .agDer .card{padding:14px 16px}
 .side-t{font-family:var(--display);font-size:24px;font-weight:700;line-height:1.1;padding:4px 10px 14px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px}
 .side-t small{display:block;font-family:var(--body);font-size:13px;font-weight:500;opacity:.75;margin-top:4px}
-.nav{display:flex;flex-direction:column;gap:2px}
+.nav{display:flex;flex-direction:column;gap:2px}.navg{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;margin-bottom:10px}.navg .nav button{padding:7px 10px}.navg .nav button small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.navgt{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);padding:4px 10px 6px}
 .nav button,.navb{display:block;width:100%;text-align:left;background:transparent;border:0;color:rgba(255,255,255,.82);padding:11px 12px;border-radius:10px;font-weight:600;font-size:15.5px}
 .nav button:hover,.navb:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav button.on{background:rgba(255,255,255,.15);color:#fff;box-shadow:inset 3px 0 0 var(--gold)}
@@ -355,6 +355,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
     <section id="vDep" class="stack" hidden></section>
     <section id="vHisto" class="stack" hidden></section>
     <section id="vHisto2" class="stack" hidden></section>
+    <section id="vHisto3" class="stack" hidden></section>
   </main>
 </div>
 <div id="scanner" hidden>
@@ -370,7 +371,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
 /* ═══════════ CONFIGURACIÓN ═══════════ */
 const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0X_7wVlkDvweUWNcBNplai0csOa34sMIEKptRdVRe/exec';   // Implementar → Aplicación web → URL que termina en /exec
 const LS = 'rl_estado_v1';
-const VERSION = 'v121 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v122 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -510,7 +511,7 @@ $('#sync').onclick = () => { S.online = true; flush(); toast(pendientes() ? 'Int
 
 /* ═══════════ PANTALLAS ═══════════ */
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 3200); }
-const VIEWS = ['vHisto', 'vHisto2', 'vDep', 'vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
+const VIEWS = ['vHisto', 'vHisto2', 'vHisto3', 'vDep', 'vAgua', 'vPin', 'vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin', 'vHist', 'vOfi', 'vOfiV', 'vOfiE', 'vRecep', 'vRecepC'];
 function show(v, title, sub) {
   // Repintar la misma pantalla (mismo título: p. ej. al meter un dato en un camión) no sube arriba: se queda donde estaba
   const misma = U.view === v && $('#barTitle').textContent === title && $('#barSub').textContent === (sub || ''), y = window.scrollY;
@@ -531,6 +532,7 @@ $('#back').onclick = () => {
   if (U.view === 'vOfiV') return oficina(true);
   if (U.view === 'vHisto') return oficina(true);
   if (U.view === 'vHisto2') { R.modo = 'esp'; return recepcion(); }
+  if (U.view === 'vHisto3') { R.modo = ''; return recepcion(); }
   if (U.view === 'vRecepC') { R.ed = null; return recepcion(true); }
   if (U.view === 'vAgua' || U.view === 'vDep') return recepcion(true);
   if (U.view === 'vRecep' && D().oficina) return oficina(true);
@@ -1165,18 +1167,23 @@ function marcoEsc() {
   const on = esEsc(); document.body.classList.toggle('esc', on); if (!on) return cerrarDrawer();
   const ofi = !!S.datos.oficina, v = U.view;
   const cal = !!S.datos.calidad && !ofi;
-  const RC = ['recep2', 'Recepción', 'Registro por camión (calidad)', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico calidad', 'Registros de calidad por fechas', ['vHisto2']];
-  const it = cal ? [RC, HC, ['recep', 'Contadores', 'Por destinos (programa)', ['vRecep', 'vRecepC', 'vDep']]]
-    : [ofi && ['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['recep', 'Contadores', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], ofi && ['histo', 'Histórico y DeCA', 'Todos los viajes', ['vHisto']],
-      RC, ofi && HC, ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']]].filter(Boolean);
-  $('#side').innerHTML = `<div class="side-t">Recogida de leche<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
-    <nav class="nav">${it.map(([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!/^recep/.test(k) || (k === 'recep2') === (R.modo === 'esp')) ? 'on' : ''}">${t}<small>${sub}</small></button>`).join('')}</nav>
+  // Dos tarjetas: RECOGIDA (rutas e histórico con DeCA; solo oficina) y RECEPCIÓN (contadores, agua, su histórico; y la recepción de calidad con el suyo)
+  const MODO = { recep: '', c2: 'c2', recep2: 'esp' };
+  const CO = ['recep', 'Contadores', 'Descarga en fábrica', ['vRecep', 'vRecepC', 'vDep']], C2b = ['c2', 'Contadores 2', 'Hoja como el papel · prueba', ['vRecep']],
+    AG = ['agua', 'Agua de arrastre', 'AG1 / AG2 del día', ['vAgua']], H3 = ['histo3', 'Histórico contadores', 'Camiones descargados por días', ['vHisto3']],
+    RC = ['recep2', 'Recepción', 'Registro por camión (calidad)', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico recepción', 'Registros de calidad por días', ['vHisto2']];
+  const grupos = [ofi && ['Recogida', [['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['histo', 'Histórico y DeCA', 'Viajes por días', ['vHisto']]]],
+    ['Recepción', [CO, C2b, !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC].filter(Boolean)]].filter(Boolean);
+  const btn = ([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')) ? 'on' : ''}">${t}<small>${sub}</small></button>`;
+  $('#side').innerHTML = `<div class="side-t">Recogida y recepción<small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}</small></div>
+    ${grupos.map(([t, it]) => `<div class="navg"><div class="navgt">${t}</div><nav class="nav">${it.map(btn).join('')}</nav></div>`).join('')}
     <div style="flex:1"></div><button class="navb" id="sideAct">Actualizar datos</button><button class="navb" id="sideSalir">Salir</button>`;
-  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
+  const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; recepcion(); },
+    recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { cerrarDrawer(); ir[b.dataset.nav](); });
-  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
+  $('#sideAct').onclick = () => { cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vHisto2') return historico2(true); if (U.view === 'vHisto3') return historico3(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
   $('#sideSalir').onclick = salir;
-  if (['vOfi', 'vRecep', 'vAgua', 'vHisto', 'vHisto2'].includes(v)) $('#back').hidden = true;
+  if (['vOfi', 'vRecep', 'vAgua', 'vHisto', 'vHisto2', 'vHisto3'].includes(v)) $('#back').hidden = true;
 }
 function abrirDrawer() { $('#veil').hidden = false; $('#drawer').hidden = false; $('#drawer').scrollTop = 0; }
 function cerrarDrawer() { const d = $('#drawer'); if (!d || d.hidden) return; d.hidden = true; $('#veil').hidden = true; $('#drawerIn').innerHTML = ''; }
@@ -1498,6 +1505,7 @@ async function recepcion(sinCargar) {
   v.querySelectorAll('[data-v]').forEach(b => { const x = R.viajes.find(z => z.id === b.dataset.v);
     if (editable || (x && fuente(x))) b.onclick = () => recepCamion(x); else b.style.cursor = 'default'; });
   $('#reAct').onclick = () => recepcion();
+  if (R.abrirTras) { const x = R.viajes.find(z => z.id === R.abrirTras); R.abrirTras = null; if (x && fuente(x)) return recepCamion(x); }   // desde el histórico de contadores
   if ($('#reOtra')) $('#reOtra').onclick = () => recepOtra();
   v.querySelectorAll('[data-dep]').forEach(b => b.onclick = () => recepDep(b.dataset.dep));
   if ($('#reAgua')) $('#reAgua').onclick = () => { U.ag = null; recepAgua(); };
@@ -1532,11 +1540,11 @@ async function historico(recargar) {
       </div>
       <p class="small muted" style="margin:0">${fil.length} viajes · ${fmt(tot)} l. Los DeCA se guardan en Drive y hay que conservarlos al menos un año.</p></div>
     <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Conductor</th><th>Rutas</th><th>Matrícula</th><th>DeCA</th><th>Horario</th><th class="n">Litros</th><th>Estado</th><th></th></tr></thead><tbody>
-      ${fil.map(x => `<tr class="${/ANULADO/.test(x.estado) ? 'sin' : ''}"><td class="mono">${esc(x.fecha)}</td><td><b>${esc(x.nombre)}</b></td><td>${esc(String(x.rutas).split(',').map(r => +r).join(' y '))}</td>
+      ${porDiaH(fil).map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} viaje${g.xs.length > 1 ? 's' : ''} · ${fmt(g.xs.filter(x => !/ANULADO/.test(x.estado)).reduce((a, x) => a + (x.litros || 0), 0))} l</td></tr>` + g.xs.map(x => `<tr class="h2fila ${/ANULADO/.test(x.estado) ? 'sin' : ''}"><td class="mono">${esc(x.fecha)}</td><td><b>${esc(x.nombre)}</b></td><td>${esc(String(x.rutas).split(',').map(r => +r).join(' y '))}</td>
         <td class="mono">${esc(x.matricula)}</td><td class="mono small">${esc(x.deca)}</td><td class="mono small">${esc(x.ini || '')}${x.fin ? '–' + esc(x.fin) : ''}</td><td class="n"><b>${x.litros ? fmt(x.litros) : '—'}</b></td>
         <td class="small">${/ANULADO/.test(x.estado) ? 'Anulado' : /CURSO/.test(x.estado) ? 'En curso' : /TRASVASE/.test(x.estado) ? 'Trasvase' : 'Cerrado'}</td>
         <td style="white-space:nowrap">${x.decaUrl ? `<a class="btn sec" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px;text-decoration:none" target="_blank" rel="noopener" href="${esc(decaVer(x.decaUrl))}">DeCA</a>` : ''}
-          ${/ANULADO/.test(x.estado) ? '' : `<button class="btn ghost" data-hv="${esc(x.id)}" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Ver viaje</button>`}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No hay viajes en esas fechas.</td></tr>'}
+          ${/ANULADO/.test(x.estado) ? '' : `<button class="btn ghost" data-hv="${esc(x.id)}" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Ver viaje</button>`}</td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay viajes en esas fechas.</td></tr>'}
     </tbody></table></div>`;
   $('#hDes').onchange = e => { Hh.desde = e.target.value; }; $('#hHas').onchange = e => { Hh.hasta = e.target.value; };
   $('#hBus').onclick = () => historico(true);
@@ -1691,6 +1699,48 @@ function c2Cuad(total, suma) { const t = num(total) || 0; if (!suma) return ''; 
 function confirm2(b) { if (b.dataset.ok === '1') return true; b.dataset.ok = '1'; const t = b.textContent; b.textContent = '¿Seguro? Toca otra vez'; setTimeout(() => { b.dataset.ok = ''; b.textContent = t; }, 3000); return false; }
 /* ═══════════ Histórico del registro de calidad (Recepción 2): todos los registros por fechas ═══════════ */
 const H2 = { desde: '', hasta: '', lista: null, q: '' };
+/** Agrupa una lista ya ordenada por fecha en días: [{ f, xs }] */
+function porDiaH(lista) { const g = []; lista.forEach(x => { let d = g[g.length - 1]; if (!d || d.f !== x.fecha) g.push(d = { f: x.fecha, xs: [] }); d.xs.push(x); }); return g; }
+/* ═══════════ Histórico de contadores: los camiones descargados (lo que va al programa), por días ═══════════ */
+const H3 = { lista: null, agua: {}, desde: '', hasta: '', q: '', t: 0 };
+async function historico3(recargar) {
+  const v = $('#vHisto3');
+  if (!H3.desde) { const h = new Date(), d = new Date(); d.setMonth(h.getMonth() - 1); const f = x => x.toISOString().slice(0, 10); H3.desde = f(d); H3.hasta = f(h); }
+  if (recargar || !H3.lista) {
+    v.innerHTML = '<div class="card"><p class="muted">Cargando descargas…</p></div>'; show('vHisto3', 'Histórico de contadores', D().usuario.nombre);
+    try { const r = await api('historicoContadores', { desde: isoAes(H3.desde), hasta: isoAes(H3.hasta) }); H3.lista = r.registros || []; H3.agua = r.agua || {}; }
+    catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : /desconocida/.test(e.message) ? 'Falta actualizar la API (se implanta sola al subirla; recarga en un par de minutos).' : e.message)}</div><button class="btn" id="h3Re">Reintentar</button>`; $('#h3Re').onclick = () => historico3(true); return; }
+  }
+  const q = H3.q.trim().toLowerCase();
+  const fil = H3.lista.filter(x => !q || [x.fecha, x.matricula, x.conductor, x.deca, x.ruta, x.usuario].join(' ').toLowerCase().includes(q));
+  const tot = {}; fil.forEach(x => x.comps.forEach(c => { tot[c.esp] = (tot[c.esp] || 0) + c.contador; }));
+  const aguaDe = f => (H3.agua[f] || []).reduce((a, z) => a + z.l, 0);
+  const deps = c => { const ds = c.reps.filter(p => p.l > 0); return ds.map(p => `<b>${esc(p.dep)}</b>${ds.length > 1 ? `<span class="muted">·${fmt(p.l)}</span>` : ''}`).join(' + '); };
+  v.innerHTML = `<div class="card stack">
+      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field"><label class="lbl" for="h3Des">Desde</label><input type="date" id="h3Des" class="sm" value="${H3.desde}"></div>
+        <div class="field"><label class="lbl" for="h3Has">Hasta</label><input type="date" id="h3Has" class="sm" value="${H3.hasta}"></div>
+        <button class="btn sec" id="h3Bus" style="width:auto;padding:8px 18px">Buscar</button>
+        <div class="field" style="flex:1;min-width:200px"><label class="lbl" for="h3Q">Buscar matrícula, conductor, DeCA, fecha…</label><input id="h3Q" class="sm" style="font-family:var(--body)" value="${esc(H3.q)}"></div>
+      </div>
+      <p class="small muted" style="margin:0">${fil.length} camiones · ${ORD_ESP.filter(e => tot[e]).map(e => `${esc(ESPS[e])} ${fmt(tot[e])} l`).join(' · ') || 'sin litros'}</p></div>
+    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Hora</th><th>Camión</th><th>Conductor</th><th>Cisternas · litros → depósito</th><th class="n">Contador</th><th class="n">Dif.</th><th>Firma</th><th></th></tr></thead><tbody>
+      ${porDiaH(fil).map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} ${g.xs.length > 1 ? 'camiones' : 'camión'} · ${fmt(g.xs.reduce((a, z) => a + z.total, 0))} l${aguaDe(g.f) ? ` · agua ${fmt(aguaDe(g.f))} l` : ''}
+        <button class="btn ghost" data-h3="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver el día</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h3id="${esc(x.id)}" data-h3f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.hora)}</td><td class="mono">${esc(x.matricula)}</td>
+        <td><b>${esc(x.conductor)}</b>${x.otra ? ' <span class="small muted">· otra entrada</span>' : x.ruta ? ` <span class="small muted">· ruta ${esc(String(x.ruta).split(',').map(z => +z).join(' y '))}</span>` : ''}</td>
+        <td>${x.comps.slice().sort((a, b) => a.ord - b.ord).map(c => `<span class="h3c">${tq(c.id)} ${fmt(c.contador)} → ${deps(c)}</span>`).join(' ')}</td>
+        <td class="n"><b>${fmt(x.total)}</b></td><td class="n small">${x.dif ? `<b style="color:var(--bad)">${x.dif > 0 ? '+' : ''}${fmt(x.dif)}</b>` : '<span class="muted">—</span>'}</td>
+        <td class="small">${esc(x.usuario || '—')}</td>
+        <td style="white-space:nowrap"><button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button></td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay descargas en esas fechas.</td></tr>'}
+    </tbody></table></div>`;
+  $('#h3Des').onchange = e => { H3.desde = e.target.value; }; $('#h3Has').onchange = e => { H3.hasta = e.target.value; };
+  $('#h3Bus').onclick = () => historico3(true);
+  $('#h3Q').oninput = e => { H3.q = e.target.value; clearTimeout(H3.t); H3.t = setTimeout(() => { historico3(); const i = $('#h3Q'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
+  // «Ver el día»: Contadores en esa fecha (depósitos, camiones recibidos y agua). Tocar una fila abre ESE camión.
+  v.querySelectorAll('[data-h3]').forEach(b => b.onclick = e => { e.stopPropagation(); R.modo = ''; R.fecha = b.dataset.h3; R.ed = null; recepcion(); });
+  v.querySelectorAll('[data-h3id]').forEach(tr => tr.onclick = () => { R.modo = ''; R.fecha = tr.dataset.h3f; R.ed = null; R.abrirTras = tr.dataset.h3id; recepcion(); });
+  show('vHisto3', 'Histórico de contadores', D().usuario.nombre);
+}
 async function historico2(recargar) {
   const v = $('#vHisto2');
   if (!H2.desde) { const h = new Date(), d = new Date(); d.setMonth(h.getMonth() - 1); const f = x => x.toISOString().slice(0, 10); H2.desde = f(d); H2.hasta = f(h); }

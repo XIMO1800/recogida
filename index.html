@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=156">
+<link rel="manifest" href="manifest.json?v=157">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v156 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v157 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -429,7 +429,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.logo') || !D() || !(D().recepcion || D().oficina) || !['vRecep', 'vRecepC'].includes(U.view)) return;
   if (U.view === 'vRecepC') { if (!salirSinGuardar()) return; guardarBorrador(); }   // lo metido en un camión sin guardar se queda en la tablet
   R.modo = CONTADORES_1 ? (R.modo === 'esp' ? '' : R.modo === 'c2' ? 'esp' : 'c2') : (R.modo === 'esp' ? 'r3' : R.modo === 'r3' ? 'c2' : 'esp'); R.ed = null; recepcion();   // Contadores → Recepción → Recepción 2 (prueba) → Contadores
-  toast(R.modo === 'esp' ? 'Recepción' : R.modo === 'r3' ? 'Recepción 2 (prueba)' : R.modo === 'c2' && CONTADORES_1 ? 'Contadores 2' : 'Contadores');
+  toast(R.modo === 'esp' ? 'Recepción' : R.modo === 'r3' ? 'Recepción 2' : R.modo === 'c2' && CONTADORES_1 ? 'Contadores 2' : 'Contadores');
 });
 const CFG = () => D().config;
 const misRutas = () => Object.keys(D().rutas).sort();
@@ -1839,98 +1839,139 @@ function contadores2(v, u) {
   show('vRecep', (CONTADORES_1 ? 'Contadores 2' : 'Contadores') + ' · ' + String(R.dia).slice(0, 5) + (R.esHoy === false ? '/' + String(R.dia).slice(-4) : ''), u.nombre); vivo();
   if (R.abrirTras) { const id = R.abrirTras; R.abrirTras = null; setTimeout(() => { const el = v.querySelector(`[data-c2b="${id}"]`); if (el) { el.scrollIntoView({ block: 'start' }); el.classList.add('c2luz'); setTimeout(() => el.classList.remove('c2luz'), 2500); } }, 80); }
 }
-/* ═══════════ RECEPCIÓN 2 (prueba): el «Registro recepción de leche» en vertical, como el papel ═══════════
-   Un bloque por camión (proveedor/ruta, matrícula), una fila por leche (D.O., oveja, vaca, cabra) con nº de compartimento,
-   litros, depósito, T, pH, ºD y visual; limpieza y filtro del camión; firma y total. PRUEBA VISUAL: no guarda nada en la hoja. */
-const R3 = { st: null };
-const r3Clave = () => 'rl_r3prueba_' + R.dia;
+/* ═══════════ RECEPCIÓN 2: el «Registro recepción de leche» en vertical, como el papel (para la tablet de recepción) ═══════════
+   Trabaja con los MISMOS datos que Recepción: el mismo borrador por camión mientras se mete y el mismo registro de calidad al
+   guardar (con su firma). Se puede empezar un camión en una y seguirlo en la otra. Cada leche va en un compartimento. */
+const R3 = { st: null, eds: {} };
+const r3Clave = () => 'rl_r3_' + R.dia;   // solo qué camiones están en la hoja y en qué orden; los datos van en el borrador común
 function r3Leer() { try { return JSON.parse(localStorage.getItem(r3Clave()) || '{}'); } catch (e) { return {}; } }
 function r3Escribir() { try { localStorage.setItem(r3Clave(), JSON.stringify(R3.st)); } catch (e) {} }
 function recepcion3(v, u) {
-  const st = R3.st = r3Leer(); st.orden = st.orden || []; st.t = st.t || {}; st.ext = st.ext || [];
-  // Los camiones habituales (como en Recepción); si hoy tienen viaje, con su conductor, ruta, leches y cartilla
-  const habituales = (R.camiones || []).map(t => { const vj = R.viajes.find(z => !z.otra && normMat(z.matricula) === normMat(t.matricula));
-    // leches: las del viaje de hoy; si no hay viaje, las que trajo la última vez (su reparto de compartimentos); si no, las cuatro del papel
-    const ult = (R.compsCal || {})[normMat(t.matricula)] || {}, ultE = ORD_ESP.filter(e => ult[e]);
-    return { id: 'T' + normMat(t.matricula), matricula: t.matricula, conductor: vj ? vj.conductor : t.conductor, rutas: vj ? vj.rutas : '', cart: vj ? vj.cart : {},
-      esps: vj && espViaje(vj).length ? espViaje(vj) : ultE.length ? ultE : ORD_ESP.slice(), comps: (t.comps || []).map(k => ({ n: String(k.n), cap: k.cap || 0 })), ult, nCompCam: t.nComp || 0, desc: t.desc || '' }; });
-  const todos = habituales.concat(st.ext); st.orden = st.orden.filter(id => todos.some(x => x.id === id));
-  const xx = id => todos.find(x => x.id === id), silos = R.deps.map(d => d.id), DEP = { D: '3', O: '4', V: '2', C: '1' };
-  const NOM = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' };
-  const T = x => { const t = st.t[x.id] = st.t[x.id] || { f: {}, lim: '', fil: '' };
-    t.quita = t.quita || []; (x.esps || []).forEach(e => { if (!t.f[e] && !t.quita.includes(e)) t.f[e] = { n: nDef(x, t, e), l: '', dep: R.deps.some(d => String(d.id) === DEP[e]) ? DEP[e] : '', t: '', ph: '', d: '', vis: '' }; }); return t; };
-  // compartimentos del camión (los suyos y su capacidad, como en Recepción); de fuera: 4
-  const compsDe = x => x.comps && x.comps.length ? x.comps.slice(0, 4) : [1, 2, 3, 4].map(n => ({ n: String(n), cap: 0 }));
-  // propuesto: el compartimento que tuvo esa leche la última vez en ese camión (si no lo ha cogido ya otra)
-  const nDef = (x, t, e) => { const ya = Object.values(t.f).flatMap(z => z.n || []), ok = compsDe(x).map(k => k.n);
-    return String((x.ult || {})[e] || '').split(/[,\s]+/).filter(k => ok.includes(k) && !ya.includes(k)).slice(0, 1); };
-  const capDe = (x, r) => compsDe(x).filter(k => (r.n || []).includes(k.n)).reduce((a, k) => a + (k.cap || 0), 0);
-  const noCabe = (x, r) => { const c = capDe(x, r), l = num(r.l) || 0; return c > 0 && l > c + 200; };
-  const ci = (x, campo, val, e) => `<span class="r3ci">${['C', 'I'].map(k => `<button class="${val === k ? 'on' + (k === 'I' ? ' mal' : '') : ''}" data-r3ci="${esc(x.id)}|${e || ''}|${campo}|${k}">${k}</button>`).join('')}</span>`;
-  const inp = (x, e, campo, val, ph, mode) => `<input class="r3i" inputmode="${mode || 'decimal'}" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|${campo}" value="${esc(val || '')}" placeholder="${ph}">`;
+  const st = R3.st = r3Leer(); st.orden = st.orden || []; st.ext = st.ext || [];
+  const cal = !!D().calidad, ofi = !!D().oficina, editable = R.esHoy || ofi;
+  const NOM = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' }, DEP = { D: '3', O: '4', V: '2', C: '1' };
+  const lista = lista2(), todos = lista.concat(st.ext.filter(e => !lista.some(z => z.id === e.id)));
+  const xx = id => todos.find(z => z.id === id), silos = R.deps.map(d => d.id);
+  // en la hoja: los que se han añadido aquí, lo guardado hoy y lo que está a medias (también si se empezó en Recepción)
+  todos.forEach(x => { if (!st.orden.includes(x.id) && (x.cal || hayBorrador(x, true))) st.orden.push(x.id); });
+  st.orden = st.orden.filter(id => xx(id)); r3Escribir();
+  const espOk = e => R.deps.some(d => String(d.id) === DEP[e]);
+  const vacia = c => Object.assign(c, { esp: '', ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] });
+  // El registro de cada camión: el borrador común (si está a medias), lo guardado o uno nuevo
+  const edDe = x => {
+    if (!x.cal) { const b = borrTodos()[borrClave(x, true)]; if (b && b.ed) return Object.assign(b.ed, { x: Object.assign({}, b.ed.x, x), tocado: true }); }
+    if (x.cal && R3.eds[x.id]) return R3.eds[x.id];
+    const E = edNuevo2(x); if (x.cal) R3.eds[x.id] = E; return E; };
+  const graba = E => { E.tocado = true; if (E.x.cal) { R3.eds[E.x.id] = E; return; }   // guardado: el cambio no vale hasta Guardar
+    const t = borrTodos(); t[borrClave(E.x, true)] = { ed: E, h: new Date().toTimeString().slice(0, 5), dia: R.dia }; try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {} };
+  const ppal = c => (c.reps.find(r => (r.tipo || 'PRINCIPAL') === 'PRINCIPAL') || {}).dep || '';
+  const extras = c => c.reps.filter(r => (r.tipo || 'PRINCIPAL') !== 'PRINCIPAL');
+  const resto = c => Math.round((num(c.contador) || 0) - extras(c).reduce((a, r) => a + (num(r.l) || 0), 0));
+  const ponEsp = (E, c, e) => { c.esp = e; c.ord = Math.max(0, ...E.comps.map(z => z.ord || 0)) + 1; if (!c.reps.length && espOk(e)) c.reps = [{ dep: DEP[e], l: '', tipo: 'PRINCIPAL' }]; };
+  // al añadir un camión habitual: cada leche en el compartimento de la última vez (o, si hoy hay viaje, sus leches en los libres)
+  const prepara = (x, E) => { const ult = (R.compsCal || {})[normMat(x.matricula)] || {};
+    const vj = (R.viajes || []).find(z => !z.otra && normMat(z.matricula) === normMat(x.matricula)), es = vj && espViaje(vj).length ? espViaje(vj) : ORD_ESP.filter(e => ult[e]);
+    es.forEach(e => { const k = String(ult[e] || '').split(/[,\s]+/)[0], c = E.comps.find(z => String(z.n) === k && !z.esp) || (vj ? E.comps.find(z => !z.esp) : null); if (c) ponEsp(E, c, e); }); };
+  const ci = (id, campo, val, cid) => `<span class="r3ci">${['C', 'I'].map(k => `<button class="${val === k ? 'on' + (k === 'I' ? ' mal' : '') : ''}" data-r3ci="${esc(id)}|${cid || ''}|${campo}|${k}">${k}</button>`).join('')}</span>`;
+  const inp = (id, cid, campo, val, ph, mode) => `<input class="r3i" inputmode="${mode || 'decimal'}" enterkeyhint="done" data-r3i="${esc(id)}|${cid}|${campo}" value="${esc(val == null ? '' : val)}" placeholder="${ph}">`;
+  const noCabe = (c, x) => { const k = (x.comps || []).find(z => String(z.n) === String(c.n)), cap = k ? k.cap || 0 : 0; return cap > 0 && (num(c.contador) || 0) > cap + 200; };
+  const EDS = {};
   const bloque = (x, n) => {
-    const t = T(x), es = ORD_ESP.filter(e => t.f[e]), tot = es.reduce((a, e) => a + (num(t.f[e].l) || 0), 0), cs = compsDe(x);
-    const fila = e => { const r = t.f[e];
-      return `<div class="r3f ${bgEsp(e)}">
-        <div class="r3l1"><button class="r3esp" data-r3cart="${esc(x.id)}|${e}" title="Poner los litros de la cartilla">${NOM[e]}</button>
-          <span class="r3k"><span class="tiny">Comp.</span>${cs.map(k => `<button class="${r.n.includes(k.n) ? 'on' : ''}" data-r3n="${esc(x.id)}|${e}|${k.n}">${k.n}${k.cap ? `<small>${fmt(k.cap)}</small>` : ''}</button>`).join('')}</span>
-          <div class="unit c2l r3lit${noCabe(x, r) ? ' r3nocabe' : ''}" data-r3lw="${esc(x.id)}|${e}" title="${capDe(x, r) ? 'Capacidad de lo marcado: ' + fmt(capDe(x, r)) + ' l' : ''}"><input inputmode="numeric" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|l" value="${esc(r.l || '')}" placeholder="0"><span>L</span></div>
-          <button class="lnk r3x" data-r3quita="${esc(x.id)}|${e}" title="No trae esta leche: quitarla">✕</button></div>
-        <div class="r3l2"><label><span class="tiny">T ºC</span>${inp(x, e, 't', r.t, '—')}</label><label><span class="tiny">pH</span>${inp(x, e, 'ph', r.ph, '—')}</label><label><span class="tiny">ºD</span>${inp(x, e, 'd', r.d, '—', 'numeric')}</label>
-          <label><span class="tiny">Visual</span>${ci(x, 'vis', r.vis, e)}</label>
-          <label class="r3dep"><span class="tiny">Depósito</span><div class="c2deps">${silos.map(s => `<button class="${String(r.dep) === String(s) ? 'on' : ''}" data-r3dep="${esc(x.id)}|${e}|${esc(s)}">${esc(s)}</button>`).join('')}</div></label></div></div>`; };
-    const falta = ORD_ESP.filter(e => !t.f[e]);
-    return `<div class="card stack c2b r3b" data-r3b="${esc(x.id)}">
-      <div class="c2h"><span class="c2n">${n}</span><span class="c2nm r3nm"><b>${esc(x.conductor)}</b>${x.otra || !x.rutas ? '' : ` <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>`}${x.matricula ? `<br><span class="mono r3mat">${esc(x.matricula)}</span>` : ''}</span>
-        <span class="r3lim"><label><span class="tiny">Limpieza cisterna</span>${ci(x, 'lim', t.lim)}</label><label><span class="tiny">Filtro</span>${ci(x, 'fil', t.fil)}</label></span>
-        ${falta.length ? `<span class="r3mas">${falta.map(e => `<button class="lnk" data-r3add="${esc(x.id)}|${e}">+ ${NOM[e]}</button>`).join('')}</span>` : ''}
-        <button class="lnk r3sacar" data-r3fuera="${esc(x.id)}" title="Sacar este camión de la hoja"><span>✕</span>sacar</button></div>
-      ${es.map(fila).join('')}
-      <div class="r3pie"><div class="c2firma"><canvas data-r3pad="${esc(x.id)}"></canvas><div class="row" style="justify-content:space-between;align-items:center"><span class="tiny" data-r3fe="${esc(x.id)}">${FIRMAS['r3|' + R.dia + '|' + x.id] ? 'Firmado ✓' : 'Firma'}</span><button class="lnk" data-r3fb="${esc(x.id)}" style="width:auto;padding:2px 8px">Borrar firma</button></div></div>
-        <div class="r3tot"><span class="tiny">Total</span><b class="num" data-r3tot="${esc(x.id)}">${fmt(tot)} L</b></div></div></div>`; };
-  const enHoja = st.orden.map(xx), pend = habituales.filter(x => !st.orden.includes(x.id));
-  const totEsp = {}; enHoja.forEach(x => { const t = T(x); ORD_ESP.forEach(e => { if (t.f[e]) totEsp[e] = (totEsp[e] || 0) + (num(t.f[e].l) || 0); }); });
+    const E = EDS[x.id] = edDe(x), id = x.id, usadas = E.comps.filter(c => c.esp).sort((a, b) => ORD_ESP.indexOf(a.esp) - ORD_ESP.indexOf(b.esp));
+    const tot = usadas.reduce((a, c) => a + (num(c.contador) || 0), 0), falta = ORD_ESP.filter(e => !usadas.some(c => c.esp === e));
+    const firmado = (R.firmados || new Set()).has('CAL|' + id), mod = x.cal && E.tocado;
+    const fila = c => `<div class="r3f ${bgEsp(c.esp)}">
+        <div class="r3l1"><button class="r3esp" data-r3cart="${esc(id)}|${esc(c.id)}" title="Poner los litros de la cartilla">${NOM[c.esp] || c.esp}</button>
+          <span class="r3k"><span class="tiny">Comp.</span>${x.comps.map(k => `<button class="${String(k.n) === String(c.n) ? 'on' : ''}" data-r3n="${esc(id)}|${esc(c.id)}|${k.n}">${k.n}${k.cap ? `<small>${fmt(k.cap)}</small>` : ''}</button>`).join('')}</span>
+          <div class="unit c2l r3lit${noCabe(c, x) ? ' r3nocabe' : ''}" data-r3lw="${esc(id)}|${esc(c.id)}"><input inputmode="numeric" enterkeyhint="done" data-r3i="${esc(id)}|${esc(c.id)}|contador" value="${esc(c.contador || '')}" placeholder="0"><span>L</span></div>
+          <button class="lnk r3x" data-r3quita="${esc(id)}|${esc(c.id)}" title="No trae esta leche: quitarla">✕</button></div>
+        <div class="r3l2"><label><span class="tiny">T ºC</span>${inp(id, c.id, 'temp', c.temp, '—')}</label><label><span class="tiny">pH</span>${inp(id, c.id, 'ph', c.ph, '—')}</label><label><span class="tiny">ºD</span>${inp(id, c.id, 'dornic', c.dornic, '—', 'numeric')}</label>
+          <label><span class="tiny">Visual</span>${ci(id, 'visual', c.visual, c.id)}</label>
+          <label class="r3dep"><span class="tiny">Depósito</span><div class="c2deps">${silos.map(s => `<button class="${String(ppal(c)) === String(s) ? 'on' : ''}" data-r3dep="${esc(id)}|${esc(c.id)}|${esc(s)}">${esc(s)}</button>`).join('')}</div></label></div></div>`;
+    return `<div class="card stack c2b r3b${x.cal ? ' r3reg' : ''}" data-r3b="${esc(id)}">
+      <div class="c2h"><span class="c2n">${n}</span><span class="c2nm r3nm"><b>${esc(x.conductor || '')}</b>${x.viaje > 1 ? ` <span class="muted">· ${x.viaje}º viaje</span>` : ''}${x.matricula ? `<br><span class="mono r3mat">${esc(x.matricula)}</span>` : ''}</span>
+        <span class="r3lim"><label><span class="tiny">Limpieza cisterna</span>${ci(id, 'limpieza', E.limpieza)}</label><label><span class="tiny">Filtro</span>${ci(id, 'filtro', E.filtro)}</label></span>
+        ${falta.length && editable ? `<span class="r3mas">${falta.map(e => `<button class="lnk" data-r3add="${esc(id)}|${e}">+ ${NOM[e]}</button>`).join('')}</span>` : ''}
+        ${x.cal ? '<span class="reg-ok" style="flex:0 0 auto">✓ REGISTRADO</span>' : `<button class="lnk r3sacar" data-r3fuera="${esc(id)}" title="Sacar este camión de la hoja (borra lo metido)"><span>✕</span>sacar</button>`}</div>
+      ${usadas.map(fila).join('') || '<p class="small muted" style="margin:0">Toca «+ leche» para poner lo que trae.</p>'}
+      ${editable ? `<div class="r3pie"><div class="c2firma">${firmado && !FIRMAS[borrClave(x, true)] ? `<div class="small" style="padding:8px 0"><span class="fir-ok">✍ Firmado</span> por ${esc((x.cal || {}).usuario || '')}</div>` : `<canvas data-r3pad="${esc(id)}"></canvas><div class="row" style="justify-content:space-between;align-items:center"><span class="tiny" data-r3fe="${esc(id)}">${FIRMAS[borrClave(x, true)] ? 'Firmado ✓' : x.cal ? '<b class="fir-no">Falta la firma</b>' : 'Firma'}</span><button class="lnk" data-r3fb="${esc(id)}" style="width:auto;padding:2px 8px">Borrar firma</button></div>`}</div>
+        <div class="r3tot"><span class="tiny">Total</span><b class="num" data-r3tot="${esc(id)}">${fmt(tot)} L</b>
+          <button class="btn" data-r3save="${esc(id)}" style="min-height:44px;margin-top:6px">${x.cal ? (mod ? 'Guardar cambios' : (firmado ? 'Guardado ✓' : 'Guardar firma')) : 'Guardar'}</button></div></div>
+        ${mod ? '<div class="msg warn" style="margin:0;padding:6px 10px">● Cambios sin guardar en un registro ya guardado: si sales sin guardar, se queda como estaba.</div>' : ''}<div data-r3msg="${esc(id)}" hidden></div>` : ''}</div>`; };
+  const enHoja = st.orden.map(xx);
+  const hoja = enHoja.map((x, i) => bloque(x, i + 1)).join('');
   const depsR3 = () => { const k = {}; R.deps.forEach(d => { k[d.id] = { l: 0, esps: [] }; });
-    st.orden.forEach(id => { const t = st.t[id]; if (t) ORD_ESP.forEach(e => { const r = t.f[e], n = r ? Math.round(num(r.l) || 0) : 0; if (n && k[r.dep]) { k[r.dep].l += n; if (!k[r.dep].esps.includes(e)) k[r.dep].esps.push(e); } }); });
+    Object.values(EDS).forEach(E => E.comps.filter(c => c.esp).forEach(c => { c.reps.forEach(r => { const l = (r.tipo || 'PRINCIPAL') === 'PRINCIPAL' ? resto(c) : Math.round(num(r.l) || 0); if (l > 0 && k[r.dep]) { k[r.dep].l += l; if (!k[r.dep].esps.includes(c.esp)) k[r.dep].esps.push(c.esp); } }); }));
     const tipo = es => !es.length ? '' : es.every(e => e === 'D') ? 'Oveja D.O.' : es.every(e => e === 'D' || e === 'O') ? 'Oveja' : es.length === 1 ? NOM[es[0]] : 'Mezcla';
     return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card" style="cursor:default"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l)}</b><small>${tipo(z.esps) ? '<b>' + esc(tipo(z.esps)) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(z.esps)}</div>`; }).join(''); };
-  v.innerHTML = `<div class="msg warn" style="margin:0;padding:6px 10px">Recepción 2 · <b>prueba</b>: no se guarda nada en la hoja; se queda solo en esta tablet.</div>
+  const totE = () => { const te = {}; Object.values(EDS).forEach(E => E.comps.filter(c => c.esp).forEach(c => { te[c.esp] = (te[c.esp] || 0) + (num(c.contador) || 0); })); return te; };
+  const pend = lista.filter(x => !st.orden.includes(x.id) && !x.cal), te = totE();
+  v.innerHTML = `${R.esHoy === false ? '<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="r3hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button></div>' : ''}
     <div class="card stack"><span class="lbl">Depósitos de leche</span><div class="tally" id="r3deps">${depsR3()}</div></div>
-    ${enHoja.map((x, i) => bloque(x, i + 1)).join('')}
-    ${enHoja.length ? `<div class="card stack"><span class="lbl">Total litros leche recepcionada</span><div class="r3te" id="r3te">${ORD_ESP.map(e => `<div class="${bgEsp(e)}"><span class="tiny">${NOM[e]}</span><b class="num">${fmt(totEsp[e] || 0)}</b></div>`).join('')}</div>
-      <button class="btn ghost" id="r3vaciar" style="width:auto;min-height:36px;padding:4px 12px">Empezar la prueba de cero</button></div>` : ''}
-    ${enHoja.length ? '<div class="sep-blq"></div>' : ''}
-    <span class="lbl blq">Camiones disponibles</span>
-    <div class="g2">${pend.map(x => `<button class="farm" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.rutas ? 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ') + ' · ' : ''}${esc(x.desc)}</span><span class="comps">${x.rutas ? x.esps.map(e => `<span class="tank sp-${e}">${NOM[e]}</span>`).join(' ') : Array.from({ length: Math.min(4, x.nCompCam || 3) }, (_, i) => `<span class="tank">${i + 1}</span>`).join(' ')}</span></span><span class="st num">Registrar</span></button>`).join('') || '<p class="muted">No hay camiones.</p>'}</div>
-    ${R3.otra ? `<div class="card c2otra"><span class="lbl" style="margin:0">Otra entrada</span><input id="r3oN" placeholder="Proveedor" value="${esc(R3.otra.nom || '')}" autocomplete="off" enterkeyhint="done"><input id="r3oM" placeholder="Matrícula" value="${esc(R3.otra.mat || '')}" autocomplete="off" enterkeyhint="done">
-      <div class="c2es">${ORD_ESP.map(e => `<button class="c2chip ${R3.otra.es.includes(e) ? bgEsp(e) : ''}" style="${R3.otra.es.includes(e) ? 'outline:2.5px solid var(--brand)' : 'opacity:.75'}" data-r3oe="${e}">${NOM[e]}</button>`).join('')}</div>
-      <div class="row" style="gap:8px"><button class="btn" id="r3oOk">Añadir</button><button class="btn ghost" id="r3oNo">Cancelar</button></div></div>` : '<button class="btn ghost" id="r3otra" style="margin-top:8px">+ Otra entrada (camión de fuera)</button>'}`;
+    ${hoja}
+    ${enHoja.length ? `<div class="card stack"><span class="lbl">Total litros leche recepcionada</span><div class="r3te" id="r3te">${ORD_ESP.map(e => `<div class="${bgEsp(e)}"><span class="tiny">${NOM[e]}</span><b class="num">${fmt(te[e] || 0)}</b></div>`).join('')}</div></div>` : ''}
+    ${editable ? `${enHoja.length ? '<div class="sep-blq"></div>' : ''}<span class="lbl blq">Camiones disponibles</span>
+    <div class="g2">${pend.map(x => `<button class="farm${x.veces ? ' ya' : ''}" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor || '')} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${esc(x.desc || '')}${x.veces ? '<br><b class="ya-txt">✓ Ya registrado hoy</b>' : ''}</span><span class="comps">${x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span><span class="st num">${x.veces ? 'Otro viaje' : 'Registrar'}</span></button>`).join('') || '<p class="muted">No hay camiones.</p>'}</div>
+    ${R3.otra ? `<div class="card c2otra"><span class="lbl" style="margin:0">Otra entrada</span><input id="r3oN" placeholder="Proveedor" value="${esc(R3.otra.nom || '')}" autocomplete="off" enterkeyhint="done"><input id="r3oM" placeholder="Matrícula" value="${esc(R3.otra.mat || '')}" autocomplete="off" enterkeyhint="done" style="font-family:var(--mono)">
+      <span class="tiny">Compartimentos</span><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${R3.otra.n === n ? 'on' : ''}" data-r3on="${n}">${n}</button>`).join('')}</div>
+      <div class="row" style="gap:8px"><button class="btn" id="r3oOk">Añadir</button><button class="btn ghost" id="r3oNo">Cancelar</button></div></div>` : '<button class="btn ghost" id="r3otra" style="margin-top:8px">+ Otra entrada (cisterna de otro proveedor)</button>'}` : ''}`;
   const pinta = () => { r3Escribir(); recepcion3(v, u); };
-  v.querySelectorAll('[data-r3add0]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.r3add0); pinta(); setTimeout(() => { const el = v.querySelector(`[data-r3b="${b.dataset.r3add0}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
-  v.querySelectorAll('[data-r3fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.r3fuera; st.orden = st.orden.filter(z => z !== id); delete st.t[id]; st.ext = st.ext.filter(z => z.id !== id); delete FIRMAS['r3|' + R.dia + '|' + id]; pinta(); });
-  v.querySelectorAll('[data-r3add]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3add.split('|'), t = st.t[id]; t.quita = (t.quita || []).filter(z => z !== e); t.f[e] = { n: nDef(xx(id), t, e), l: '', dep: DEP[e] || '', t: '', ph: '', d: '', vis: '' }; pinta(); });
-  v.querySelectorAll('[data-r3quita]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const [id, e] = b.dataset.r3quita.split('|'); delete st.t[id].f[e]; st.t[id].quita = (st.t[id].quita || []).concat(e); pinta(); });
-  v.querySelectorAll('[data-r3ci]').forEach(b => b.onclick = () => { const [id, e, campo, k] = b.dataset.r3ci.split('|'), t = st.t[id], o = e ? t.f[e] : t; o[campo] = o[campo] === k ? '' : k; pinta(); });
-  v.querySelectorAll('[data-r3n]').forEach(b => b.onclick = () => { const [id, e, k] = b.dataset.r3n.split('|'), r = st.t[id].f[e];
-    // un compartimento de la cisterna es de una sola leche
-    Object.values(st.t[id].f).forEach(z => { if (z !== r) z.n = z.n.filter(q => q !== k); });
-    r.n = r.n.includes(k) ? [] : [k]; pinta(); });   // cada leche va en UN compartimento (y cada compartimento lleva una sola leche)
-  v.querySelectorAll('[data-r3dep]').forEach(b => b.onclick = () => { const [id, e, s] = b.dataset.r3dep.split('|'); st.t[id].f[e].dep = s; pinta(); });
-  v.querySelectorAll('[data-r3cart]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3cart.split('|'), x = xx(id), r = st.t[id].f[e], l = Math.round((x.cart || {})[e] || 0);
-    if (r.l && r.cartPuesto) { r.l = ''; r.cartPuesto = false; return pinta(); } if (!l) return toast('La cartilla no trae ' + NOM[e]); r.l = String(l); r.cartPuesto = true; pinta(); });
-  const vivo = id => { const t = st.t[id], x = xx(id); if (!t || !x) return; const el = v.querySelector(`[data-r3tot="${id}"]`); if (el) el.textContent = fmt(ORD_ESP.reduce((a, e) => a + (t.f[e] ? num(t.f[e].l) || 0 : 0), 0)) + ' L';
-    const te = {}; st.orden.forEach(z => { const tt = st.t[z]; if (tt) ORD_ESP.forEach(e => { if (tt.f[e]) te[e] = (te[e] || 0) + (num(tt.f[e].l) || 0); }); });
-    v.querySelectorAll('#r3te b').forEach((b, k) => { b.textContent = fmt(te[ORD_ESP[k]] || 0); }); const dd = $('#r3deps'); if (dd) dd.innerHTML = depsR3(); };
-  v.querySelectorAll('[data-r3i]').forEach(i => i.oninput = () => { const [id, e, campo] = i.dataset.r3i.split('|'); st.t[id].f[e][campo] = campo === 'l' || campo === 'd' ? i.value.replace(/\D/g, '') : i.value.replace(/[^\d.,]/g, ''); if (campo === 'l') st.t[id].f[e].cartPuesto = false; r3Escribir(); vivo(id);
-    if (campo === 'l') { const w = v.querySelector(`[data-r3lw="${id}|${e}"]`); if (w) w.classList.toggle('r3nocabe', noCabe(xx(id), st.t[id].f[e])); } });
-  v.querySelectorAll('[data-r3pad]').forEach(cv => { const id = cv.dataset.r3pad; padFirma(cv, 'r3|' + R.dia + '|' + id, v.querySelector(`[data-r3fe="${id}"]`), v.querySelector(`[data-r3fb="${id}"]`)); });
-  if ($('#r3vaciar')) $('#r3vaciar').onclick = () => { if (!confirm2($('#r3vaciar'))) return; st.orden = []; st.t = {}; st.ext = []; R3.otra = null; pinta(); scrollTo(0, 0); };
-  if ($('#r3otra')) $('#r3otra').onclick = () => { R3.otra = { nom: '', mat: '', es: [] }; recepcion3(v, u); setTimeout(() => { const i = $('#r3oN'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } }, 60); };
+  const E_ = id => EDS[id], C_ = (id, cid) => E_(id).comps.find(c => c.id === cid);
+  const vivo = id => { const E = E_(id); if (!E) return; const el = v.querySelector(`[data-r3tot="${id}"]`); if (el) el.textContent = fmt(E.comps.filter(c => c.esp).reduce((a, c) => a + (num(c.contador) || 0), 0)) + ' L';
+    const t2 = totE(); v.querySelectorAll('#r3te b').forEach((b, k) => { b.textContent = fmt(t2[ORD_ESP[k]] || 0); }); const dd = $('#r3deps'); if (dd) dd.innerHTML = depsR3(); };
+  v.querySelectorAll('[data-r3add0]').forEach(b => b.onclick = () => { const x = xx(b.dataset.r3add0), E = edDe(x); if (!x.cal && !E.comps.some(c => c.esp)) prepara(x, E); graba(E); st.orden.push(x.id); pinta();
+    setTimeout(() => { const el = v.querySelector(`[data-r3b="${x.id}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
+  v.querySelectorAll('[data-r3fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.r3fuera, x = xx(id); borrarBorrador(x, true); delete FIRMAS[borrClave(x, true)];
+    st.orden = st.orden.filter(z => z !== id); st.ext = st.ext.filter(z => z.id !== id); pinta(); });
+  v.querySelectorAll('[data-r3add]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3add.split('|'), E = E_(id), x = xx(id), ult = (R.compsCal || {})[normMat(x.matricula)] || {};
+    const c = E.comps.find(z => !z.esp && String(z.n) === String(ult[e] || '').split(/[,\s]+/)[0]) || E.comps.find(z => !z.esp);
+    if (!c) return toast('No quedan compartimentos libres en este camión'); ponEsp(E, c, e); graba(E); pinta(); });
+  v.querySelectorAll('[data-r3quita]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const [id, cid] = b.dataset.r3quita.split('|'); vacia(C_(id, cid)); graba(E_(id)); pinta(); });
+  v.querySelectorAll('[data-r3ci]').forEach(b => b.onclick = () => { const [id, cid, campo, k] = b.dataset.r3ci.split('|'), E = E_(id), o = cid ? C_(id, cid) : E; o[campo] = o[campo] === k ? '' : k; graba(E); pinta(); });
+  // cambiar de compartimento: la leche (con todo lo metido) pasa al otro; si allí había otra leche, se intercambian
+  v.querySelectorAll('[data-r3n]').forEach(b => b.onclick = () => { const [id, cid, k] = b.dataset.r3n.split('|'), E = E_(id), a = C_(id, cid), d = E.comps.find(c => String(c.n) === k);
+    if (!d || d === a) return; const campos = ['esp', 'ord', 'contador', 'temp', 'ph', 'dornic', 'visual', 'reps', 'auto', 'tapL', 'pista2'];
+    campos.forEach(f => { const t = a[f]; a[f] = d[f]; d[f] = t; }); ['esp', 'ord', 'contador', 'temp', 'ph', 'dornic', 'visual'].forEach(f => { if (a[f] == null) a[f] = f === 'ord' ? 0 : ''; }); if (!a.reps) a.reps = [];
+    graba(E); pinta(); });
+  v.querySelectorAll('[data-r3dep]').forEach(b => b.onclick = () => { const [id, cid, s] = b.dataset.r3dep.split('|'), c = C_(id, cid); c.reps = [{ dep: s, l: '', tipo: 'PRINCIPAL' }].concat(extras(c).filter(r => r.dep !== s)); graba(E_(id)); pinta(); });
+  v.querySelectorAll('[data-r3cart]').forEach(b => b.onclick = () => { const [id, cid] = b.dataset.r3cart.split('|'), E = E_(id), c = C_(id, cid);
+    if (c.tapL) { c.contador = ''; c.tapL = false; graba(E); return pinta(); }
+    const otros = E.comps.filter(z => z !== c && z.esp === c.esp).reduce((a, z) => a + (num(z.contador) || 0), 0), l = Math.round((E.cartTap || {})[c.esp] || 0) - Math.round((E.ya || {})[c.esp] || 0) - otros;
+    if (!(l > 0)) return toast('La cartilla no trae más ' + (NOM[c.esp] || '')); c.contador = String(l); c.tapL = true; graba(E); pinta(); });
+  v.querySelectorAll('[data-r3i]').forEach(i => i.oninput = () => { const [id, cid, campo] = i.dataset.r3i.split('|'), c = C_(id, cid);
+    c[campo] = campo === 'contador' || campo === 'dornic' ? i.value.replace(/\D/g, '') : i.value.replace(/[^\d.,]/g, ''); if (campo === 'contador') c.tapL = false; graba(E_(id)); vivo(id);
+    if (campo === 'contador') { const w = v.querySelector(`[data-r3lw="${id}|${cid}"]`); if (w) w.classList.toggle('r3nocabe', noCabe(c, xx(id))); } });
+  v.querySelectorAll('[data-r3pad]').forEach(cv => { const id = cv.dataset.r3pad; padFirma(cv, borrClave(xx(id), true), v.querySelector(`[data-r3fe="${id}"]`), v.querySelector(`[data-r3fb="${id}"]`)); });
+  // GUARDAR: el mismo registro de calidad que Recepción (guardarRecepCalidad), con su firma
+  v.querySelectorAll('[data-r3save]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.r3save, x = xx(id), E = E_(id), m = v.querySelector(`[data-r3msg="${id}"]`), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
+    const firmaImg = FIRMAS[borrClave(x, true)] || '';
+    if (x.cal && !E.tocado) {   // ya guardado sin cambios: solo la firma, si falta
+      if (!firmaImg) return err('Firma en el recuadro.'); ocupado(b, 'Guardando…');
+      try { await api('firmar', { tipo: 'CAL', id, fecha: R.dia, quien: x.cal.usuario || '', firmaImg }); delete FIRMAS[borrClave(x, true)]; (R.firmados = R.firmados || new Set()).add('CAL|' + id); toast('Firma guardada'); pinta(); }
+      catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado la firma.' : e.message); } return; }
+    const usados = E.comps.filter(c => c.esp && num(c.contador) > 0);
+    if (!usados.length) return err('Pon los litros de al menos una leche.');
+    for (const c of usados) { if (!ppal(c)) return err(`Elige el depósito de ${NOM[c.esp]}.`); if (!c.visual) return err(`Marca el aspecto visual (C o I) de ${NOM[c.esp]}.`); }
+    if (!E.limpieza || !E.filtro) return err('Marca la limpieza de la cisterna y la del filtro (C o I).');
+    if (!ofi && !firmaImg) { const cv = v.querySelector(`[data-r3pad="${id}"]`); if (cv) cv.scrollIntoView({ block: 'center' }); return err('Firma en el recuadro antes de guardar.'); }
+    const recep = { viajeId: id, fecha: R.esHoy ? '' : R.dia, limpieza: E.limpieza, filtro: E.filtro, obs: E.obs || '', matricula: x.matricula, conductor: x.conductor,
+      comps: usados.map(c => ({ id: c.id, esp: c.esp, ord: c.ord, nComp: String(c.n), contador: Math.round(num(c.contador)), temp: c.temp === '' ? '' : num(c.temp), ph: c.ph, dornic: c.dornic, visual: c.visual,
+        reps: [{ dep: ppal(c), l: resto(c), tipo: 'PRINCIPAL' }].concat(extras(c).map(p => ({ dep: p.dep, l: Math.round(num(p.l)), tipo: p.tipo }))).filter(p => p.l > 0) })) };
+    ocupado(b, 'Guardando…');
+    try { const r = await api('guardarRecepCalidad', { recep, firmaImg }); borrarBorrador(x, true); delete FIRMAS[borrClave(x, true)]; delete R3.eds[id]; if (firmaImg) (R.firmados = R.firmados || new Set()).add('CAL|' + id);
+      st.ext = st.ext.filter(z => z.id !== id); r3Escribir(); toast('Registro guardado' + (r.firmado ? ' · firmado por ' + r.firmado : '')); recepcion(); }
+    catch (e) { libre(b); err(esRed(e) ? 'Sin conexión: no se ha guardado. Vuelve a pulsar cuando haya red.' : e.message); }
+  });
+  if ($('#r3hoy')) $('#r3hoy').onclick = () => { R.fecha = ''; recepcion(); };
+  if ($('#r3otra')) $('#r3otra').onclick = () => { R3.otra = { nom: '', mat: '', n: 1 }; recepcion3(v, u); setTimeout(() => { const i = $('#r3oN'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } }, 60); };
   if ($('#r3oN')) { $('#r3oN').oninput = e => { R3.otra.nom = e.target.value; }; $('#r3oM').oninput = e => { R3.otra.mat = e.target.value; }; }
-  v.querySelectorAll('[data-r3oe]').forEach(b => b.onclick = () => { const e = b.dataset.r3oe, l = R3.otra.es; R3.otra.es = l.includes(e) ? l.filter(z => z !== e) : l.concat(e); recepcion3(v, u); });
+  v.querySelectorAll('[data-r3on]').forEach(b => b.onclick = () => { R3.otra.n = +b.dataset.r3on; recepcion3(v, u); });
   if ($('#r3oNo')) $('#r3oNo').onclick = () => { R3.otra = null; recepcion3(v, u); };
-  if ($('#r3oOk')) $('#r3oOk').onclick = () => { const nom = (R3.otra.nom || '').trim(); if (!nom) { toast('Pon el proveedor'); return; } if (!R3.otra.es.length) { toast('Elige qué leche trae'); return; }
-    const x = { id: 'X' + Date.now().toString(36).toUpperCase(), otra: true, conductor: nom, matricula: R3.otra.mat.trim(), rutas: '', esps: R3.otra.es.slice() }; st.ext.push(x); st.orden.push(x.id); R3.otra = null; pinta(); };
+  if ($('#r3oOk')) $('#r3oOk').onclick = () => { const nom = (R3.otra.nom || '').trim(); if (!nom) { toast('Pon el proveedor'); return; }
+    const x = { id: 'QX' + yymmdd(R.dia) + '-' + Date.now().toString(36).toUpperCase(), r2: true, otra: true, matricula: R3.otra.mat.trim(), conductor: nom,
+      comps: Array.from({ length: R3.otra.n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: null };
+    st.ext.push(x); st.orden.push(x.id); graba(edDe(x)); R3.otra = null; pinta(); };
   show('vRecep', 'Recepción 2 · ' + String(R.dia).slice(0, 5), u.nombre);
 }
 /** Otra entrada: cada cisterna V + especie (VC, VV, VD, VO); si se repite la especie, numeradas: VC1, VC2… */
@@ -2210,7 +2251,8 @@ function enlazarDiaNav() {
   if ($('#diaHoy')) $('#diaHoy').onclick = () => { R.fecha = ''; recepcion(); };
   if ($('#diaFecha')) $('#diaFecha').onchange = e => { if (e.target.value) { R.fecha = isoAes(e.target.value); recepcion(); } };
 }
-function recep2Lista(v, u) {
+/** Los camiones de Recepción: los habituales (cada uno con el id de su próximo registro) y los registros ya guardados ese día. */
+function lista2() {
   const regs = Object.entries(R.calDia || {}).filter(([id, r]) => /^Q/.test(id) && r.fecha === R.dia).sort((a, b) => ordCal(a[1]) < ordCal(b[1]) ? -1 : 1);
   // Cada camión activo se puede registrar siempre (también un 2º o 3º viaje en el día: descargas parciales, primavera…)
   const nuevoId = t => { const base = 'Q' + yymmdd(R.dia) + '-' + t.id; let id = base, k = 1; while ((R.calDia || {})[id]) id = base + '-' + (++k); return id; };
@@ -2225,6 +2267,10 @@ function recep2Lista(v, u) {
     l.push({ id, r2: true, otra: !t, matricula: r.matricula, conductor: r.conductor, desc: t ? t.desc : '', viaje: cuenta[m],
       comps: t ? t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })) : Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: r });
   });
+  return l;
+}
+function recep2Lista(v, u) {
+  const l = lista2();
   R.l2 = l;
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
@@ -2273,7 +2319,9 @@ function recepOtra2() {
   };
   show('vRecepC', 'Otra entrada', D().usuario.nombre);
 }
-function recepCamion2(x) {
+function recepCamion2(x) { R.ed = edNuevo2(x); conBorrador(x); recepRender(); }
+/** El registro de calidad de un camión para editarlo (de lo guardado o vacío), igual en Recepción y en Recepción 2 */
+function edNuevo2(x) {
   const prev = x.cal;
   const comps = x.comps.map(k => { const p = prev && prev.comps.find(c => String(c.nComp) === String(k.n));
     return p ? Object.assign({}, p, { id: k.id, n: k.n, nComp: String(k.n), contador: String(p.contador), reps: p.reps.map(r => Object.assign({}, r, { l: String(r.l) })) })
@@ -2282,9 +2330,7 @@ function recepCamion2(x) {
   const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
-  R.ed = { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
-  conBorrador(x);
-  recepRender();
+  return { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };
 }
 function recepCamion(x) {
   // Borrador de la recepción: se parte de lo guardado o de los compartimentos del camión (en su orden)

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=133">
+<link rel="manifest" href="manifest.json?v=134">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -373,7 +373,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v133 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v134 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1179,7 +1179,7 @@ function marcoEsc() {
     ['Recepción', [CO, C2b.length && C2b, CONTADORES_1 && !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC].filter(Boolean)]].filter(Boolean);
   const btn = ([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')) ? 'on' : ''}">${t}<small>${sub}</small></button>`;
   const logoSrc = ($('.brand .logo img') || {}).src || '';
-  $('#side').innerHTML = `<div class="side-logo"><span class="logo"><img src="${logoSrc}" alt="El Hidalgo"></span><small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'} · <span id="sideVer">${esc(String(VERSION).split(' ')[0] + (U.apiVer ? ' · API ' + U.apiVer : ''))}</span></small></div>
+  $('#side').innerHTML = `<div class="side-logo"><span class="logo"><img src="${logoSrc}" alt="El Hidalgo"></span><small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}<br><span id="sideVer" style="white-space:nowrap">${esc(String(VERSION).split(' ')[0] + (U.apiVer ? ' · API ' + U.apiVer : ''))}</span></small></div>
     <div class="side-t">Recogida y recepción</div>
     ${grupos.map(([t, it]) => `<div class="navg"><div class="navgt">${t}</div><nav class="nav">${it.map(btn).join('')}</nav></div>`).join('')}
     <div style="flex:1"></div><div class="sbot"><button class="navb" id="sideAct">Actualizar</button><button class="navb" id="sideSalir">Salir</button></div>`;

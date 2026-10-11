@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=142">
+<link rel="manifest" href="manifest.json?v=143">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v142 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v143 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1954,14 +1954,14 @@ async function historico3(recargar) {
         <div class="field" style="flex:1;min-width:200px"><label class="lbl" for="h3Q">Buscar matrícula, conductor, DeCA, fecha…</label><input id="h3Q" class="sm" style="font-family:var(--body)" value="${esc(H3.q)}"></div>
       </div>
       <p class="small muted" style="margin:0">${fil.length} camiones · ${ORD_ESP.filter(e => tot[e]).map(e => `${esc(ESPS[e])} ${fmt(tot[e])} l`).join(' · ') || 'sin litros'}</p></div>
-    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Fecha</th><th>Hora</th><th>Camión</th><th>Conductor</th><th>Cisternas · litros → depósito</th><th class="n">Contador</th><th class="n">Dif.</th><th>Firma</th><th></th></tr></thead><tbody>
-      ${porDiaH(fil).map(g => `<tr class="h2dia"><td colspan="9">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} ${g.xs.length > 1 ? 'camiones' : 'camión'} · ${fmt(g.xs.reduce((a, z) => a + z.total, 0))} l${aguaDe(g.f) ? ` · agua ${fmt(aguaDe(g.f))} l` : ''}
-        <button class="btn ghost" data-h3="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver la hoja del día</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h3id="${esc(x.id)}" data-h3f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.fecha)}</td><td class="mono">${esc(x.hora)}</td><td class="mono">${esc(x.matricula)}</td>
-        <td><b>${esc(x.conductor)}</b>${x.otra ? ' <span class="small muted">· otra entrada</span>' : x.ruta ? ` <span class="small muted">· ruta ${esc(String(x.ruta).split(',').map(z => +z).join(' y '))}</span>` : ''}</td>
+    <div class="card" style="padding:0;overflow:visible"><table class="dt"><thead><tr><th>Hora</th><th>Conductor · ruta</th><th>Cisternas · litros → depósito</th><th class="n">Contador</th><th class="n">Dif.</th><th>Firma</th><th></th></tr></thead><tbody>
+      ${porDiaH(fil).map(g => `<tr class="h2dia"><td colspan="7">${esc(diaTxt(g.f).replace(/^./, c => c.toUpperCase()))}/${esc(g.f.slice(-4))} · ${g.xs.length} ${g.xs.length > 1 ? 'camiones' : 'camión'} · ${fmt(g.xs.reduce((a, z) => a + z.total, 0))} l${aguaDe(g.f) ? ` · agua ${fmt(aguaDe(g.f))} l` : ''}
+        <button class="btn ghost" data-h3="${esc(g.f)}" style="width:auto;display:inline-flex;min-height:30px;padding:2px 12px;margin-left:12px">Ver la hoja del día</button></td></tr>` + g.xs.map(x => `<tr class="h2fila" data-h3id="${esc(x.id)}" data-h3f="${esc(x.fecha)}" style="cursor:pointer"><td class="mono">${esc(x.hora)}</td>
+        <td><b style="font-size:16px">${esc(x.conductor)}</b>${x.otra ? ' <span class="small muted">· otra entrada</span>' : x.ruta ? ` <b class="small" style="color:var(--brand)">· ruta ${esc(String(x.ruta).split(',').map(z => +z).join(' y '))}</b>` : ''}${x.matricula ? ` <span class="mono" style="font-size:11px;color:var(--muted);opacity:.7;margin-left:4px">${esc(x.matricula)}</span>` : ''}</td>
         <td>${x.comps.slice().sort((a, b) => a.ord - b.ord).map(c => `<span class="h3c">${tq(c.id)} ${fmt(c.contador)} → ${deps(c)}</span>`).join(' ')}</td>
         <td class="n"><b>${fmt(x.total)}</b></td><td class="n small">${x.dif ? `<b style="color:var(--bad)">${x.dif > 0 ? '+' : ''}${fmt(x.dif)}</b>` : '<span class="muted">—</span>'}</td>
         <td class="small">${esc(x.usuario || '—')}</td>
-        <td style="white-space:nowrap"><button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button></td></tr>`).join('')).join('') || '<tr><td colspan="9" class="muted">No hay descargas en esas fechas.</td></tr>'}
+        <td style="white-space:nowrap"><button class="btn ghost" style="width:auto;display:inline-flex;min-height:34px;padding:4px 12px">Abrir</button></td></tr>`).join('')).join('') || '<tr><td colspan="7" class="muted">No hay descargas en esas fechas.</td></tr>'}
     </tbody></table></div>`;
   $('#h3Des').onchange = e => { H3.desde = e.target.value; }; $('#h3Has').onchange = e => { H3.hasta = e.target.value; };
   $('#h3Bus').onclick = () => historico3(true);

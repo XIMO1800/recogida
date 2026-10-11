@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=144">
+<link rel="manifest" href="manifest.json?v=145">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v144 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v145 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2124,7 +2124,7 @@ async function imprimirParte() {
         <td class="cis"><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
-        ${i === 0 ? `<td rowspan="${nf}" class="firma"><div class="fu">${firmas[(R2() ? 'CAL|' : 'REC|') + x.id] ? `<img src="${firmas[(R2() ? 'CAL|' : 'REC|') + x.id]}" style="display:block;margin:0 auto;max-width:100%;max-height:52px">` : ''}${esc(src.usuario || '')}${R2() ? '' : ` <small>${esc(src.hora || '')}</small>`}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
+        ${i === 0 ? `<td rowspan="${nf}" class="firma"><div class="fu"><div class="fimg">${firmas[(R2() ? 'CAL|' : 'REC|') + x.id] ? `<img src="${firmas[(R2() ? 'CAL|' : 'REC|') + x.id]}">` : ''}</div><div class="fnom">${esc(src.usuario || '')}${R2() ? '' : ` <small>${esc(src.hora || '')}</small>`}</div></div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}</tr>`).join('')}
       ${Array.from({ length: nf - comps.length }, () => `<tr class="r"><td class="cis"></td>${vacia}</tr>`).join('')}
       ${src.obs ? `<tr><td colspan="13"><small>Observaciones: ${esc(src.obs)}</small></td></tr>` : ''}</tbody></table>`;
   };
@@ -2133,17 +2133,16 @@ async function imprimirParte() {
     @page{size:A4;margin:10mm}body{font-family:Arial,sans-serif;font-size:10.5px;color:#111;margin:0}
     .h{display:flex;align-items:center;border:1.5px solid #333;margin-bottom:6px}.h img{height:38px;padding:4px 10px;border-right:1.5px solid #333}.h h1{flex:1;font-size:16px;text-align:center;margin:0}.h .f{border-left:1.5px solid #333;padding:4px 14px;text-align:center;font-size:12px}
     table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3px 4px;text-align:center;vertical-align:middle}th{background:#eee;font-size:9px}
-    table.b{margin-bottom:6px;page-break-inside:avoid;table-layout:fixed;width:100%}table.b td{white-space:nowrap}table.b td.prov,table.b td.firma{white-space:normal;overflow-wrap:anywhere}table.b td{overflow:hidden}table.b tr.r td{height:22px;padding-top:1px;padding-bottom:1px}table.b th{overflow-wrap:anywhere}td.prov{text-align:left}td.n{text-align:right;font-weight:bold}td.firma{font-size:10px;vertical-align:top;position:relative}td.firma .fu{text-align:center;padding-top:2px}.tot{position:absolute;left:8%;right:8%;bottom:3px;border-top:1px solid #555;padding-top:2px;text-align:center}
-    .pie{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;margin-top:8px}.pie td{text-align:left}.pie td.n{text-align:right}
+    table.b{margin-bottom:6px;page-break-inside:avoid;table-layout:fixed;width:100%}table.b td{white-space:nowrap}table.b td.prov,table.b td.firma{white-space:normal;overflow-wrap:anywhere}table.b td{overflow:hidden}table.b tr.r td{height:22px;padding-top:1px;padding-bottom:1px}table.b th{overflow-wrap:anywhere}td.prov{text-align:left}td.n{text-align:right;font-weight:bold}td.firma{font-size:10px;vertical-align:top;position:relative}td.firma .fu{position:absolute;left:4%;right:4%;top:2px;bottom:31px;display:flex;flex-direction:column;text-align:center}.firma .fimg{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}.firma .fimg img{max-width:100%;max-height:100%;display:block}.firma .fnom{line-height:1.1}.tot{position:absolute;left:8%;right:8%;bottom:3px;border-top:1px solid #555;padding-top:2px;text-align:center}
+    table.pie{margin-top:8px;table-layout:fixed}.pie td{text-align:left;height:17px}.pie td.n{text-align:right}.pie td.sp{border:0}.pie td.va{white-space:normal;overflow-wrap:anywhere;font-size:9.5px}
     .obs{border:1px solid #555;min-height:34px;padding:4px;margin-top:8px}.ver{margin-top:8px;display:flex;justify-content:space-between;font-size:11px}
   </style></head><body>
     <div class="h">${logo ? `<img src="${logo}">` : ''}<h1>REGISTRO RECEPCIÓN DE LECHE</h1><div class="f">FECHA<br><b>${esc(R.dia)}</b></div></div>
     ${cams.map(bloque).join('') || '<p>Sin recepciones.</p>'}
-    <div class="pie">
-      <table><tr><th colspan="2">TOTAL LITROS LECHE RECEPCIONADA</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${t[e] ? fmt(t[e]) : ''}</td></tr>`).join('')}</table>
-      <table><tr><th colspan="2">LITROS LECHE MEZCLA</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n"></td></tr>`).join('')}</table>
-      <table><tr><th>LITROS LECHE VENDIDA</th><th></th><th>VENDIDA A</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${vend(e).length ? fmt(vend(e).reduce((a, z) => a + z.l, 0)) : ''}</td><td>${esc(vend(e).map(z => z.cliente).join(', '))}</td></tr>`).join('')}</table>
-    </div>
+    <table class="pie"><colgroup>${[17, 10, 2, 17, 10, 2, 17, 10, 15].map(w => `<col style="width:${w}%">`).join('')}</colgroup>
+      <tr><th colspan="2">TOTAL LITROS LECHE RECEPCIONADA</th><td class="sp"></td><th colspan="2">LITROS LECHE MEZCLA</th><td class="sp"></td><th colspan="2">LITROS LECHE VENDIDA</th><th>VENDIDA A</th></tr>
+      ${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${t[e] ? fmt(t[e]) : ''}</td><td class="sp"></td><td>${EP[e]}</td><td class="n"></td><td class="sp"></td><td>${EP[e]}</td><td class="n">${vend(e).length ? fmt(vend(e).reduce((a, z) => a + z.l, 0)) : ''}</td><td class="va">${esc(vend(e).map(z => z.cliente).join(', '))}</td></tr>`).join('')}
+    </table>
     <div class="obs"><b>Acciones correctivas / Observaciones:</b> ${esc(P.obs || '')}</div>
     <div class="ver"><span>FOR PR 7.-02 agosto 2019</span><span>Verificado por calidad: <b>${esc(P.verificado || '________________')}</b> ${esc(P.horaVerif || '')}${firmas['VER|' + R.dia] ? `<img src="${firmas['VER|' + R.dia]}" style="display:block;max-height:46px;margin-left:auto">` : ''}</span></div>
   </body></html>`;

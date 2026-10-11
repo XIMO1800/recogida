@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 6;
+const API_VERSION = 7;
 
 function doPost(e) {
   try {
@@ -24,10 +24,10 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
+      OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
-      RECEPCION: { login: loginRecepcion, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
+      CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
     const acciones = {};
@@ -68,6 +68,24 @@ function guardarFirma_(tipo, viajeId, fecha, usuario, img) {
   }
   sh.appendRow([String(fecha), ahora_('HH:mm'), tipo, viajeId, usuario, String(img)]);
   sh.getRange(sh.getLastRow(), 1, 1, 2).setNumberFormat('@').setValues([[String(fecha), ahora_('HH:mm')]]);
+}
+/** Quita una firma (p. ej. al quitar la verificación del día). */
+function borrarFirma_(tipo, id) {
+  const sh = SS.getSheetByName('FIRMAS'); if (!sh || sh.getLastRow() < 2) return;
+  const ids = sh.getRange(2, 3, sh.getLastRow() - 1, 2).getValues();
+  for (let i = ids.length - 1; i >= 0; i--) if (String(ids[i][0]) === tipo && String(ids[i][1]) === id) sh.deleteRow(i + 2);
+}
+/** Firmar después un registro ya guardado (se le olvidó a quien lo recibió y viene a la oficina a firmarlo). Solo la firma. */
+function firmar(req, c) {
+  const tipo = String(req.tipo || ''); if (!/^(CAL|REC)$/.test(tipo)) throw new Error('Tipo de firma no válido.');
+  if (!req.firmaImg) throw new Error('Falta la firma.');
+  guardarFirma_(tipo, String(req.id || ''), String(req.fecha || ahora_('dd/MM/yyyy')), String(req.quien || c.NOMBRE), req.firmaImg);
+  return { ok: true };
+}
+/** Las claves 'CAL|registro' / 'REC|viaje' / 'VER|fecha' que tienen firma ese día (sin la imagen) */
+function firmadosDia_(fecha) {
+  const sh = SS.getSheetByName('FIRMAS'); if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues().filter(function (r) { return String(r[0]) === fecha; }).map(function (r) { return String(r[2]) + '|' + String(r[3]); });
 }
 /** Firmas de un día para el parte impreso: { 'REC|viaje' | 'CAL|registro': imagen } */
 function firmasDia(req) {
@@ -756,6 +774,8 @@ function parteDia_(fecha, obj) {
 function verificarDia(req, c) {
   const fecha = String(req.fecha || ahora_('dd/MM/yyyy'));
   parteDia_(fecha, req.quitar ? { VERIFICADO_POR: '', HORA_VERIFICACION: '' } : { VERIFICADO_POR: String(c.NOMBRE), HORA_VERIFICACION: ahora_('dd/MM/yyyy HH:mm') });
+  if (req.quitar) borrarFirma_('VER', fecha);
+  else if (req.firmaImg) guardarFirma_('VER', fecha, fecha, String(c.NOMBRE), req.firmaImg);   // la firma de calidad, para el parte impreso
   return { ok: true };
 }
 /** Acciones correctivas / observaciones del día (pie del parte). */
@@ -870,7 +890,7 @@ function recepViajes(req, c) {
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
   return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
-    mezclas: mezclas, parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || '') },
+    mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
     aguaHoy: tabla_('AGUA').filas.filter(function (r) { return r.FECHA === fechas[0]; })

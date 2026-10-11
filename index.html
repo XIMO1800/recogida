@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=143">
+<link rel="manifest" href="manifest.json?v=144">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -171,7 +171,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .r3x{width:auto;flex:0 0 auto;padding:4px 8px;min-height:38px}.r3l2{display:flex;gap:6px;align-items:flex-end}.r3i{width:62px;font:inherit;font-size:17px;font-weight:700;padding:6px 6px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);text-align:center}.r3dep{flex:1;min-width:0}
 .r3pie{display:flex;gap:10px;align-items:stretch}.r3pie .c2firma{flex:1}.r3tot{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:120px}.r3tot b{font-size:26px}
 .r3te{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.r3te div{border:1.5px solid var(--cb,var(--line));border-left:6px solid var(--cs,#a39a9c);background:var(--cf,#fff);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column}.r3te b{font-size:20px}
-.c2luz{box-shadow:0 0 0 3px var(--gold)!important;transition:box-shadow .4s}.c2orow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.c2orow>b{width:92px;font-size:15px}.c2tl{width:24%}.c2tab .c2l input{min-width:96px;padding-left:4px;padding-right:18px}.c2tab td.c2tx,.c2tab td.c2ta{padding-left:1px;padding-right:1px}.c2tx .lnk{padding:4px 6px;min-width:0}.c2thv{display:inline-block;margin:0 -30px}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.c2tab .unit.c2l span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}.c2tab th.c2c{text-align:center}
+.fir-ok{color:var(--ok);font-weight:700}.fir-no{color:var(--bad)}.c2luz{box-shadow:0 0 0 3px var(--gold)!important;transition:box-shadow .4s}.c2orow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.c2orow>b{width:92px;font-size:15px}.c2tl{width:24%}.c2tab .c2l input{min-width:96px;padding-left:4px;padding-right:18px}.c2tab td.c2tx,.c2tab td.c2ta{padding-left:1px;padding-right:1px}.c2tx .lnk{padding:4px 6px;min-width:0}.c2thv{display:inline-block;margin:0 -30px}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.c2tab .unit.c2l span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}.c2tab th.c2c{text-align:center}
 .c2td{width:34%}.c2deps{display:flex;gap:3px}.c2deps button{flex:1;min-width:0;min-height:40px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:17px;font-family:var(--mono)}
 .c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}.c2tx{width:1%;text-align:right}.c2ta{width:1%;text-align:center}.c2mas{width:30px;height:34px;border-radius:9px;border:1.5px dashed rgba(0,0,0,.18);background:transparent;font-size:22px;font-weight:700;line-height:1;padding:0;color:var(--muted);cursor:pointer}
 .c2otra{display:flex;flex-direction:column;gap:8px}.c2otra input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.c2otra .c2es{display:flex;gap:6px;flex-wrap:wrap}.c2otra .c2es button{min-width:64px}.c2sel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:34px}
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v143 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v144 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1476,7 +1476,7 @@ async function recepcion(sinCargar) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando camiones…</p></div>';
     show('vRecep', R.modo === 'esp' ? 'Recepción' : R.modo === 'c2' && CONTADORES_1 ? 'Contadores 2' : 'Contadores', u.nombre);
     try { const r = await api('recepViajes', { fecha: R.fecha || '' }); R.viajes = r.viajes; R.deps = r.depositos; R.hasta = r.hasta; R.aguaDef = r.aguaDef || { arranque: 70, final: 70 }; R.agua = r.aguaHoy || [];
-      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
+      R.dia = r.fecha; R.esHoy = r.hoy !== false; R.viajes.forEach(x => { x.cal = (r.calidad || {})[x.id] || null; }); R.compsCal = r.compsCal || {}; R.firmados = new Set(r.firmados || []); R.calDia = r.calidad || {}; R.camiones = r.camiones || [];
       // Por si la pestaña CAMIONES no los da (matrícula sin poner, Api.gs antiguo): también los camiones que hoy tienen viaje
       R.viajes.filter(x => !x.otra && x.matricula && !R.camiones.some(t => normMat(t.matricula) === normMat(x.matricula))).forEach(x => {
         const porN = {}; (x.comps || []).forEach(k => { if (k.n) porN[k.n] = Math.max(porN[k.n] || 0, k.cap || 0); });
@@ -2072,7 +2072,9 @@ function parteHtml() {
         <div id="vtMsg" hidden></div><button class="btn" id="vtOk">Guardar venta</button></div>`}
     <div class="field"><span class="lbl">Acciones correctivas / observaciones</span>${`<textarea id="pObs" rows="2" style="width:100%;font:inherit;padding:10px;border:1.5px solid var(--line);border-radius:10px">${esc(P.obs || '')}</textarea><button class="btn sec" id="pObsOk" style="margin-top:6px">Guardar observaciones</button>`}</div>
     <div class="msg ${P.verificado ? 'ok' : 'warn'}" style="margin:0">${P.verificado ? `Verificado por calidad: <b>${esc(P.verificado)}</b> · ${esc(P.horaVerif)}` : 'Sin verificar por calidad.'}</div>
-    ${cal ? `<button class="btn" id="pVerif">${P.verificado ? 'Quitar la verificación' : 'Firmar verificación del día'}</button>` : ''}
+    ${cal ? `<button class="btn" id="pVerif">${P.verificado ? 'Quitar la verificación' : 'Firmar verificación del día'}</button>
+      <div id="pVerBox" class="stack" hidden><span class="lbl">Firma de calidad · con el ratón, el lápiz o el dedo</span><canvas id="pVerPad" style="width:100%;height:140px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
+        <div class="row" style="gap:8px;align-items:center"><span class="small muted" id="pVerEst">Sin firmar</span><span style="flex:1"></span><button class="btn ghost" id="pVerBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar</button><button class="btn" id="pVerOk" style="width:auto;min-height:40px;padding:4px 18px">Firmar y verificar</button></div></div>` : ''}
     <button class="btn sec" id="pPrint">Imprimir parte del día</button></div>`;
 }
 function enlazarParte(v) {
@@ -2095,8 +2097,14 @@ function enlazarParte(v) {
     try { await api('borrarVenta', { id: b.dataset.vdel }); recargar(); } catch (e) { toast(e.message); } });
   if ($('#pObsOk')) $('#pObsOk').onclick = async () => { const b = $('#pObsOk'); ocupado(b, 'Guardando…');
     try { await api('guardarObsDia', { fecha: R.dia, obs: $('#pObs').value }); toast('Observaciones guardadas'); R.parte.obs = $('#pObs').value; libre(b); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
-  if ($('#pVerif')) $('#pVerif').onclick = async () => { const b = $('#pVerif'); ocupado(b, 'Firmando…');
-    try { await api('verificarDia', { fecha: R.dia, quitar: !!R.parte.verificado }); toast(R.parte.verificado ? 'Verificación quitada' : 'Parte verificado'); recargar(); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
+  if ($('#pVerif')) $('#pVerif').onclick = async () => { const b = $('#pVerif');
+    if (!R.parte.verificado) { $('#pVerBox').hidden = false; b.hidden = true; padFirma($('#pVerPad'), 'VER|' + R.dia, $('#pVerEst'), $('#pVerBorrar')); $('#pVerBox').scrollIntoView({ block: 'center' }); return; }
+    if (!confirm2(b)) return; ocupado(b, 'Quitando…');
+    try { await api('verificarDia', { fecha: R.dia, quitar: true }); toast('Verificación quitada'); recargar(); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
+  if ($('#pVerOk')) $('#pVerOk').onclick = async () => { const b = $('#pVerOk'), img = FIRMAS['VER|' + R.dia];
+    if (!img) return toast('Firma primero en el recuadro');
+    ocupado(b, 'Firmando…');
+    try { await api('verificarDia', { fecha: R.dia, firmaImg: img }); delete FIRMAS['VER|' + R.dia]; toast('Parte verificado'); recargar(); } catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión' : e.message); } };
   if ($('#pPrint')) $('#pPrint').onclick = imprimirParte;
 }
 /** Parte en papel con el formato del FOR PR 7.-02: un bloque por camión, una línea por compartimento. */
@@ -2137,7 +2145,7 @@ async function imprimirParte() {
       <table><tr><th>LITROS LECHE VENDIDA</th><th></th><th>VENDIDA A</th></tr>${ORD_ESP.map(e => `<tr><td>${EP[e]}</td><td class="n">${vend(e).length ? fmt(vend(e).reduce((a, z) => a + z.l, 0)) : ''}</td><td>${esc(vend(e).map(z => z.cliente).join(', '))}</td></tr>`).join('')}</table>
     </div>
     <div class="obs"><b>Acciones correctivas / Observaciones:</b> ${esc(P.obs || '')}</div>
-    <div class="ver"><span>FOR PR 7.-02 agosto 2019</span><span>Verificado por calidad: <b>${esc(P.verificado || '________________')}</b> ${esc(P.horaVerif || '')}</span></div>
+    <div class="ver"><span>FOR PR 7.-02 agosto 2019</span><span>Verificado por calidad: <b>${esc(P.verificado || '________________')}</b> ${esc(P.horaVerif || '')}${firmas['VER|' + R.dia] ? `<img src="${firmas['VER|' + R.dia]}" style="display:block;max-height:46px;margin-left:auto">` : ''}</span></div>
   </body></html>`;
   let f = $('#printFrame'); if (f) f.remove();
   f = document.createElement('iframe'); f.id = 'printFrame'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
@@ -2207,7 +2215,7 @@ function recep2Lista(v, u) {
   const cal = !!D().calidad, ofi = !!D().oficina, editable = true;   // Recepción calidad: recepción, oficina y calidad pueden registrar
   const tarjeta = x => `<button class="farm${x.cal ? ' done' : x.veces ? ' ya' : ''}" data-v2="${esc(x.id)}"><span class="main">
       <span class="name">${x.cal ? '<span class="reg-ok">✓ REGISTRADO</span>' : ''}${esc(x.conductor || '')} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '—')}</span></span>
-      <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
+      <span class="sub">${hayBorrador(x, true) ? '<b style="color:var(--warn)">✎ A medias · </b>' : ''}${x.otra ? 'Otra entrada' : esc(x.desc || '')}${x.cal && x.viaje > 1 ? ` · <b>${x.viaje}º viaje</b>` : ''}${x.cal ? ((R.firmados || new Set()).has('CAL|' + x.id) ? ' · <span class="fir-ok">✍ firmado</span>' : ' · <b class="fir-no">✗ sin firma</b>') : ''}${!x.cal && x.veces ? `<br><b class="ya-txt">✓ Ya registrado hoy${x.veces > 1 ? ' · ' + x.veces + ' viajes' : ''}</b>` : ''}${x.cal && D().calidad ? mezclaEstado(x) : ''}</span>
       <span class="comps">${x.cal ? x.cal.comps.slice().sort((a, b) => a.nComp - b.nComp).map(c => `<span class="tank sp-${esc(espDe(c))}">${esc(c.nComp)} · ${esc(ESPS[espDe(c)] || '')}</span>`).join(' ')
         : x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span>
       <span class="st num">${x.cal ? `${fmt(x.cal.comps.reduce((a, c) => a + (+c.contador || 0), 0))} l` : x.veces ? '<span class="ya-txt">Otro viaje</span>' : 'Registrar'}</span></button>`;
@@ -2346,7 +2354,7 @@ function conBorrador(x) {   // al abrir un camión: si hay algo a medias, se rec
   if (cambia) try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {}
 })();
 ['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, e => {
-  if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar')) return;
+  if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar, #reFirmaSola, #reFirmaBorrar, #reFirmaPad')) return;
   if (ev === 'click' && !e.target.closest('button')) return;
   R.ed.tocado = true; setTimeout(guardarBorrador, 0);
   const mm = $('#reMod'); if (mm && mm.hidden && edGuardado(R.ed)) { mm.hidden = false; mm.className = 'msg warn'; mm.style.margin = '0'; mm.textContent = '● Has cambiado algo en este registro ya guardado. No se guarda hasta que pulses Guardar; si sales sin guardar, se queda como estaba.'; }
@@ -2458,9 +2466,10 @@ function recepRender() {
         <div ${E.porEsp ? '' : 'hidden'}><span class="tiny">Observaciones / acciones correctivas</span><input class="sm" id="reObs" style="font-size:18px" value="${esc(E.obs)}"></div>
       </div>
       <div id="reMsg" hidden></div>
-      ${ofi ? '' : `<div class="field" id="reFirmaBox" style="max-width:640px"><span class="lbl">Firma de quien hace la ${E.porEsp ? 'recepción (calidad)' : 'recepción'} · con el lápiz o el dedo</span>
+      ${E.porEsp && x.cal && (R.firmados || new Set()).has('CAL|' + x.id) ? `<p class="small" style="margin:0"><span class="fir-ok">✍ Firmado</span> por ${esc(x.cal.usuario || '')}</p>` : ''}
+      ${ofi && !(E.porEsp && x.cal && !(R.firmados || new Set()).has('CAL|' + x.id)) ? '' : `<div class="field" id="reFirmaBox" style="max-width:640px"><span class="lbl">${E.porEsp && x.cal && !(R.firmados || new Set()).has('CAL|' + x.id) ? `<b class="fir-no">Falta la firma</b> de ${esc(x.cal.usuario || 'quien lo recibió')} · que firme aquí` : `Firma de quien hace la ${E.porEsp ? 'recepción (calidad)' : 'recepción'} · con el lápiz o el dedo`}</span>
         <canvas id="reFirmaPad" style="width:100%;height:170px;background:#fff;border:2px dashed var(--line);border-radius:12px;touch-action:none;display:block"></canvas>
-        <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" id="reFirmaEst">${FIRMAS[borrClave(x, E.porEsp)] ? 'Firmado ✓' : 'Sin firmar'}</span><button class="btn ghost" id="reFirmaBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar firma</button></div></div>`}
+        <div class="row" style="justify-content:space-between;align-items:center"><span class="small muted" id="reFirmaEst">${FIRMAS[borrClave(x, E.porEsp)] ? 'Firmado ✓' : 'Sin firmar'}</span><span class="row" style="gap:6px;flex:0 0 auto">${E.porEsp && x.cal && !(R.firmados || new Set()).has('CAL|' + x.id) ? '<button class="btn sec" id="reFirmaSola" style="width:auto;min-height:40px;padding:4px 14px">Guardar solo la firma</button>' : ''}<button class="btn ghost" id="reFirmaBorrar" style="width:auto;min-height:40px;padding:4px 14px">Borrar firma</button></span></div></div>`}
       ${E.tocado && edGuardado(E) ? '<div class="msg warn" id="reMod" style="margin:0">● Has cambiado algo en este registro ya guardado. No se guarda hasta que pulses Guardar; si sales sin guardar, se queda como estaba.</div>' : '<div id="reMod" hidden></div>'}
       <button class="btn" id="reGuardar">${E.porEsp ? (ofi ? 'Guardar registro de calidad' : 'Firmar y guardar registro de calidad') : ofi ? 'Guardar recepción' : 'Firmar y guardar recepción'}</button>
       ${x.recep ? `<button class="btn ghost" id="reAnular" style="color:var(--bad)">Anular esta recepción (prueba o error)</button>
@@ -2517,6 +2526,11 @@ function recepRender() {
   $('#reTot').oninput = e => { E.total = e.target.value.replace(/\D/g, ''); }; $('#reTot').onchange = () => rehacer(recepRender);
   $('#reObs').oninput = e => { E.obs = e.target.value; };
   if ($('#reFirmaPad')) padFirma($('#reFirmaPad'), borrClave(x, E.porEsp));
+  if ($('#reFirmaSola')) $('#reFirmaSola').onclick = async () => { const b = $('#reFirmaSola'), img = FIRMAS[borrClave(x, E.porEsp)];
+    if (!img) return toast('Firma primero en el recuadro');
+    ocupado(b, 'Guardando…');
+    try { await api('firmar', { tipo: 'CAL', id: x.id, fecha: R.dia, quien: (x.cal || {}).usuario || '', firmaImg: img }); delete FIRMAS[borrClave(x, E.porEsp)]; (R.firmados = R.firmados || new Set()).add('CAL|' + x.id); toast('Firma guardada'); recepRender(); }
+    catch (e) { libre(b); toast(esRed(e) ? 'Sin conexión: no se ha guardado la firma' : e.message); } };
   $('#reGuardar').onclick = async () => {
     const m = $('#reMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
     const usados = desc.filter(c => num(c.contador) > 0);

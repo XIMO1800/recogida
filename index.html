@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=140">
+<link rel="manifest" href="manifest.json?v=141">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -168,7 +168,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .r3l1{display:flex;gap:8px;align-items:center}.r3esp{border:0;background:none;font:inherit;font-weight:800;font-size:17px;min-width:96px;text-align:left;padding:0;text-decoration:underline dotted;cursor:pointer;color:var(--ink)}
 .r3k{display:flex;gap:3px;align-items:center}.r3k .tiny{margin-right:2px}.r3k button{min-width:34px;min-height:38px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:16px}.r3k button.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .r3lit{flex:1;min-width:110px}.r3lit input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.r3f .unit.r3lit span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}
-.r3l2{display:flex;gap:6px;align-items:flex-end}.r3i{width:62px;font:inherit;font-size:17px;font-weight:700;padding:6px 6px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);text-align:center}.r3dep{flex:1;min-width:0}
+.r3x{width:auto;flex:0 0 auto;padding:4px 8px;min-height:38px}.r3l2{display:flex;gap:6px;align-items:flex-end}.r3i{width:62px;font:inherit;font-size:17px;font-weight:700;padding:6px 6px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);text-align:center}.r3dep{flex:1;min-width:0}
 .r3pie{display:flex;gap:10px;align-items:stretch}.r3pie .c2firma{flex:1}.r3tot{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:120px}.r3tot b{font-size:26px}
 .r3te{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.r3te div{border:1.5px solid var(--cb,var(--line));border-left:6px solid var(--cs,#a39a9c);background:var(--cf,#fff);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column}.r3te b{font-size:20px}
 .c2luz{box-shadow:0 0 0 3px var(--gold)!important;transition:box-shadow .4s}.c2orow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.c2orow>b{width:92px;font-size:15px}.c2tl{width:24%}.c2tab .c2l input{min-width:96px;padding-left:4px;padding-right:18px}.c2tab td.c2tx,.c2tab td.c2ta{padding-left:1px;padding-right:1px}.c2tx .lnk{padding:4px 6px;min-width:0}.c2thv{display:inline-block;margin:0 -30px}.c2l input,.c2tot input{width:100%;font-size:22px;font-weight:700;padding:5px 20px 5px 6px;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink);text-align:right}.c2tab .unit.c2l span{right:6px;top:auto;bottom:9px;transform:none;font-size:12px;line-height:1}.c2tab th.c2c{text-align:center}
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v140 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v141 · 10/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1842,7 +1842,7 @@ function recepcion3(v, u) {
   const xx = id => todos.find(x => x.id === id), silos = R.deps.map(d => d.id), DEP = { D: '3', O: '4', V: '2', C: '1' };
   const NOM = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' };
   const T = x => { const t = st.t[x.id] = st.t[x.id] || { f: {}, lim: '', fil: '' };
-    (x.esps || []).forEach(e => { if (!t.f[e]) t.f[e] = { n: [], l: '', dep: R.deps.some(d => String(d.id) === DEP[e]) ? DEP[e] : '', t: '', ph: '', d: '', vis: '' }; }); return t; };
+    t.quita = t.quita || []; (x.esps || []).forEach(e => { if (!t.f[e] && !t.quita.includes(e)) t.f[e] = { n: [], l: '', dep: R.deps.some(d => String(d.id) === DEP[e]) ? DEP[e] : '', t: '', ph: '', d: '', vis: '' }; }); return t; };
   const nComp = x => Math.min(4, Math.max(3, x.nCompCam || 0, ...((R.camiones || []).filter(c => normMat(c.matricula) === normMat(x.matricula)).map(c => c.nComp || 0))));
   const ci = (x, campo, val, e) => `<span class="r3ci">${['C', 'I'].map(k => `<button class="${val === k ? 'on' + (k === 'I' ? ' mal' : '') : ''}" data-r3ci="${esc(x.id)}|${e || ''}|${campo}|${k}">${k}</button>`).join('')}</span>`;
   const inp = (x, e, campo, val, ph, mode) => `<input class="r3i" inputmode="${mode || 'decimal'}" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|${campo}" value="${esc(val || '')}" placeholder="${ph}">`;
@@ -1852,7 +1852,8 @@ function recepcion3(v, u) {
       return `<div class="r3f ${bgEsp(e)}">
         <div class="r3l1"><button class="r3esp" data-r3cart="${esc(x.id)}|${e}" title="Poner los litros de la cartilla">${NOM[e]}</button>
           <span class="r3k"><span class="tiny">Comp.</span>${Array.from({ length: nc }, (_, i) => String(i + 1)).map(k => `<button class="${r.n.includes(k) ? 'on' : ''}" data-r3n="${esc(x.id)}|${e}|${k}">${k}</button>`).join('')}</span>
-          <div class="unit c2l r3lit"><input inputmode="numeric" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|l" value="${esc(r.l || '')}" placeholder="0"><span>L</span></div></div>
+          <div class="unit c2l r3lit"><input inputmode="numeric" enterkeyhint="done" data-r3i="${esc(x.id)}|${e}|l" value="${esc(r.l || '')}" placeholder="0"><span>L</span></div>
+          <button class="lnk r3x" data-r3quita="${esc(x.id)}|${e}" title="No trae esta leche: quitarla">✕</button></div>
         <div class="r3l2"><label><span class="tiny">T ºC</span>${inp(x, e, 't', r.t, '—')}</label><label><span class="tiny">pH</span>${inp(x, e, 'ph', r.ph, '—')}</label><label><span class="tiny">ºD</span>${inp(x, e, 'd', r.d, '—', 'numeric')}</label>
           <label><span class="tiny">Visual</span>${ci(x, 'vis', r.vis, e)}</label>
           <label class="r3dep"><span class="tiny">Depósito</span><div class="c2deps">${silos.map(s => `<button class="${String(r.dep) === String(s) ? 'on' : ''}" data-r3dep="${esc(x.id)}|${e}|${esc(s)}">${esc(s)}</button>`).join('')}</div></label></div></div>`; };
@@ -1885,7 +1886,8 @@ function recepcion3(v, u) {
   const pinta = () => { r3Escribir(); recepcion3(v, u); };
   v.querySelectorAll('[data-r3add0]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.r3add0); pinta(); setTimeout(() => { const el = v.querySelector(`[data-r3b="${b.dataset.r3add0}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-r3fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.r3fuera; st.orden = st.orden.filter(z => z !== id); delete st.t[id]; st.ext = st.ext.filter(z => z.id !== id); delete FIRMAS['r3|' + R.dia + '|' + id]; pinta(); });
-  v.querySelectorAll('[data-r3add]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3add.split('|'), t = st.t[id]; t.f[e] = { n: [], l: '', dep: DEP[e] || '', t: '', ph: '', d: '', vis: '' }; pinta(); });
+  v.querySelectorAll('[data-r3add]').forEach(b => b.onclick = () => { const [id, e] = b.dataset.r3add.split('|'), t = st.t[id]; t.quita = (t.quita || []).filter(z => z !== e); t.f[e] = { n: [], l: '', dep: DEP[e] || '', t: '', ph: '', d: '', vis: '' }; pinta(); });
+  v.querySelectorAll('[data-r3quita]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const [id, e] = b.dataset.r3quita.split('|'); delete st.t[id].f[e]; st.t[id].quita = (st.t[id].quita || []).concat(e); pinta(); });
   v.querySelectorAll('[data-r3ci]').forEach(b => b.onclick = () => { const [id, e, campo, k] = b.dataset.r3ci.split('|'), t = st.t[id], o = e ? t.f[e] : t; o[campo] = o[campo] === k ? '' : k; pinta(); });
   v.querySelectorAll('[data-r3n]').forEach(b => b.onclick = () => { const [id, e, k] = b.dataset.r3n.split('|'), r = st.t[id].f[e];
     // un compartimento de la cisterna es de una sola leche

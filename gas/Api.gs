@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 7;
+const API_VERSION = 8;
 
 function doPost(e) {
   try {
@@ -716,7 +716,7 @@ const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUAR
 const CAB_RCAL = ['FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN', 'ID', 'ESPECIE', 'N_COMP_CISTERNA', 'LITROS', 'DEPOSITOS',
   'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
-const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'];
+const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO', 'CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'];
 const CAB_VENTA = ['ID', 'FECHA', 'HORA', 'DEPOSITO', 'ESPECIE', 'LITROS', 'CLIENTE', 'USUARIO'];
 const CAB_RECEP_CAM = ['VIAJE_ID', 'FECHA', 'HORA', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'TOTAL_CONTADOR', 'SUMA_PARCIALES', 'DIFERENCIA',
   'LIMPIEZA_CISTERNA', 'FILTRO', 'OBSERVACIONES', 'USUARIO', 'FICHERO', 'LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'];
@@ -890,7 +890,7 @@ function recepViajes(req, c) {
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
   return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
-    mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || '') },
+    mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || ''), envioPor: String(pd.CONTADORES_ENVIO_POR || ''), sello: String(pd.CONTADORES_SELLO || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
     aguaHoy: tabla_('AGUA').filas.filter(function (r) { return r.FECHA === fechas[0]; })
@@ -1002,6 +1002,12 @@ function guardarParte(req, c) {
     if (cerrar && !cams.length) throw new Error('El parte no tiene ningún camión.');
     const ids = {}; cams.forEach(function (r) { if (ids[r.viajeId]) throw new Error('Un camión está dos veces en el parte.'); ids[r.viajeId] = 1; });
     const mantener = {}; (req.mantener || []).forEach(function (id) { mantener[id] = 1; });
+    // Otro aparato ha mandado el parte después de lo que este tiene: no se machaca (salvo que se pida a propósito)
+    const sello0 = String((tabla_('PARTE_DIA').cab.indexOf('CONTADORES_SELLO') >= 0 && (tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fecha; })[0] || {}).CONTADORES_SELLO) || '');
+    if (req.base !== undefined && !req.forzar && sello0 && String(req.base) !== sello0) {
+      const pd0 = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fecha; })[0] || {};
+      throw new Error('OTRO_ENVIO|' + String(pd0.CONTADORES_ENVIO_POR || '') + '|' + String(pd0.CONTADORES_ENVIO || '').slice(-5));
+    }
     ['AG1', 'AG2'].forEach(function (cod) { const ds = {}; agua.forEach(function (a) { if (a.cod === cod && Number(a.l) > 0) ds[String(a.dep).trim()] = 1; });
       if (Object.keys(ds).length > 3) throw new Error(cod + ' va a ' + Object.keys(ds).length + ' depósitos: el programa admite como máximo 3. Junta el agua en 3.'); });
     if (agua.some(function (a) { return !/^AG[12]$/.test(a.cod); })) throw new Error('El programa solo admite dos aguas al día (AG1 y AG2).');
@@ -1028,11 +1034,12 @@ function guardarParte(req, c) {
       shA.getRange(f0, 1, valores.length, 1).setNumberFormat('@'); shA.getRange(f0, 3, valores.length, 1).setNumberFormat('@');
       shA.getRange(f0, 1, valores.length, CAB_AGUA.length).setValues(valores);
     }
-    hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'], 'HORA_VERIFICACION');
+    hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'], 'HORA_VERIFICACION'); columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO');
     const hora = ahora_('dd/MM/yyyy HH:mm');
-    parteDia_(fecha, cerrar ? { CONTADORES_POR: String(c.NOMBRE), CONTADORES_HORA: hora, CONTADORES_ENVIO: hora } : { CONTADORES_ENVIO: hora });
+    const sello = 'S' + Date.now(), env = { CONTADORES_ENVIO: hora, CONTADORES_ENVIO_POR: String(c.NOMBRE), CONTADORES_SELLO: sello };
+    parteDia_(fecha, cerrar ? Object.assign({ CONTADORES_POR: String(c.NOMBRE), CONTADORES_HORA: hora }, env) : env);
     exportarDia_(fecha);
-    return { ok: true, fichero: nombre, fecha: fecha, camiones: cams.length, quitados: fuera.length, por: String(c.NOMBRE), hora: hora, cerrado: cerrar };
+    return { ok: true, fichero: nombre, fecha: fecha, camiones: cams.length, quitados: fuera.length, por: String(c.NOMBRE), hora: hora, cerrado: cerrar, sello: sello };
   } finally { lock.releaseLock(); }
 }
 /** RECEPCIÓN 2 · registro de CALIDAD por especie (FOR PR 7.-02): T, pH, ºD, visual, nº de compartimento de la cisterna, litros,

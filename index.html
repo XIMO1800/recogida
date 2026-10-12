@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=158">
+<link rel="manifest" href="manifest.json?v=159">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v158 · 12/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v159 · 12/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1596,36 +1596,46 @@ function c2Leer() { try { return JSON.parse(localStorage.getItem(c2Clave()) || '
 function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} if (R.modo === 'c2') c2Programar(); }
 /* ENVÍO SOLO: unos 30 s después del último cambio se manda el parte (los camiones terminados que cuadran; los que están a medias
    conservan lo que ya hubiera en la hoja) y se rehace el fichero del día, para que oficina lo pueda recoger cuando quiera. */
+// Otro aparato mandó el parte después de lo que tiene este: el servidor no deja machacarlo
+function c2Conflicto(e) { const m = String((e && e.message) || ''); if (!m.startsWith('OTRO_ENVIO')) return false; const [, por, hora] = m.split('|'); C2.conf = { por, hora }; if (R.modo === 'c2' && U.view === 'vRecep') setTimeout(() => recepcion(), 0); return true; }
+// Rehace la hoja con lo último guardado; de lo de aquí solo se quedan (detrás) los camiones que aún no están en la hoja
+function c2DeLaHoja() { const v0 = C2.st || {}, enSrv = id => !!(R.viajes.find(x => x.id === id) || {}).recep;
+  const cola = (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
+  C2.st = { t, orden: [], cola, ext: (v0.ext || []).filter(e => cola.includes(e.id) || enSrv(e.id)), base: (R.parte || {}).sello || '' }; C2.conf = null; C2.err = '';
+  try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
 function c2Programar(ms) { clearTimeout(C2.tA); C2.pend = true; C2.tA = setTimeout(c2Auto, ms == null ? 30000 : ms); }
 async function c2Auto() {
-  clearTimeout(C2.tA); if (!C2.pt || R.modo !== 'c2' || !C2.st) return;
+  clearTimeout(C2.tA); if (!C2.pt || R.modo !== 'c2' || !C2.st || C2.conf) return;
   if (C2.enviando) return c2Programar(5000);
   const P = C2.pt(); if (!P.editable || P.hAuto === C2.st.envH) { C2.pend = false; return; }
   C2.enviando = true;
-  try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua });
+  try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua, base: C2.st.base || '' });
+    C2.st.base = r.sello || C2.st.base || ''; C2.conf = null;
     const prev = C2.st.envIds || []; C2.st.envIds = P.completos.map(z => z.viajeId).concat(P.mantener.filter(id => prev.includes(id) || (R.viajes.find(z => z.id === id) || {}).recep));
     C2.st.envH = P.hAuto; C2.st.envHora = String(r.hora).slice(-5); C2.st.envN = C2.st.envIds.length; C2.err = ''; C2.pend = false;
     try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
-  catch (e) { C2.err = esRed(e) ? 'sin conexión, se reintenta' : e.message; c2Programar(60000); }
+  catch (e) { if (c2Conflicto(e)) { C2.pend = false; C2.err = 'otro aparato ha enviado después'; } else { C2.err = esRed(e) ? 'sin conexión, se reintenta' : e.message; c2Programar(60000); } }
   finally { C2.enviando = false; if (C2.vivo) C2.vivo(); }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden && C2.pend) c2Auto(); });   // se apaga la pantalla o se sale: se manda ya
 function contadores2(v, u) {
   const tqc = id => /^V[CVDO]\d*$/.test(id) ? `<span class="tank sp-${id[1]}">${esc(id)}</span>` : tq(id);   // otra entrada: VC, VV, VD, VO
   // Cada camión se guarda al firmarlo (hoja y fichero D del programa, como en el Contadores de antes); el agua, con su botón.
-  const st = C2.st = c2Leer(); st.ext = st.ext || []; st.ag = st.ag || {}; st.t = st.t || {}; st.orden = st.orden || [];
+  if (C2.deHoja) { C2.deHoja = false; C2.st = c2Leer(); c2DeLaHoja(); }
+  const st = C2.st = c2Leer(), nuevo = !(st.orden || []).length; st.ext = st.ext || []; st.ag = st.ag || {}; st.t = st.t || {}; st.orden = st.orden || [];
   const cal = !!D().calidad, ofi = !!D().oficina, editable = (!cal || ofi) && (R.esHoy !== false || ofi); st.fuera = st.fuera || [];   // otro día: solo oficina lo cambia
   R.viajes.filter(x => x.otra && !(x.comps || []).length && x.recep).forEach(x => { x.comps = x.recep.comps.map((c, i) => ({ id: c.id, esp: [c.esp], decl: 0, n: i + 1 })); });
   const todos = R.viajes.filter(x => !st.ext.some(e => e.id === x.id)).concat(st.ext);
   const esAg = id => !!st.ag[id];
   // Lo guardado (desde esta u otra tablet) entra solo en la hoja, en el orden en que se guardó, con lo que se guardó
   R.viajes.filter(x => x.recep && (x.recep.comps || []).length).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1).forEach(x => {
-    if (st.orden.includes(x.id) || st.fuera.includes(x.id)) return; st.orden.push(x.id); st.t[x.id] = Object.assign(c2DeRecep(x), { hora: x.recep.hora }); st.srv = 1; });
+    if (st.orden.includes(x.id) || st.fuera.includes(x.id) || (st.cola || []).includes(x.id)) return; st.orden.push(x.id); st.t[x.id] = Object.assign(c2DeRecep(x), { hora: x.recep.hora }); st.srv = 1; });
   if (!Object.keys(st.ag).length && (R.agua || []).length && !st.agLeida) {
     const a2 = (R.agua.find(a => a.cod === 'AG2') || {}).desde;
     [...new Set(R.agua.map(a => a.cod))].sort().forEach(cod => { const id = 'AG' + cod; st.ag[id] = { manual: true, l: {}, deSrv: 1 }; st.srv = 1; R.agua.filter(a => a.cod === cod).forEach(a => { st.ag[id].l[a.dep] = String(a.l); });
       if (cod === 'AG1' && a2 && st.orden.includes(a2)) st.orden.splice(st.orden.indexOf(a2), 0, id); else st.orden.push(id); }); }
   st.agLeida = 1;
+  if (st.cola) { st.cola.forEach(id => { if (!st.orden.includes(id)) st.orden.push(id); }); delete st.cola; }   // lo que se tenía a medias aquí, detrás
   st.orden = st.orden.filter(id => esAg(id) || todos.some(x => x.id === id)); c2Escribir();
   const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra);
   const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
@@ -1735,7 +1745,15 @@ function contadores2(v, u) {
     const ya = !al ? (C2.err ? ` · <b style="color:var(--bad)">no se ha podido enviar: ${esc(C2.err)}</b>` : ' · <span class="muted">se envía en unos segundos…</span>') : '';
     const cer = pp.cerradoPor ? ` · <b>${st.ok === PT.huella ? 'Cerrado' : 'Cerrado (con cambios después)'}</b> por ${esc(pp.cerradoPor)} a las ${esc(String(pp.horaCierre).slice(-5))}` : '';
     return env + pen + ya + cer; };
-  pt(); c2Escribir();
+  pt();
+  // ¿Otro aparato ha enviado el parte después? Si aquí no hay nada sin enviar, se coge lo último de la hoja; si lo hay, se avisa y no se manda
+  { const pe = (R.parte || {}).sello || '';
+    if (st.base === undefined && (nuevo || !pe)) st.base = pe;
+    else if (pe && st.base !== pe) {
+      if (PT.hAuto === st.envH) { C2.st = st; c2DeLaHoja(); return contadores2(v, u); }
+      C2.conf = C2.conf || { por: (R.parte || {}).envioPor || '', hora: String((R.parte || {}).envio || '').slice(-5) };
+    } }
+  c2Escribir();
   // DEPÓSITOS: lo que va entrando según la hoja (filas, arrastres y agua), al momento
   const depsHtml = () => { const k = {}; silos.forEach(d => { k[d] = { l: 0, agua: 0, esps: [] }; });
     st.orden.filter(id => !esAg(id)).forEach(id => { const x = todos.find(z => z.id === id); if (!x) return; filas(x).forEach(f => { const r = (st.t[id] || { f: {} }).f[f.id]; if (!r || !r.ord) return;
@@ -1755,7 +1773,7 @@ function contadores2(v, u) {
     return `<div class="card stack c2det"><div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:20px">Depósito ${esc(dep)} · ${fmt(tot)} l</b><button class="lnk" id="c2detX" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ cerrar</button></div>
       <p class="small muted" style="margin:0">Lo que ha entrado ${R.esHoy === false ? 'ese día' : 'hoy'} según la hoja, en orden. No incluye lo que ya hubiera en el depósito.</p>
       ${it.length ? `<div class="c2dl">${it.map(z => `<div class="c2di ${z.e ? bgEsp(z.e) : ''}"><span>${z.c}${z.q ? `<br><span class="small muted">${z.q}</span>` : ''}</span><b class="num">${fmt(z.l)}</b></div>`).join('')}</div>` : '<p class="muted" style="margin:0">Todavía no ha entrado nada.</p>'}</div>`; };
-  v.innerHTML = `${R.esHoy === false ? `<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="c2hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button>${editable ? '' : '<span class="small muted">Solo lectura: los días anteriores solo los cambia oficina.</span>'}</div>` : ''}<div class="card stack"><span class="lbl">Depósitos de leche · toca uno para ver qué ha entrado</span><div class="tally" id="c2deps">${depsHtml()}</div></div>${C2.depSel ? depDet(C2.depSel) : ''}
+  v.innerHTML = `${C2.conf ? `<div class="msg bad stack" style="gap:8px"><b>⚠ ${esc(C2.conf.por || 'Otro aparato')} ha enviado el parte${C2.conf.hora ? ' a las ' + esc(C2.conf.hora) : ''}, después de lo que tienes aquí.</b><span>Lo de aquí no se ha enviado, para no machacar lo suyo. Elige:</span><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="c2confHoja" style="width:auto;min-height:42px;padding:4px 16px">Coger lo de la hoja (lo último enviado)</button><button class="btn ghost" id="c2confMio" style="width:auto;min-height:42px;padding:4px 16px">Mandar lo de aquí (sustituye lo suyo)</button></div></div>` : ''}${R.esHoy === false ? `<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="c2hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button>${editable ? '' : '<span class="small muted">Solo lectura: los días anteriores solo los cambia oficina.</span>'}</div>` : ''}<div class="card stack"><span class="lbl">Depósitos de leche · toca uno para ver qué ha entrado</span><div class="tally" id="c2deps">${depsHtml()}</div></div>${C2.depSel ? depDet(C2.depSel) : ''}
     ${hoja}
     ${enHoja.length ? `<button class="btn sec" id="c2agua" style="margin:2px 0 4px">+ Agua de arrastre${sinAgua ? ` (cierra ${sinAgua === 1 ? 'el último camión' : 'los ' + sinAgua + ' últimos camiones'})` : ''}</button>` : ''}
     ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Volver a cerrar el parte' : 'Cerrar el parte del día'}</button>
@@ -1775,6 +1793,8 @@ function contadores2(v, u) {
   enlDeps(); if ($('#c2detX')) $('#c2detX').onclick = () => { C2.depSel = null; contadores2(v, u); };
   if ($('#c2entera')) $('#c2entera').onclick = () => { C2.solo = null; contadores2(v, u); scrollTo(0, 0); };
   const pinta = () => { c2Escribir(); contadores2(v, u); };
+  if ($('#c2confHoja')) $('#c2confHoja').onclick = () => { ocupado($('#c2confHoja'), 'Cogiendo…'); C2.conf = null; C2.deHoja = true; recepcion(); };
+  if ($('#c2confMio')) $('#c2confMio').onclick = () => { const b = $('#c2confMio'); if (!confirm2(b)) return; C2.conf = null; st.base = (R.parte || {}).sello || ''; st.envH = ''; c2Escribir(); contadores2(v, u); c2Auto(); };
   const xx = id => todos.find(z => z.id === id);
   if ($('#c2otra')) $('#c2otra').onclick = () => { C2.otra = { nom: '', sel: ['', '', '', ''] }; contadores2(v, u); setTimeout(() => { const f = $('#c2otraF'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#c2oN').focus(); } }, 60); };
   if ($('#c2oN')) $('#c2oN').oninput = e => { C2.otra.nom = e.target.value; };
@@ -1802,10 +1822,11 @@ function contadores2(v, u) {
     if (PT.avisos.length && b.dataset.ok !== PT.huella) { b.dataset.ok = PT.huella; return msg(PT.avisos.map(esc).join('<br>') + '<br><b>Revisa; si está bien, pulsa otra vez.</b>', 'warn'); }
     ocupado(b, 'Enviando…');
     clearTimeout(C2.tA);
-    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua, cerrar: true });
+    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua, cerrar: true, base: st.base || '' });
+      st.base = r.sello || st.base || ''; C2.conf = null;
       st.ok = PT.huella; st.envH = PT.hAuto; st.envHora = String(r.hora).slice(-5); st.envIds = PT.camiones.map(z => z.viajeId); st.envN = PT.camiones.length; st.fuera = []; C2.err = ''; c2Escribir(); C2.pend = false; clearTimeout(C2.tA);
       toast(`Parte cerrado · ${r.camiones} ${r.camiones > 1 ? 'camiones' : 'camión'} · fichero ${r.fichero}`); recepcion(); }
-    catch (e) { libre(b); msg(esc(esRed(e) ? 'Sin conexión: no se ha enviado. Vuelve a pulsar cuando haya red.' : e.message)); } };
+    catch (e) { libre(b); if (c2Conflicto(e)) return; msg(esc(esRed(e) ? 'Sin conexión: no se ha enviado. Vuelve a pulsar cuando haya red.' : e.message)); } };
   v.querySelectorAll('[data-c2add]').forEach(b => b.onclick = () => { st.orden.push(b.dataset.c2add); st.fuera = st.fuera.filter(z => z !== b.dataset.c2add); (st.t[b.dataset.c2add] = st.t[b.dataset.c2add] || { f: {}, total: '' }).hora = new Date().toTimeString().slice(0, 5); pinta(); setTimeout(() => { const el = v.querySelector(`[data-c2b="${b.dataset.c2add}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-c2ord]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2ord.split('|'), t = st.t[vid], r = t.f[cid];
     if (r.ord) { const o = r.ord; Object.values(t.f).forEach(z => { if (z.ord > o) z.ord--; }); r.ord = 0; }

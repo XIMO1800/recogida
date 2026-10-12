@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=159">
+<link rel="manifest" href="manifest.json?v=160">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v159 · 12/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v160 · 12/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1601,7 +1601,7 @@ function c2Conflicto(e) { const m = String((e && e.message) || ''); if (!m.start
 // Rehace la hoja con lo último guardado; de lo de aquí solo se quedan (detrás) los camiones que aún no están en la hoja
 function c2DeLaHoja() { const v0 = C2.st || {}, enSrv = id => !!(R.viajes.find(x => x.id === id) || {}).recep;
   const cola = (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
-  C2.st = { t, orden: [], cola, ext: (v0.ext || []).filter(e => cola.includes(e.id) || enSrv(e.id)), base: (R.parte || {}).sello || '' }; C2.conf = null; C2.err = '';
+  C2.st = { t, orden: [], cola, ext: (v0.ext || []).filter(e => cola.includes(e.id) || enSrv(e.id)), base: (R.parte || {}).sello || '', rv: 2 }; C2.conf = null; C2.err = '';
   try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
 function c2Programar(ms) { clearTimeout(C2.tA); C2.pend = true; C2.tA = setTimeout(c2Auto, ms == null ? 30000 : ms); }
 async function c2Auto() {
@@ -1628,7 +1628,7 @@ function contadores2(v, u) {
   const todos = R.viajes.filter(x => !st.ext.some(e => e.id === x.id)).concat(st.ext);
   const esAg = id => !!st.ag[id];
   // Lo guardado (desde esta u otra tablet) entra solo en la hoja, en el orden en que se guardó, con lo que se guardó
-  R.viajes.filter(x => x.recep && (x.recep.comps || []).length).sort((a, b) => String(a.recep.hora) < String(b.recep.hora) ? -1 : 1).forEach(x => {
+  R.viajes.filter(x => x.recep && (x.recep.comps || []).length).sort((a, b) => String(a.recep.hora || '99:99').localeCompare(String(b.recep.hora || '99:99')) || (a.recep.pos || 0) - (b.recep.pos || 0)).forEach(x => {
     if (st.orden.includes(x.id) || st.fuera.includes(x.id) || (st.cola || []).includes(x.id)) return; st.orden.push(x.id); st.t[x.id] = Object.assign(c2DeRecep(x), { hora: x.recep.hora }); st.srv = 1; });
   if (!Object.keys(st.ag).length && (R.agua || []).length && !st.agLeida) {
     const a2 = (R.agua.find(a => a.cod === 'AG2') || {}).desde;
@@ -1748,7 +1748,9 @@ function contadores2(v, u) {
   pt();
   // ¿Otro aparato ha enviado el parte después? Si aquí no hay nada sin enviar, se coge lo último de la hoja; si lo hay, se avisa y no se manda
   { const pe = (R.parte || {}).sello || '';
+    if (nuevo) st.rv = 2;
     if (st.base === undefined && (nuevo || !pe)) st.base = pe;
+    if (pe && st.base === pe && st.rv !== 2 && PT.hAuto === st.envH) { C2.st = st; c2DeLaHoja(); return contadores2(v, u); }
     else if (pe && st.base !== pe) {
       if (PT.hAuto === st.envH) { C2.st = st; c2DeLaHoja(); return contadores2(v, u); }
       C2.conf = C2.conf || { por: (R.parte || {}).envioPor || '', hora: String((R.parte || {}).envio || '').slice(-5) };

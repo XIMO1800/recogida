@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 8;
+const API_VERSION = 9;
 
 function doPost(e) {
   try {
@@ -907,7 +907,7 @@ function recepObj_(filas, cam) {
     comps[id].reps.push({ dep: String(r.DEPOSITO), l: numES_(r.LITROS_DEPOSITO), tipo: String(r.TIPO) });
   });
   return { comps: orden.map(function (id) { return comps[id]; }), agua: agua, total: cam ? numES_(cam.TOTAL_CONTADOR) : 0, limpieza: cam ? cam.LIMPIEZA_CISTERNA : '',
-    filtro: cam ? cam.FILTRO : '', obs: cam ? cam.OBSERVACIONES : '', hora: cam ? cam.HORA : '', usuario: cam ? cam.USUARIO : '', fichero: cam ? cam.FICHERO : '' };
+    filtro: cam ? cam.FILTRO : '', obs: cam ? cam.OBSERVACIONES : '', hora: cam ? cam.HORA : '', usuario: cam ? cam.USUARIO : '', fichero: cam ? cam.FICHERO : '', pos: cam ? cam._fila : 0 };
 }
 /** Guarda (o rehace) la recepción completa de un camión y su fichero E…TXT. */
 function guardarRecepcion(req, c) {

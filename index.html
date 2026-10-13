@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=161">
+<link rel="manifest" href="manifest.json?v=162">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v161 · 13/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v162 · 13/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1603,15 +1603,15 @@ function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.
 // Otro aparato mandó el parte después de lo que tiene este: el servidor no deja machacarlo
 function c2Conflicto(e) { const m = String((e && e.message) || ''); if (!m.startsWith('OTRO_ENVIO')) return false; const [, por, hora] = m.split('|'); C2.conf = { por, hora }; if (R.modo === 'c2' && U.view === 'vRecep') setTimeout(() => recepcion(), 0); return true; }
 // Rehace la hoja con lo último guardado; de lo de aquí solo se quedan (detrás) los camiones que aún no están en la hoja
-function c2DeLaHoja() { const v0 = C2.st || {}, enSrv = id => !!(R.viajes.find(x => x.id === id) || {}).recep;
-  const cola = (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
+function c2DeLaHoja(todo) { const v0 = C2.st || {}, enSrv = id => !!(R.viajes.find(x => x.id === id) || {}).recep;
+  const cola = todo ? [] : (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
   C2.st = { t, orden: [], cola, ext: (v0.ext || []).filter(e => cola.includes(e.id) || enSrv(e.id)), base: (R.parte || {}).sello || '', rv: 2 }; C2.conf = null; C2.err = '';
   try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
 function c2Programar(ms) { clearTimeout(C2.tA); C2.pend = true; C2.tA = setTimeout(c2Auto, ms == null ? 30000 : ms); }
 async function c2Auto() {
   clearTimeout(C2.tA); if (!C2.pt || R.modo !== 'c2' || !C2.st || C2.conf) return;
   if (C2.enviando) return c2Programar(5000);
-  const P = C2.pt(); if (!P.editable || P.hAuto === C2.st.envH) { C2.pend = false; return; }
+  const P = C2.pt(); if (!P.editable || P.hAuto === C2.st.envH || (R.parte || {}).cerradoPor) { C2.pend = false; return; }   // cerrado: los cambios solo se mandan al volver a cerrar
   C2.enviando = true;
   try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua, base: C2.st.base || '' });
     C2.st.base = r.sello || C2.st.base || ''; C2.conf = null;
@@ -1625,7 +1625,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && C2.
 function contadores2(v, u) {
   const tqc = id => /^V[CVDO]\d*$/.test(id) ? `<span class="tank sp-${id[1]}">${esc(id)}</span>` : tq(id);   // otra entrada: VC, VV, VD, VO
   // Cada camión se guarda al firmarlo (hoja y fichero D del programa, como en el Contadores de antes); el agua, con su botón.
-  if (C2.deHoja) { C2.deHoja = false; C2.st = c2Leer(); c2DeLaHoja(); }
+  if (C2.deHoja) { const todo = C2.deHoja === 'todo'; C2.deHoja = false; C2.st = c2Leer(); c2DeLaHoja(todo); }
   const st = C2.st = c2Leer(), nuevo = !(st.orden || []).length; st.ext = st.ext || []; st.ag = st.ag || {}; st.t = st.t || {}; st.orden = st.orden || [];
   const cal = !!D().calidad, ofi = !!D().oficina, editable = (!cal || ofi) && (R.esHoy !== false || ofi); st.fuera = st.fuera || [];   // otro día: solo oficina lo cambia
   R.viajes.filter(x => x.otra && !(x.comps || []).length && x.recep).forEach(x => { x.comps = x.recep.comps.map((c, i) => ({ id: c.id, esp: [c.esp], decl: 0, n: i + 1 })); });
@@ -1742,11 +1742,12 @@ function contadores2(v, u) {
     PT = { camiones, agua, err, avisos, huella, completos, mantener, aMedias, hAuto, editable }; return PT; };
   C2.pt = pt;
   const estCorto = () => { const pp = R.parte || {}, al = PT.hAuto === st.envH;
+    if (pp.cerradoPor && !al) return `● cambios sin guardar · cerrado ${String(pp.horaCierre).slice(-5)}`;
     return (st.envH ? `${al ? '✓' : '●'} enviado ${st.envHora || ''}` : 'sin enviar') + (C2.err && !al ? ' · ⚠ no se ha podido enviar' : '') + (pp.cerradoPor ? ` · cerrado ${String(pp.horaCierre).slice(-5)}` : ''); };
   const estParte = () => { const pp = R.parte || {}, al = PT.hAuto === st.envH;
     const env = st.envH ? `${al ? '<span class="c2ok">✓ Enviado</span>' : '<span class="c2mod">● Enviado</span>'} ${esc(st.envHora || '')} · ${st.envN || 0} ${st.envN === 1 ? 'camión' : 'camiones'} en el fichero` : '<span class="muted">Aún no enviado</span>';
     const pen = PT.aMedias.length ? ` · ${PT.aMedias.length} a medias (${esc(PT.aMedias.join(', '))})` : '';
-    const ya = !al ? (C2.err ? ` · <b style="color:var(--bad)">no se ha podido enviar: ${esc(C2.err)}</b>` : ' · <span class="muted">se envía en unos segundos…</span>') : '';
+    const ya = !al && pp.cerradoPor ? ' · <b class="c2mod">Cambios sin guardar: no se envían hasta que pulses «Volver a cerrar el parte»</b>' : !al ? (C2.err ? ` · <b style="color:var(--bad)">no se ha podido enviar: ${esc(C2.err)}</b>` : ' · <span class="muted">se envía en unos segundos…</span>') : '';
     const cer = pp.cerradoPor ? ` · <b>${st.ok === PT.huella ? 'Cerrado' : 'Cerrado (con cambios después)'}</b> por ${esc(pp.cerradoPor)} a las ${esc(String(pp.horaCierre).slice(-5))}` : '';
     return env + pen + ya + cer; };
   pt();
@@ -1782,7 +1783,7 @@ function contadores2(v, u) {
   v.innerHTML = `${C2.conf ? `<div class="msg bad stack" style="gap:8px"><b>⚠ ${esc(C2.conf.por || 'Otro aparato')} ha enviado el parte${C2.conf.hora ? ' a las ' + esc(C2.conf.hora) : ''}, después de lo que tienes aquí.</b><span>Lo de aquí no se ha enviado, para no machacar lo suyo. Elige:</span><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="c2confHoja" style="width:auto;min-height:42px;padding:4px 16px">Coger lo de la hoja (lo último enviado)</button><button class="btn ghost" id="c2confMio" style="width:auto;min-height:42px;padding:4px 16px">Mandar lo de aquí (sustituye lo suyo)</button></div></div>` : ''}${R.esHoy === false ? `<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="c2hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button>${editable ? '' : '<span class="small muted">Solo lectura: los días anteriores solo los cambia oficina.</span>'}</div>` : ''}<div class="card stack"><span class="lbl">Depósitos de leche · toca uno para ver qué ha entrado</span><div class="tally" id="c2deps">${depsHtml()}</div></div>${C2.depSel ? depDet(C2.depSel) : ''}
     ${hoja}
     ${enHoja.length ? `<button class="btn sec" id="c2agua" style="margin:2px 0 4px">+ Agua de arrastre${sinAgua ? ` (cierra ${sinAgua === 1 ? 'el último camión' : 'los ' + sinAgua + ' últimos camiones'})` : ''}</button>` : ''}
-    ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Volver a cerrar el parte' : 'Cerrar el parte del día'}</button>
+    ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Volver a cerrar el parte' : 'Cerrar el parte del día'}</button>${(R.parte || {}).cerradoPor && PT.hAuto !== st.envH ? '<button class="btn ghost" id="c2desh">Deshacer mis cambios (dejarlo como estaba cerrado)</button>' : ''}
       <div id="c2cMsg" hidden></div></div>` : ''}
     ${st.orden.length ? '<div class="sep-blq"></div>' : ''}
     <span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span>
@@ -1799,6 +1800,7 @@ function contadores2(v, u) {
   enlDeps(); if ($('#c2detX')) $('#c2detX').onclick = () => { C2.depSel = null; contadores2(v, u); };
   if ($('#c2entera')) $('#c2entera').onclick = () => { C2.solo = null; contadores2(v, u); scrollTo(0, 0); };
   const pinta = () => { c2Escribir(); contadores2(v, u); };
+  if ($('#c2desh')) $('#c2desh').onclick = () => { const b = $('#c2desh'); if (!confirm2(b)) return; ocupado(b, 'Deshaciendo…'); C2.deHoja = 'todo'; recepcion(); };
   if ($('#c2confHoja')) $('#c2confHoja').onclick = () => { ocupado($('#c2confHoja'), 'Cogiendo…'); C2.conf = null; C2.deHoja = true; recepcion(); };
   if ($('#c2confMio')) $('#c2confMio').onclick = () => { const b = $('#c2confMio'); if (!confirm2(b)) return; C2.conf = null; st.base = (R.parte || {}).sello || ''; st.envH = ''; c2Escribir(); contadores2(v, u); c2Auto(); };
   const xx = id => todos.find(z => z.id === id);

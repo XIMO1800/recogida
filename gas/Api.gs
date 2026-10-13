@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 9;
+const API_VERSION = 10;
 
 function doPost(e) {
   try {
@@ -219,7 +219,7 @@ function guardar(req, c) {
     columnas_('RECOGIDAS', ['DESTINO_3', 'LITROS_DESTINO_3'], 'LITROS_DESTINO_2');
     const t = tabla_('RECOGIDAS');
     const idx = {}; t.filas.forEach(function (r) { idx[r.REC_ID] = r._fila; });
-    const nuevas = [];
+    const nuevas = [], quitar = [];
     const recibido = ahora_('dd/MM/yyyy HH:mm:ss');
     // Recogidas de un viaje que ya no existe (borrado de la hoja, pruebas…): no bloquean el móvil.
     // Se guardan aparte en SIN_VIAJE para que la oficina las revise, y se dan por recibidas.
@@ -227,6 +227,7 @@ function guardar(req, c) {
     if (huerfanas.length) guardarSinViaje_(huerfanas, c);
     recs = recs.filter(function (r) { return mios[r.viajeId]; });
     recs.forEach(function (r) {
+      if (r.quitar) { if (idx[r.recId]) quitar.push(idx[r.recId]); return; }   // apuntado por error en un viaje en curso: se borra la fila
       // Hasta tres destinos: el principal, el arrastre de manguera y lo que no cupo (reparto)
       const a = r.arr ? Number(r.arr.l) || 0 : 0, rp = r.rep ? Number(r.rep.l) || 0 : 0;
       const obj = {
@@ -250,6 +251,7 @@ function guardar(req, c) {
       t.cab.forEach(function (h, j) { if (COLS_TEXTO.indexOf(h) >= 0) t.sh.getRange(f0, j + 1, nuevas.length, 1).setNumberFormat('@'); });
       t.sh.getRange(f0, 1, nuevas.length, t.cab.length).setValues(nuevas);
     }
+    quitar.sort(function (a, b) { return b - a; }).forEach(function (f) { t.sh.deleteRow(f); });
 
     // Últimos litros y destino habitual (la letra) para el día siguiente
     const g = tabla_('GANADEROS');
@@ -261,6 +263,7 @@ function guardar(req, c) {
       if (!filaCod[cod]) filaCod[cod] = x;
     });
     recs.forEach(function (r) {
+      if (r.quitar) return;
       const x = filaCod[r.cod + '|' + especie_(r.esp)] || filaCod[r.cod]; if (!x || r.sin) return;
       const esps = especies_(x.ESPECIE), e = especie_(r.esp);
       if (esps.length <= 1) {

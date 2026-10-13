@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=160">
+<link rel="manifest" href="manifest.json?v=161">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v160 · 12/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v161 · 13/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -898,7 +898,7 @@ function ficha(i) {
     <div id="repRes" class="msg ok" hidden></div>
     <div id="err" class="msg bad" hidden></div>
     <button class="btn" id="save">Guardar y siguiente</button>
-    <button class="btn ghost" id="sin">Hoy no se recoge</button>`;
+    <button class="btn ghost" id="sin">Hoy no se recoge</button>${S.rec[x.k] ? '<button class="btn ghost" id="quitarRec" style="color:var(--bad);border-color:var(--bad)">Quitar lo apuntado (vuelve a pendiente)</button>' : ''}`;
   const drawDests = () => {
     $('#dests').innerHTML = comps().map(c => `<button class="dest ${bgComp(c)}" aria-pressed="${c.id === dest}" data-d="${c.id}">
       <b class="${spClass(c)}">${c.id}</b><small>${compLabel(c)}</small>${c.id === hab ? '<span class="hab">habitual</span>' : ''}</button>`).join('');
@@ -1047,6 +1047,10 @@ function ficha(i) {
     const nx = siguiente(); nx >= 0 ? ficha(nx) : fin();
   };
   $('#save').onclick = () => guardarFicha(false); $('#sin').onclick = () => guardarFicha(true);
+  // Apuntado por error (litros de otro ganadero…): se borra y el ganadero vuelve a quedar pendiente
+  if ($('#quitarRec')) $('#quitarRec').onclick = () => { const b = $('#quitarRec'); if (!confirm2(b)) return;
+    const k = x.k, a = S.rec[k]; delete S.rec[k]; if (S.lastI === i) S.lastI = null;
+    encolar({ recId: a.recId, viajeId: a.viajeId || S.viaje.id, quitar: true }); toast('Quitado. ' + g.nom + ' vuelve a estar pendiente'); lista(); };
   show('vFicha', `${i + 1} / ${S.list.length}`, 'Ruta ' + (+x.ruta) + ' · ' + hhmm());
 }
 

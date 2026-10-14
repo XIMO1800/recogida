@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=162">
+<link rel="manifest" href="manifest.json?v=163">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v162 · 13/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v163 · 14/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1906,8 +1906,9 @@ function recepcion3(v, u) {
   const noCabe = (c, x) => { const k = (x.comps || []).find(z => String(z.n) === String(c.n)), cap = k ? k.cap || 0 : 0; return cap > 0 && (num(c.contador) || 0) > cap + 200; };
   const EDS = {};
   const bloque = (x, n) => {
-    const E = EDS[x.id] = edDe(x), id = x.id, usadas = E.comps.filter(c => c.esp).sort((a, b) => ORD_ESP.indexOf(a.esp) - ORD_ESP.indexOf(b.esp));
-    const tot = usadas.reduce((a, c) => a + (num(c.contador) || 0), 0), falta = ORD_ESP.filter(e => !usadas.some(c => c.esp === e));
+    const E = EDS[x.id] = edDe(x), id = x.id, usadas = E.comps.filter(c => c.esp).sort((a, b) => ORD_ESP.indexOf(a.esp) - ORD_ESP.indexOf(b.esp) || (+a.n || 0) - (+b.n || 0));
+    // Mientras quede algún compartimento libre se puede añadir cualquier leche, también una que ya está (p. ej. cabra en los 3 compartimentos)
+    const tot = usadas.reduce((a, c) => a + (num(c.contador) || 0), 0), falta = E.comps.some(c => !c.esp) ? ORD_ESP.slice() : [];
     const firmado = (R.firmados || new Set()).has('CAL|' + id), mod = x.cal && E.tocado;
     const fila = c => `<div class="r3f ${bgEsp(c.esp)}">
         <div class="r3l1"><button class="r3esp" data-r3cart="${esc(id)}|${esc(c.id)}" title="Poner los litros de la cartilla">${NOM[c.esp] || c.esp}</button>

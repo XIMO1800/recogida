@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=163">
+<link rel="manifest" href="manifest.json?v=164">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v163 · 14/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v164 · 17/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2450,7 +2450,7 @@ function conBorrador(x) {   // al abrir un camión: si hay algo a medias, se rec
   if (cambia) try { localStorage.setItem(LS_BORR, JSON.stringify(t)); } catch (e) {}
 })();
 ['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, e => {
-  if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar, #reFirmaSola, #reFirmaBorrar, #reFirmaPad')) return;
+  if (U.view !== 'vRecepC' || !R.ed || !e.target.closest('#vRecepC') || e.target.closest('#reBorrar, #reBorrarOk, #reBorrarNo, #reGuardar, #reFirmaSola, #reFirmaBorrar, #reFirmaPad, #reCalElim, #reCalEl')) return;
   if (ev === 'click' && !e.target.closest('button')) return;
   R.ed.tocado = true; setTimeout(guardarBorrador, 0);
   const mm = $('#reMod'); if (mm && mm.hidden && edGuardado(R.ed)) { mm.hidden = false; mm.className = 'msg warn'; mm.style.margin = '0'; mm.textContent = '● Has cambiado algo en este registro ya guardado. No se guarda hasta que pulses Guardar; si sales sin guardar, se queda como estaba.'; }
@@ -2685,6 +2685,27 @@ function recepRender() {
   if (E.porEsp) {   // RECEPCIÓN 2: registro de calidad por especie. Se guarda aparte (RECEPCION_CALIDAD); no va al programa de gestión.
     v.querySelectorAll('#reAnular, #reAnu').forEach(el => { el.hidden = true; });
     const tt = $('#reTot'); if (tt) tt.closest('div').parentElement.hidden = true;
+    // Registro ya guardado por error (p. ej. un «segundo viaje» que no existió): eliminarlo entero, con motivo
+    if (x.cal && (R.esHoy || ofi) && !soloCal && $('#reGuardar')) {
+      $('#reGuardar').insertAdjacentHTML('afterend', `<button class="btn ghost" id="reCalElim" style="color:var(--bad);border-color:var(--bad)">Eliminar este registro (puesto por error)</button>
+        <div class="card stack" id="reCalEl" hidden style="border:2px solid var(--bad)">
+          <b>Eliminar el registro de calidad de ${esc(x.conductor || '')} · ${esc(x.matricula || '')}</b>
+          <p class="small">Se borra entero (todos sus compartimentos, su firma y la mezcla) y deja de salir en el parte. No toca los contadores ni el fichero del programa. Queda apuntado en CAMBIOS con tu nombre y el motivo.</p>
+          <div class="field"><label class="lbl" for="reCalMot">Motivo</label><input class="sm" id="reCalMot" style="font-size:18px" placeholder="Ej.: no hubo segundo viaje / registro duplicado"></div>
+          <div id="reCalMsg" hidden></div>
+          <div class="row"><button class="btn" id="reCalOk" style="background:var(--bad)">Sí, eliminar</button><button class="btn sec" id="reCalNo">No</button></div>
+        </div>`);
+      $('#reCalElim').onclick = () => { $('#reCalEl').hidden = false; $('#reCalElim').hidden = true; $('#reCalEl').scrollIntoView({ block: 'center' }); $('#reCalMot').focus(); };
+      $('#reCalNo').onclick = () => { $('#reCalEl').hidden = true; $('#reCalElim').hidden = false; };
+      $('#reCalOk').onclick = async () => {
+        const m = $('#reCalMsg'), mot = $('#reCalMot').value.trim(), b = $('#reCalOk');
+        if (!mot) { m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el motivo.'; return; }
+        ocupado(b, 'Eliminando…');
+        try { await api('borrarRecepCalidad', { viajeId: x.id, motivo: mot }); borrarBorrador(x, true); delete FIRMAS[borrClave(x, true)]; if (R.firmados) R.firmados.delete('CAL|' + x.id);
+          toast('Registro eliminado'); R.ed = null; recepcion(); }
+        catch (e) { libre(b); m.hidden = false; m.className = 'msg bad'; m.textContent = esRed(e) ? 'Sin conexión: no se ha eliminado.' : e.message; }
+      };
+    }
   }
   if (soloCal) {   // calidad ve el parte completo pero solo cambia la mezcla
     v.querySelectorAll('input, textarea, select, button').forEach(el => { if (!el.hasAttribute('data-mz')) el.disabled = true; });

@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 10;
+const API_VERSION = 11;
 
 function doPost(e) {
   try {
@@ -24,10 +24,10 @@ function doPost(e) {
     const roles = roles_(cond);
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
-      OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad,
+      OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad,
         anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
-      RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad },
+      CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
     const acciones = {};
@@ -1103,6 +1103,32 @@ function fechaAtrasada_(f, c) {
 /** Anula por completo la recepción de un camión (prueba, error de día, camión equivocado…): borra sus líneas de RECEPCIONES
  *  y RECEPCION_CAMION, lo apunta en CAMBIOS y rehace el fichero del día sin ese camión. Si era un viaje de la app,
  *  vuelve a «Por recibir». */
+/** Eliminar entero un registro de CALIDAD guardado por error (p. ej. un «segundo viaje» que no existió): sus filas, su firma y
+ *  sus marcas de mezcla. No toca el fichero del programa (eso sale de Contadores). Queda apuntado en CAMBIOS con el motivo.
+ *  Un día pasado solo lo puede eliminar la oficina. */
+function borrarRecepCalidad(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const id = String(req.viajeId || ''), motivo = String(req.motivo || '').trim();
+    if (!motivo) throw new Error('Escribe el motivo para eliminar el registro.');
+    hoja_('RECEPCION_CALIDAD', CAB_RCAL);
+    const filas = tabla_('RECEPCION_CALIDAD').filas.filter(function (r) { return String(r.VIAJE_ID) === id; });
+    if (!filas.length) throw new Error('Ese registro no está guardado (puede que ya se haya eliminado).');
+    const fecha = String(filas[0].FECHA);
+    if (fecha !== ahora_('dd/MM/yyyy') && !esOficina_(c)) throw new Error('Un registro de otro día solo lo puede eliminar la oficina.');
+    const antes = filas.map(function (r) { return 'comp ' + (r.N_COMP_CISTERNA || '?') + ' ' + r.ESPECIE + ' ' + r.LITROS + ' l'; }).join(', ');
+    const sh = SS.getSheetByName('RECEPCION_CALIDAD');
+    filas.map(function (r) { return r._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });
+    borrarFirma_('CAL', id);
+    const shM = SS.getSheetByName('MEZCLAS');
+    if (shM) tabla_('MEZCLAS').filas.filter(function (r) { return String(r.VIAJE_ID) === id && String(r.FECHA) === fecha; })
+      .map(function (r) { return r._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { shM.deleteRow(f); });
+    const shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
+    shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), id, String(filas[0].DECA_NUM || ''), fecha,
+      '', String(filas[0].MATRICULA || '') + ' ' + String(filas[0].CONDUCTOR || ''), 'REGISTRO DE CALIDAD ELIMINADO', antes, 'ELIMINADO', motivo]]);
+    return { ok: true, fecha: fecha };
+  } finally { lock.releaseLock(); }
+}
 function anularRecepcion(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {

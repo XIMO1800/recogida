@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=164">
+<link rel="manifest" href="manifest.json?v=165">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v164 · 17/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v165 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1590,10 +1590,14 @@ async function historico(recargar) {
 const C2 = { st: null };
 const c2Clave = () => 'rl_c2_' + R.dia;   // lo que se va metiendo, en esta tablet; lo guardado está en la hoja (y se recupera de ella)
 /** Un camión ya guardado, tal como se guardó: sus filas para la hoja de contadores */
+// Arrastres de una fila de contadores: hasta dos (arr… y arr2…), cada uno con su depósito, litros y posición (delante/detrás)
+function c2Arrs(r) { return ['', '2'].filter(k => r['arr' + k]).map(k => ({ k, dep: r['arr' + k + 'Dep'], l: r['arr' + k + 'L'], pos: r['arr' + k + 'Pos'] })); }
+function c2ArrL(r) { return c2Arrs(r).reduce((a, z) => a + (Math.round(num(z.l) || 0)), 0); }
 function c2DeRecep(x) {
   const t = { f: {}, total: String(x.recep.total || '') };
-  x.recep.comps.forEach((c, i) => { const p = c.reps.find(z => z.tipo === 'PRINCIPAL') || c.reps[0] || {}, o = c.reps.find(z => z !== p);
-    t.f[c.id] = { ord: c.ord || i + 1, dep: String(p.dep || ''), l: String(p.l || ''), arr: !!o, arrDep: o ? String(o.dep) : '', arrL: o ? String(o.l) : '', arrPos: o ? (/DELANTE/.test(o.tipo) ? 'ant' : 'post') : '' }; });
+  x.recep.comps.forEach((c, i) => { const p = c.reps.find(z => z.tipo === 'PRINCIPAL') || c.reps[0] || {}, os = c.reps.filter(z => z !== p), o = os[0], o2 = os[1];
+    t.f[c.id] = { ord: c.ord || i + 1, dep: String(p.dep || ''), l: String(p.l || ''), arr: !!o, arrDep: o ? String(o.dep) : '', arrL: o ? String(o.l) : '', arrPos: o ? (/DELANTE/.test(o.tipo) ? 'ant' : 'post') : '',
+      arr2: !!o2, arr2Dep: o2 ? String(o2.dep) : '', arr2L: o2 ? String(o2.l) : '', arr2Pos: o2 ? (/DELANTE/.test(o2.tipo) ? 'ant' : 'post') : '' }; });
   return t;
 }
 function c2Leer() { try { return JSON.parse(localStorage.getItem(c2Clave()) || '{}'); } catch (e) { return {}; } }
@@ -1648,8 +1652,8 @@ function contadores2(v, u) {
   // Lo que se manda al guardar (lo mismo que mandaba Contadores): cada cisterna en su orden con su contador (fila + arrastre) y su reparto
   const payload = x => {
     const t = T(x), fs = filas(x), hechas = fs.filter(f => (t.f[f.id] || {}).ord).sort((a, c) => t.f[a.id].ord - t.f[c.id].ord), faltan = fs.filter(f => !(t.f[f.id] || {}).ord);
-    const comps = hechas.map(f => { const r = t.f[f.id], l = Math.round(num(r.l) || 0), al = r.arr ? Math.round(num(r.arrL) || 0) : 0;
-      return { id: f.id, esp: f.esp, decl: f.decl, contador: l + al, nComp: '', reps: [{ dep: r.dep, l, tipo: 'PRINCIPAL' }].concat(r.arr ? [{ dep: r.arrDep, l: al, tipo: r.arrPos === 'ant' ? 'ARRASTRE DELANTE' : 'ARRASTRE' }] : []) }; });
+    const comps = hechas.map(f => { const r = t.f[f.id], l = Math.round(num(r.l) || 0), al = c2ArrL(r);
+      return { id: f.id, esp: f.esp, decl: f.decl, contador: l + al, nComp: '', reps: [{ dep: r.dep, l, tipo: 'PRINCIPAL' }].concat(c2Arrs(r).map(z => ({ dep: z.dep, l: Math.round(num(z.l) || 0), tipo: z.pos === 'ant' ? 'ARRASTRE DELANTE' : 'ARRASTRE' }))) }; });
     const suma = comps.reduce((a, c) => a + c.contador, 0), tot = Math.round(num(t.total) || 0) || (x.otra ? suma : 0);
     const huella = JSON.stringify([tot, comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]);
     let err = '';
@@ -1657,8 +1661,10 @@ function contadores2(v, u) {
     else for (const f of hechas) { const r = t.f[f.id];
       if (!(num(r.l) > 0)) { err = `Faltan los litros de ${f.id}.`; break; }
       if (!r.dep) { err = `Elige el depósito de ${f.id}.`; break; }
-      if (r.arr && (!(num(r.arrL) > 0) || !r.arrDep)) { err = `Al arrastre de ${f.id} le faltan los litros o el depósito.`; break; }
-      if (r.arr && String(r.arrDep) === String(r.dep)) { err = `El arrastre de ${f.id} va al mismo depósito que su leche: quítalo o cambia el depósito.`; break; } }
+      const as = c2Arrs(r);
+      if (as.some(z => !(num(z.l) > 0) || !z.dep)) { err = `Al arrastre de ${f.id} le faltan los litros o el depósito.`; break; }
+      if (as.some(z => String(z.dep) === String(r.dep))) { err = `El arrastre de ${f.id} va al mismo depósito que su leche: quítalo o cambia el depósito.`; break; }
+      if (as.length > 1 && String(as[0].dep) === String(as[1].dep)) { err = `Los dos arrastres de ${f.id} van al mismo depósito: júntalos en uno.`; break; } }
     if (!err && !tot) err = 'Escribe el total del contador del camión.';
     const avisos = [];
     if (!err && tot !== suma) avisos.push(`El total (${fmt(tot)} l) no cuadra con la suma de las filas (${fmt(suma)} l).`);
@@ -1674,18 +1680,21 @@ function contadores2(v, u) {
     const t = T(x), fs = filas(x).map(f => Object.assign(f, { r: t.f[f.id] = t.f[f.id] || {} }));
     const nMax = Math.min(4, Math.max(x.nCompCam || 0, ...(x.comps || []).map(k => k.n || 0)) || (x.comps || []).length || 4);
     const hechas = fs.filter(f => f.r.ord).sort((a, c) => a.r.ord - c.r.ord), faltan = fs.filter(f => !f.r.ord);
-    const suma = hechas.reduce((a, f) => a + (num(f.r.l) || 0) + (f.r.arr ? num(f.r.arrL) || 0 : 0), 0);
-    const fila = f => { const r = f.r; if (r.n == null) r.n = f.n0; const ant = r.arr && r.arrPos === 'ant';
+    const suma = hechas.reduce((a, f) => a + (num(f.r.l) || 0) + c2ArrL(f.r), 0);
+    const fila = f => { const r = f.r; if (r.n == null) r.n = f.n0; const as = c2Arrs(r), ant = as.some(z => z.pos === 'ant');
       // arrastre POR DELANTE (arriba): los primeros litros empujan lo que quedaba de la anterior a su depósito («vengo del 2 y paso al 3»);
       // POR DETRÁS (abajo): la cola de esta la empuja la siguiente a otro depósito («del 3 hago arrastre al 2»). Tocar «arrastre» lo cambia de sitio.
-      const filaArr = r.arr ? `<tr class="${bgEsp(f.esp)} c2arrrow${ant ? ' c2arrant' : ''}"><td></td><td class="c2tn small"><button class="c2arrlb" data-c2arrpos="${esc(x.id)}|${esc(f.id)}" title="Pasar el arrastre ${ant ? 'abajo (por detrás)' : 'arriba (por delante)'}">${ant ? '↱ arrastre' : '↳ arrastre'}</button></td><td class="c2tl">${litInp(x, f.id, 'arrL', r.arrL)}</td><td class="c2td">${depBtns(x, f.id, 'arrDep', r.arrDep, r.dep)}</td><td class="c2ta"></td>
-        <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Quitar arrastre">✕</button></td></tr>` : '';
-      return `${ant ? filaArr : ''}<tr class="${bgEsp(f.esp)}${ant ? ' c2trant' : ''}"><td class="c2tc"><div class="c2or"><b>${r.ord}º</b><span class="c2mv"><button data-c2mv="${esc(x.id)}|${esc(f.id)}|-1" ${r.ord === 1 ? 'disabled' : ''} title="Subir">▲</button><button data-c2mv="${esc(x.id)}|${esc(f.id)}|1" ${r.ord === hechas.length ? 'disabled' : ''} title="Bajar">▼</button></span></div></td>
+      const filaA = z => { const a = z.pos === 'ant', otro = as.find(w => w !== z);
+        return `<tr class="${bgEsp(f.esp)} c2arrrow${a ? ' c2arrant' : ''}"><td></td><td class="c2tn small"><button class="c2arrlb" data-c2arrpos="${esc(x.id)}|${esc(f.id)}|${z.k}" title="Pasar el arrastre ${a ? 'abajo (por detrás)' : 'arriba (por delante)'}">${a ? '↱ arrastre' : '↳ arrastre'}${as.length > 1 ? ' ' + (z.k ? '2' : '1') : ''}</button></td><td class="c2tl">${litInp(x, f.id, 'arr' + z.k + 'L', z.l)}</td><td class="c2td">${depBtns(x, f.id, 'arr' + z.k + 'Dep', z.dep, r.dep)}</td>
+        <td class="c2ta">${as.length < 2 ? `<button class="c2mas" data-c2arr="${esc(x.id)}|${esc(f.id)}|2" title="Añadir un segundo arrastre (a otro depósito)">+</button>` : ''}</td>
+        <td class="c2tx"><button class="lnk" data-c2arr="${esc(x.id)}|${esc(f.id)}|${z.k || '1'}" title="Quitar este arrastre">✕</button></td></tr>`; };
+      const arrAnt = as.filter(z => z.pos === 'ant').map(filaA).join(''), arrPost = as.filter(z => z.pos !== 'ant').map(filaA).join('');
+      return `${arrAnt}<tr class="${bgEsp(f.esp)}${ant ? ' c2trant' : ''}"><td class="c2tc"><div class="c2or"><b>${r.ord}º</b><span class="c2mv"><button data-c2mv="${esc(x.id)}|${esc(f.id)}|-1" ${r.ord === 1 ? 'disabled' : ''} title="Subir">▲</button><button data-c2mv="${esc(x.id)}|${esc(f.id)}|1" ${r.ord === hechas.length ? 'disabled' : ''} title="Bajar">▼</button></span></div></td>
         <td class="c2tn"><div class="c2cn"><b>${esc((ESPS[f.esp] || f.esp).replace('Oveja D.O.', 'D.O.'))}</b> ${tqc(f.id)}</div></td>
         <td class="c2tl">${litInp(x, f.id, 'l', r.l)}</td><td class="c2td">${depBtns(x, f.id, 'dep', r.dep)}</td>
         <td class="c2ta">${r.arr ? '' : `<button class="c2mas" data-c2arr="${esc(x.id)}|${esc(f.id)}" title="Añadir arrastre">+</button>`}</td>
         <td class="c2tx"><button class="lnk" data-c2ord="${esc(x.id)}|${esc(f.id)}" title="No era esta: quitarla">✕</button></td></tr>
-      ${ant ? '' : filaArr}`; };
+      ${arrPost}`; };
     return `<div class="card stack c2b" data-c2b="${esc(x.id)}"><div class="c2h"><span class="c2n">${n}</span><span class="c2nm"><b>${esc(x.conductor)}</b>${x.otra ? '' : ` <span class="muted">· ruta ${String(x.rutas).split(',').map(z => +z).join(' y ')}</span>`}</span>
         <div class="c2ht"><span class="tiny">Total contador</span><div class="unit"><input inputmode="numeric" enterkeyhint="done" data-c2tot="${esc(x.id)}" value="${esc(t.total || '')}" placeholder="0"><span>L</span></div>
           <span class="tiny c2cuad" data-c2suma="${esc(x.id)}">${c2Cuad(t.total, suma)}</span></div>
@@ -1702,7 +1711,7 @@ function contadores2(v, u) {
   const bloqueAg = (id, n, cams, pos) => {
     const a = st.ag[id], pasos = pasosDe(cams), m = {}; let txt = '';
     if (pasos.length) { const ini = pasos[0].dep, ult = pasos[pasos.length - 1].dep;
-      const usados = [...new Set(pasos.flatMap(z => [z.dep, z.arr ? z.arrDep : '']).filter(Boolean))];
+      const usados = [...new Set(pasos.flatMap(z => [z.dep].concat(c2Arrs(z).map(w => w.dep))).filter(Boolean))];
       m[ini] = (m[ini] || 0) + dA.arranque; const fin = usados.filter(z => z === ult || +z > +ult).sort((p, q) => p - q); fin.forEach(z => { m[z] = (m[z] || 0) + dA.final; });
       txt = `Arranque → dep. ${ini} · final → dep. ${fin.join(', ')} (${dA.arranque} + ${dA.final} l)`; }
     if (a.deSrv) { a.deSrv = 0; if (silos.every(dp => Math.round(num(a.l[dp]) || 0) === (m[dp] || 0))) { a.manual = false; a.l = {}; } }   // venía de la hoja y es la propuesta
@@ -1764,7 +1773,7 @@ function contadores2(v, u) {
   // DEPÓSITOS: lo que va entrando según la hoja (filas, arrastres y agua), al momento
   const depsHtml = () => { const k = {}; silos.forEach(d => { k[d] = { l: 0, agua: 0, esps: [] }; });
     st.orden.filter(id => !esAg(id)).forEach(id => { const x = todos.find(z => z.id === id); if (!x) return; filas(x).forEach(f => { const r = (st.t[id] || { f: {} }).f[f.id]; if (!r || !r.ord) return;
-      [[r.dep, r.l], r.arr ? [r.arrDep, r.arrL] : null].filter(Boolean).forEach(([d, l]) => { const n = Math.round(num(l) || 0); if (!k[d] || !n) return; k[d].l += n; if (!k[d].esps.includes(f.esp)) k[d].esps.push(f.esp); }); }); });
+      [[r.dep, r.l]].concat(c2Arrs(r).map(z => [z.dep, z.l])).forEach(([d, l]) => { const n = Math.round(num(l) || 0); if (!k[d] || !n) return; k[d].l += n; if (!k[d].esps.includes(f.esp)) k[d].esps.push(f.esp); }); }); });
     st.orden.filter(esAg).forEach(id => Object.entries((AV[id] || { vals: {} }).vals).forEach(([d, l]) => { if (k[d]) k[d].agua += l; }));
     const tipo = es => !es.length ? '' : es.every(e => e === 'D') ? 'Oveja D.O.' : es.every(e => e === 'D' || e === 'O') ? 'Oveja' : es.length === 1 ? (ESPS[es[0]] || es[0]) : 'Mezcla';
     return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card${C2.depSel === d.id ? ' c2dsel' : ''}" data-c2dp="${esc(d.id)}" style="cursor:pointer"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l + z.agua)}</b>
@@ -1775,7 +1784,7 @@ function contadores2(v, u) {
       const x = todos.find(z => z.id === id); if (!x) return; const t = st.t[id] || { f: {} };
       filas(x).map(f => Object.assign(f, { r: t.f[f.id] })).filter(f => f.r && f.r.ord).sort((a, c) => a.r.ord - c.r.ord).forEach(f => { const r = f.r, quien = `${esc(t.hora || '')} · ${esc(x.conductor)}`;
         if (String(r.dep) === String(dep) && num(r.l) > 0) it.push({ c: `${tqc(f.id)} <b>${esc(ESPS[f.esp] || f.esp)}</b>`, q: quien, l: Math.round(num(r.l)), e: f.esp });
-        if (r.arr && String(r.arrDep) === String(dep) && num(r.arrL) > 0) it.push({ c: `${tqc(f.id)} <b>${esc(ESPS[f.esp] || f.esp)}</b> <span class="muted">· arrastre ${r.arrPos === 'ant' ? 'por delante' : 'por detrás'}</span>`, q: quien, l: Math.round(num(r.arrL)), e: f.esp }); }); });
+        c2Arrs(r).forEach(z => { if (String(z.dep) === String(dep) && num(z.l) > 0) it.push({ c: `${tqc(f.id)} <b>${esc(ESPS[f.esp] || f.esp)}</b> <span class="muted">· arrastre ${z.pos === 'ant' ? 'por delante' : 'por detrás'}</span>`, q: quien, l: Math.round(num(z.l)), e: f.esp }); }); }); });
     const tot = it.reduce((a, z) => a + z.l, 0);
     return `<div class="card stack c2det"><div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:20px">Depósito ${esc(dep)} · ${fmt(tot)} l</b><button class="lnk" id="c2detX" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ cerrar</button></div>
       <p class="small muted" style="margin:0">Lo que ha entrado ${R.esHoy === false ? 'ese día' : 'hoy'} según la hoja, en orden. No incluye lo que ya hubiera en el depósito.</p>
@@ -1843,7 +1852,15 @@ function contadores2(v, u) {
   v.querySelectorAll('[data-c2mv]').forEach(b => b.onclick = () => { const [vid, cid, d] = b.dataset.c2mv.split('|'), f = st.t[vid].f, r = f[cid], o = r.ord + (+d);
     const otra = Object.values(f).find(z => z.ord === o); if (!otra) return; otra.ord = r.ord; r.ord = o; pinta(); });
   v.querySelectorAll('[data-c2dep]').forEach(b => b.onclick = () => { const [vid, cid, campo, s] = b.dataset.c2dep.split('|'); st.t[vid].f[cid][campo] = s; pinta(); });
-  v.querySelectorAll('[data-c2arr]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arr.split('|'), r = st.t[vid].f[cid]; r.arr = !r.arr; if (!r.arr) { r.arrDep = ''; r.arrL = ''; r.arrPos = ''; pinta(); return; }
+  v.querySelectorAll('[data-c2arr]').forEach(b => b.onclick = () => { const [vid, cid, k] = b.dataset.c2arr.split('|'), r = st.t[vid].f[cid];
+    const limpia = q => { r['arr' + q] = false; r['arr' + q + 'Dep'] = ''; r['arr' + q + 'L'] = ''; r['arr' + q + 'Pos'] = ''; };
+    if (k === '2' && r.arr && !r.arr2) {   // segundo arrastre de la misma leche: a otro depósito (lo eliges tú); por defecto, por detrás
+      const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== r.dep && d.id !== r.arrDep);
+      r.arr2 = true; r.arr2L = ''; r.arr2Pos = r.arrPos === 'ant' ? 'post' : 'post'; r.arr2Dep = mez ? mez.id : ''; pinta(); return; }
+    if (k === '2') { limpia('2'); pinta(); return; }
+    if (k === '1' || (r.arr && !k)) {   // quitar el primero: si hay segundo, pasa a ser el primero
+      if (r.arr2) { r.arrDep = r.arr2Dep; r.arrL = r.arr2L; r.arrPos = r.arr2Pos; limpia('2'); } else limpia(''); pinta(); return; }
+    r.arr = true;
     // ¿por delante o por detrás? Si la anterior (en orden) fue a otro depósito, vengo de él: el arrastre va arriba, a ese depósito.
     // Si no, es la cola de esta: abajo, al depósito de la siguiente (o al de mezcla si aún no se sabe).
     // La anterior de la primera cisterna es la última del camión de antes en la hoja (salvo que entre medias haya agua: la tubería quedó limpia).
@@ -1851,15 +1868,15 @@ function contadores2(v, u) {
     let prev = Object.values(f).find(z => z.ord && z.ord === r.ord - 1);
     if (!prev && r.ord === 1) { const i = st.orden.indexOf(vid), pid = i > 0 ? st.orden[i - 1] : '';
       if (pid && !esAg(pid) && st.t[pid]) prev = Object.values(st.t[pid].f).filter(z => z.ord).sort((a, c) => c.ord - a.ord)[0]; }
-    const deDonde = prev ? (prev.arr && prev.arrPos !== 'ant' && prev.arrDep ? prev.arrDep : prev.dep) : '';   // último depósito al que fue leche
+    const pPost = prev ? c2Arrs(prev).filter(z => z.pos !== 'ant' && z.dep) : [], deDonde = prev ? (pPost.length ? pPost[pPost.length - 1].dep : prev.dep) : '';   // último depósito al que fue leche
     const mez = R.deps.find(d => /mezcla/i.test(d.uso) && d.id !== r.dep);
     if (deDonde && deDonde !== r.dep) { r.arrPos = 'ant'; r.arrDep = deDonde; }
     else { r.arrPos = 'post'; r.arrDep = next && next.dep && next.dep !== r.dep ? next.dep : (mez ? mez.id : ''); }
     pinta(); });
-  v.querySelectorAll('[data-c2arrpos]').forEach(b => b.onclick = () => { const [vid, cid] = b.dataset.c2arrpos.split('|'), r = st.t[vid].f[cid]; r.arrPos = r.arrPos === 'ant' ? 'post' : 'ant'; pinta(); });
+  v.querySelectorAll('[data-c2arrpos]').forEach(b => b.onclick = () => { const [vid, cid, k] = b.dataset.c2arrpos.split('|'), r = st.t[vid].f[cid], c = 'arr' + (k || '') + 'Pos'; r[c] = r[c] === 'ant' ? 'post' : 'ant'; pinta(); });
   const vivo = () => { pt(); const e = $('#barEnv'); if (e && U.view === 'vRecep' && R.modo === 'c2') { e.hidden = false; e.textContent = estCorto(); e.classList.toggle('mal', !!C2.err && PT.hAuto !== st.envH); } const dd = $('#c2deps'); if (dd && document.body.contains(dd)) { dd.innerHTML = depsHtml(); enlDeps(); } };   // estado del parte mientras se teclea
   C2.vivo = vivo;
-  const sumaDe = vid => Object.values(st.t[vid].f).filter(z => z.ord).reduce((a, z) => a + (num(z.l) || 0) + (z.arr ? num(z.arrL) || 0 : 0), 0);
+  const sumaDe = vid => Object.values(st.t[vid].f).filter(z => z.ord).reduce((a, z) => a + (num(z.l) || 0) + c2ArrL(z), 0);
   v.querySelectorAll('[data-c2l]').forEach(inp => { inp.oninput = () => { const [vid, cid, campo] = inp.dataset.c2l.split('|'); st.t[vid].f[cid][campo] = inp.value.replace(/\D/g, ''); c2Escribir();
     const sp = v.querySelector(`[data-c2suma="${vid}"]`); if (sp) sp.innerHTML = c2Cuad(st.t[vid].total, sumaDe(vid)); vivo(); }; });
   v.querySelectorAll('[data-c2tot]').forEach(inp => inp.oninput = () => { const vid = inp.dataset.c2tot; st.t[vid].total = inp.value.replace(/\D/g, ''); c2Escribir();

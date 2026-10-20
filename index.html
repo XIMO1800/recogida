@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=165">
+<link rel="manifest" href="manifest.json?v=166">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v165 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v166 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1794,6 +1794,7 @@ function contadores2(v, u) {
     ${enHoja.length ? `<button class="btn sec" id="c2agua" style="margin:2px 0 4px">+ Agua de arrastre${sinAgua ? ` (cierra ${sinAgua === 1 ? 'el último camión' : 'los ' + sinAgua + ' últimos camiones'})` : ''}</button>` : ''}
     ${enHoja.length && editable ? `<div class="card stack c2cierre"><button class="btn" id="c2cerrar">${(R.parte || {}).cerradoPor ? 'Volver a cerrar el parte' : 'Cerrar el parte del día'}</button>${(R.parte || {}).cerradoPor && PT.hAuto !== st.envH ? '<button class="btn ghost" id="c2desh">Deshacer mis cambios (dejarlo como estaba cerrado)</button>' : ''}
       <div id="c2cMsg" hidden></div></div>` : ''}
+    ${enHoja.length ? '<button class="btn sec" id="c2print" style="margin-top:6px">🖨 Imprimir hoja de contadores (como el papel)</button>' : ''}
     ${st.orden.length ? '<div class="sep-blq"></div>' : ''}
     <span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span>
     <div class="g2">${pend.map(x => `<button class="farm" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${x.fecha && x.fecha !== R.dia ? ' · del ' + esc(x.fecha) : ''}${/CURSO/.test(x.estado || '') ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : ''}</span><span class="comps">${(x.comps || []).map(c => tqc(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>
@@ -1809,6 +1810,50 @@ function contadores2(v, u) {
   enlDeps(); if ($('#c2detX')) $('#c2detX').onclick = () => { C2.depSel = null; contadores2(v, u); };
   if ($('#c2entera')) $('#c2entera').onclick = () => { C2.solo = null; contadores2(v, u); scrollTo(0, 0); };
   const pinta = () => { c2Escribir(); contadores2(v, u); };
+  // IMPRIMIR: «Registro litros contador», como la hoja de papel (lo que hay ahora en pantalla)
+  if ($('#c2print')) $('#c2print').onclick = () => {
+    const EP = { D: 'OVEJA D.O.', O: 'OVEJA', V: 'VACA', C: 'CABRA' }, logo = ($('.logo img') || {}).src || '', dif = n => n > 0 ? '+' + fmt(n) : n < 0 ? '−' + fmt(-n) : '0';
+    const quien = (R.parte || {}).cerradoPor || (D().usuario || {}).nombre || (S.datos.usuario || {}).nombre || '';
+    let nAg = 0;
+    const bloques = st.orden.map(id => {
+      if (esAg(id)) { nAg++; const vals = (AV[id] || { vals: {} }).vals, ds = Object.entries(vals).filter(([, l]) => l > 0), tot = ds.reduce((a, [, l]) => a + l, 0);
+        return `<table class="b ag"><tr><td class="prov"><b>AG${nAg}</b> Agua de arrastre</td>${ds.map(([d, l]) => `<td>Dep. ${esc(d)}: <b>${fmt(l)}</b></td>`).join('')}<td class="n">TOTAL ${fmt(tot)}</td></tr></table>`; }
+      const x = todos.find(z => z.id === id); if (!x) return '';
+      const t = st.t[id] || { f: {} }, fs = filas(x).map(f => Object.assign({}, f, { r: t.f[f.id] || {} })).filter(f => f.r.ord);
+      const cont = f => Math.round(num(f.r.l) || 0) + c2ArrL(f.r);
+      const total = Math.round(num(t.total) || 0) || fs.reduce((a, f) => a + cont(f), 0);
+      const grupos = ORD_ESP.map(e => ({ e, fs: fs.filter(f => f.esp === e).sort((a, c) => a.r.ord - c.r.ord) }));
+      const nf = grupos.reduce((a, g) => a + Math.max(1, g.fs.length), 0);
+      let primera = true;
+      const filasHtml = grupos.map(g => { const cart = Math.round(num((x.cart || {})[g.e]) || 0), cg = g.fs.reduce((a, f) => a + cont(f), 0);
+        const lineas = g.fs.length ? g.fs : [null];
+        return lineas.map((f, i) => { const r = f ? f.r : null, as = r ? c2Arrs(r) : [];
+          const dep = r ? `<b>${esc(r.dep || '')}</b>${as.map(z => `<br><small>${z.pos === 'ant' ? '↱' : '↳'} ${fmt(Math.round(num(z.l) || 0))} al ${esc(z.dep)}</small>`).join('')}` : '';
+          const cel = `${primera ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor || '')}</b>${x.otra ? '' : `<br>Ruta ${esc(String(x.rutas || '').split(',').map(z => +z).join(' y '))}`}${x.matricula ? `<br><small>${esc(x.matricula)}</small>` : ''}${t.hora ? `<br><small>${esc(t.hora)}</small>` : ''}</td>` : ''}
+            <td>${r ? r.ord + 'º' : ''}</td><td class="cis">${i === 0 ? '<b>' + EP[g.e] + '</b>' : ''}${f ? ` <small>${esc(f.id)}</small>` : ''}</td><td>${dep}</td><td class="n">${f ? fmt(cont(f)) : ''}</td>
+            ${i === 0 ? `<td class="n" rowspan="${lineas.length}">${cart && g.fs.length ? fmt(cart) : ''}</td><td class="g" rowspan="${lineas.length}">${cart && g.fs.length ? dif(cg - cart) : ''}</td>` : ''}
+            <td class="n">${f && f.decl ? fmt(f.decl) : ''}</td><td class="g">${f && f.decl ? dif(cont(f) - f.decl) : ''}</td>
+            ${primera ? `<td rowspan="${nf}" class="firma"><div class="fnom">${esc(quien)}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}`;
+          primera = false; return `<tr class="r">${cel}</tr>`; }).join(''); }).join('');
+      return `<table class="b"><colgroup>${[13, 7, 13, 11, 10, 9, 9, 9, 9, 10].map(w => `<col style="width:${w}%">`).join('')}</colgroup>
+        <thead><tr><th>Ruta / Nº</th><th>Orden de descarga</th><th>Cisterna</th><th>Depósito</th><th>Litros contador</th><th>Litros cartilla</th><th>Diferencia cont./cartilla</th><th>Litros cisterna</th><th>Diferencia cont./cister.</th><th>Firma</th></tr></thead>
+        <tbody>${filasHtml}</tbody></table>`; }).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Registro litros contador ${esc(R.dia)}</title><style>
+      @page{size:A4;margin:10mm}body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0}
+      .h{display:flex;align-items:center;border:1.5px solid #333;margin-bottom:8px}.h img{height:38px;padding:4px 10px;border-right:1.5px solid #333}.h h1{flex:1;font-size:15px;text-align:center;margin:0;font-weight:normal}.h .f{border-left:1.5px solid #333;padding:4px 18px;text-align:center;font-size:12px}
+      table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3px 4px;text-align:center;vertical-align:middle}th{font-size:9px;font-weight:bold;text-align:left}
+      table.b{margin-bottom:8px;page-break-inside:avoid;table-layout:fixed}tr.r td{height:20px}td.prov{text-align:left;font-size:11px}td.cis{text-align:left}td.n{text-align:right;font-weight:bold}td.g{background:#e6e6e6}
+      td.firma{font-size:10px;vertical-align:bottom}td.firma .fnom{margin-bottom:10px}td.firma .tot{border-top:1px solid #555;padding-top:2px}small{font-size:8.5px;color:#333}
+      table.ag td{text-align:left}table.ag td.n{text-align:right}
+    </style></head><body>
+      <div class="h">${logo ? `<img src="${logo}">` : ''}<h1>REGISTRO LITROS CONTADOR</h1><div class="f">Fecha:<br><b>${esc(R.dia)}</b></div></div>
+      ${bloques || '<p>No hay camiones en la hoja.</p>'}
+    </body></html>`;
+    let f = $('#printFrame'); if (f) f.remove();
+    f = document.createElement('iframe'); f.id = 'printFrame'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'; document.body.appendChild(f);
+    f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+    setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); }, 300);
+  };
   if ($('#c2desh')) $('#c2desh').onclick = () => { const b = $('#c2desh'); if (!confirm2(b)) return; ocupado(b, 'Deshaciendo…'); C2.deHoja = 'todo'; recepcion(); };
   if ($('#c2confHoja')) $('#c2confHoja').onclick = () => { ocupado($('#c2confHoja'), 'Cogiendo…'); C2.conf = null; C2.deHoja = true; recepcion(); };
   if ($('#c2confMio')) $('#c2confMio').onclick = () => { const b = $('#c2confMio'); if (!confirm2(b)) return; C2.conf = null; st.base = (R.parte || {}).sello || ''; st.envH = ''; c2Escribir(); contadores2(v, u); c2Auto(); };

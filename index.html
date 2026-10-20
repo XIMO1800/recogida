@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=167">
+<link rel="manifest" href="manifest.json?v=168">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v167 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v168 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1262,7 +1262,7 @@ function extDatos(id) {
 function extFicha(id) {
   const e = extDatos(id), tot = extTot(e);
   return `<div class="card stack" id="extF"><h2 style="margin:0">${e.nuevo ? 'Camión externo nuevo' : 'Camión externo · ' + esc(e.prov)}</h2>
-    <p class="small muted" style="margin:0">Los litros del albarán del proveedor. Ese día el camión sale en <b>Contadores</b> y en <b>Recepción</b> como uno más, y el albarán hace de «cartilla»: en el papel sale la diferencia con el contador.</p>
+    <p class="small muted" style="margin:0">Los litros del albarán del proveedor. Ese día el camión sale en <b>Contadores</b> y en <b>Recepción</b> como uno más, y el albarán hace de «cartilla»: en el papel sale la diferencia con el contador. Si ya lo metieron como «otra entrada», se enlaza solo si el proveedor (o la matrícula) es el mismo.</p>
     <div class="row" style="gap:10px;flex-wrap:wrap">
       <div class="field" style="flex:1 1 140px"><label class="lbl">Fecha</label><input class="sm" type="date" id="extFe" value="${esc(esAiso(e.fecha))}"></div>
       <div class="field" style="flex:3 1 220px"><label class="lbl">Proveedor</label><input class="sm" id="extPr" value="${esc(e.prov)}" placeholder="Ej.: Agrupación Ganadera San Blas"></div></div>
@@ -1293,7 +1293,8 @@ function extEnlazar(id, repinta, volver) {
     if (!cs.some(k => +k.l > 0)) return err('Pon los litros del albarán.');
     ocupado(b, 'Guardando…');
     try { const r = await api('guardarExterno', { ext: { id: e.nuevo ? '' : e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, nComp: e.comps.length, comps: cs.map(k => ({ n: k.n, esp: k.esp, l: +k.l || 0 })) } });
-      O.externos = (O.externos || []).filter(z => z.id !== r.ext.id).concat([r.ext]); U.extNuevo = null; toast(e.nuevo ? 'Camión externo dado de alta' : 'Guardado');
+      O.externos = (O.externos || []).filter(z => z.id !== r.ext.id).concat([r.ext]); U.extNuevo = null;
+      const en = r.enlazado || {}; toast((e.nuevo ? 'Camión externo dado de alta' : 'Guardado') + (en.contadores || en.calidad ? ' · enlazado con lo ya metido en ' + [en.contadores ? 'Contadores' : '', en.calidad ? 'Recepción' : ''].filter(Boolean).join(' y ') : ''));
       if (U.ofiSel) U.ofiSel = 'EXT:' + r.ext.id; volver ? volver() : repinta(); }
     catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
   if ($('#extBo')) $('#extBo').onclick = async () => { const b = $('#extBo'); if (!confirm2(b)) return; ocupado(b, 'Borrando…');
@@ -1680,7 +1681,7 @@ function c2Escribir() { try { localStorage.setItem(c2Clave(), JSON.stringify(C2.
 function c2Conflicto(e) { const m = String((e && e.message) || ''); if (!m.startsWith('OTRO_ENVIO')) return false; const [, por, hora] = m.split('|'); C2.conf = { por, hora }; if (R.modo === 'c2' && U.view === 'vRecep') setTimeout(() => recepcion(), 0); return true; }
 // Rehace la hoja con lo último guardado; de lo de aquí solo se quedan (detrás) los camiones que aún no están en la hoja
 function c2DeLaHoja(todo) { const v0 = C2.st || {}, enSrv = id => !!(R.viajes.find(x => x.id === id) || {}).recep;
-  const cola = todo ? [] : (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
+  const cola = todo ? [] : (v0.orden || []).filter(id => !/^AG/.test(id) && !enSrv(id) && !(v0.envIds || []).includes(id)), t = {}; cola.forEach(id => { if (v0.t && v0.t[id]) t[id] = v0.t[id]; });
   C2.st = { t, orden: [], cola, ext: (v0.ext || []).filter(e => cola.includes(e.id) || enSrv(e.id)), base: (R.parte || {}).sello || '', rv: 2 }; C2.conf = null; C2.err = '';
   try { localStorage.setItem(c2Clave(), JSON.stringify(C2.st)); } catch (e) {} }
 function c2Programar(ms) { clearTimeout(C2.tA); C2.pend = true; C2.tA = setTimeout(c2Auto, ms == null ? 30000 : ms); }
@@ -1702,6 +1703,8 @@ function contadores2(v, u) {
   const tqc = id => /^V[CVDO]\d*$/.test(id) ? `<span class="tank sp-${id[1]}">${esc(id)}</span>` : tq(id);   // otra entrada: VC, VV, VD, VO
   // Cada camión se guarda al firmarlo (hoja y fichero D del programa, como en el Contadores de antes); el agua, con su botón.
   if (C2.deHoja) { const todo = C2.deHoja === 'todo'; C2.deHoja = false; C2.st = c2Leer(); c2DeLaHoja(todo); }
+  { const s0 = c2Leer(), pe0 = (R.parte || {}).sello || '';   // otro aparato (o la oficina, al enlazar un albarán) cambió la hoja y aquí no había nada sin enviar: se rehace
+    if (pe0 && s0.base !== undefined && s0.base !== pe0 && s0.hUlt && s0.hUlt === s0.envH) { C2.st = s0; c2DeLaHoja(); } }
   const st = C2.st = c2Leer(), nuevo = !(st.orden || []).length; st.ext = st.ext || []; st.ag = st.ag || {}; st.t = st.t || {}; st.orden = st.orden || [];
   const cal = !!D().calidad, ofi = !!D().oficina, editable = (!cal || ofi) && (R.esHoy !== false || ofi); st.fuera = st.fuera || [];   // otro día: solo oficina lo cambia
   R.viajes.filter(x => x.otra && !(x.comps || []).length && x.recep).forEach(x => { x.comps = x.recep.comps.map((c, i) => ({ id: c.id, esp: [c.esp], decl: 0, n: i + 1 })); });
@@ -1831,7 +1834,7 @@ function contadores2(v, u) {
     const ya = !al && pp.cerradoPor ? ' · <b class="c2mod">Cambios sin guardar: no se envían hasta que pulses «Volver a cerrar el parte»</b>' : !al ? (C2.err ? ` · <b style="color:var(--bad)">no se ha podido enviar: ${esc(C2.err)}</b>` : ' · <span class="muted">se envía en unos segundos…</span>') : '';
     const cer = pp.cerradoPor ? ` · <b>${st.ok === PT.huella ? 'Cerrado' : 'Cerrado (con cambios después)'}</b> por ${esc(pp.cerradoPor)} a las ${esc(String(pp.horaCierre).slice(-5))}` : '';
     return env + pen + ya + cer; };
-  pt();
+  pt(); st.hUlt = PT.hAuto;
   // ¿Otro aparato ha enviado el parte después? Si aquí no hay nada sin enviar, se coge lo último de la hoja; si lo hay, se avisa y no se manda
   { const pe = (R.parte || {}).sello || '';
     if (nuevo) st.rv = 2;

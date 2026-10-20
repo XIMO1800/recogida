@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 12;
+const API_VERSION = 13;
 
 function doPost(e) {
   try {
@@ -1144,8 +1144,52 @@ function guardarExterno(req, c) {
       USUARIO: String(c.NOMBRE), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
     if (ya) actualizar_('EXTERNOS', ya._fila, o);
     else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
-    return { ok: true, ext: extObj_(o) };
+    const ext = extObj_(o), enl = enlazarOtras_(ext, c);
+    return { ok: true, ext: ext, enlazado: enl };
   } finally { lock.releaseLock(); }
+}
+/** El camión ya se metió en Contadores y/o Recepción como «otra entrada» antes de que llegara el albarán a la oficina:
+ *  se busca ese día por proveedor (o matrícula) y se pasa a este camión externo (mismo id), para que el albarán haga de cartilla. */
+function enlazarOtras_(e, c) {
+  const nrm = function (t) { return String(t || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, ''); };
+  const es = function (r) { return (nrm(r.CONDUCTOR) && nrm(r.CONDUCTOR) === nrm(e.prov)) || (nrm(e.mat) && nrm(r.MATRICULA) === nrm(e.mat)); };
+  const res = { contadores: false, calidad: false };
+  const renombra = function (hoja, filas, col, de, a) { const t = tabla_(hoja), j = t.cab.indexOf(col); if (j < 0) return;
+    filas.forEach(function (r) { t.sh.getRange(r._fila, j + 1).setNumberFormat('@').setValue(String(r[col]).replace(de, a)); }); };
+  // Contadores
+  const cams = tabla_('RECEPCION_CAMION').filas.filter(function (r) { return String(r.FECHA) === e.fecha && /^X/.test(r.VIAJE_ID) && !/^XE/.test(r.VIAJE_ID) && es(r); });
+  if (cams.length === 1 && !buscar_('RECEPCION_CAMION', 'VIAJE_ID', e.id)) {
+    const de = String(cams[0].VIAJE_ID);
+    renombra('RECEPCION_CAMION', cams, 'VIAJE_ID', de, e.id);
+    const fr = tabla_('RECEPCIONES').filas.filter(function (r) { return String(r.VIAJE_ID) === de; });
+    renombra('RECEPCIONES', fr, 'VIAJE_ID', de, e.id); renombra('RECEPCIONES', tabla_('RECEPCIONES').filas.filter(function (r) { return String(r.REC_ID).indexOf(de) === 0; }), 'REC_ID', de, e.id);
+    const cart = Object.keys(e.cart).reduce(function (a, k) { return a + e.cart[k]; }, 0), cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', e.id), cuenta = numES_(cam.TOTAL_CONTADOR) || numES_(cam.SUMA_PARCIALES);
+    columnas_('RECEPCION_CAMION', ['LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'], 'FICHERO');
+    actualizar_('RECEPCION_CAMION', cam._fila, { LITROS_CARTILLA: Math.round(cart), DIF_CARTILLA: cuenta - Math.round(cart), LITROS_CISTERNA: Math.round(cart), DIF_CISTERNA: cuenta - Math.round(cart) });
+    const shF = SS.getSheetByName('FIRMAS'); if (shF && shF.getLastRow() > 1) { const v = shF.getRange(2, 3, shF.getLastRow() - 1, 2).getValues(); v.forEach(function (x, i) { if (String(x[1]) === de) shF.getRange(i + 2, 4).setValue(e.id); }); }
+    // los aparatos con la hoja de contadores abierta la rehacen desde la hoja (sello nuevo)
+    columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO');
+    parteDia_(e.fecha, { CONTADORES_SELLO: 'S' + Date.now(), CONTADORES_ENVIO_POR: String(c.NOMBRE) + ' (albarán)' });
+    exportarDia_(e.fecha); res.contadores = de;
+  }
+  // Recepción (calidad)
+  if (SS.getSheetByName('RECEPCION_CALIDAD')) {
+    const rc = tabla_('RECEPCION_CALIDAD').filas.filter(function (r) { return String(r.FECHA) === e.fecha && /^QX/.test(r.VIAJE_ID) && !/^QXE/.test(r.VIAJE_ID) && es(r); });
+    const ids = rc.map(function (r) { return String(r.VIAJE_ID); }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    if (ids.length === 1 && !tabla_('RECEPCION_CALIDAD').filas.some(function (r) { return String(r.VIAJE_ID) === 'Q' + e.id; })) {
+      const de = ids[0], a = 'Q' + e.id;
+      renombra('RECEPCION_CALIDAD', rc, 'VIAJE_ID', de, a);
+      const shF = SS.getSheetByName('FIRMAS'); if (shF && shF.getLastRow() > 1) { const v = shF.getRange(2, 3, shF.getLastRow() - 1, 2).getValues(); v.forEach(function (x, i) { if (String(x[1]) === de) shF.getRange(i + 2, 4).setValue(a); }); }
+      if (SS.getSheetByName('MEZCLAS')) renombra('MEZCLAS', tabla_('MEZCLAS').filas.filter(function (r) { return String(r.VIAJE_ID) === de; }), 'VIAJE_ID', de, a);
+      res.calidad = de;
+    }
+  }
+  if (res.contadores || res.calidad) {
+    const shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
+    shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), e.id, '', e.fecha, '', e.prov + ' ' + e.mat,
+      'OTRA ENTRADA ENLAZADA AL ALBARÁN', [res.contadores, res.calidad].filter(String).join(' + '), e.id, 'albarán ' + e.albaran]]);
+  }
+  return res;
 }
 function borrarExterno(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);

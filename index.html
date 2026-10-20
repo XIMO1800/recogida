@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=166">
+<link rel="manifest" href="manifest.json?v=167">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -383,7 +383,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v166 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v167 · 20/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1216,25 +1216,93 @@ addEventListener('resize', () => { const on = esEsc(); if (on === escAntes) retu
 const rutasTxt = x => String(x.rutas).split(',').map(r => +r).join(' y ');
 function ofiEsc(v) {
   const tot = x => x.recs.reduce((a, r) => a + (r.sin ? 0 : r.l), 0);
-  if (!O.viajes.find(y => y.id === U.ofiSel)) U.ofiSel = (O.viajes.find(y => /CURSO/.test(y.estado)) || O.viajes[0] || {}).id;
+  if (!/^EXT:/.test(U.ofiSel || '') && !O.viajes.find(y => y.id === U.ofiSel)) U.ofiSel = (O.viajes.find(y => /CURSO/.test(y.estado)) || O.viajes[0] || {}).id;
   const enCurso = O.viajes.filter(x => /CURSO/.test(x.estado)), dias = {};
   O.viajes.filter(x => !/CURSO/.test(x.estado)).forEach(x => (dias[x.fecha] = dias[x.fecha] || []).push(x));
   const fila = x => `<button class="vrow${x.id === U.ofiSel ? ' on' : ''}" data-v="${esc(x.id)}"><span><b>${esc(x.nombre)}</b> · ruta ${rutasTxt(x)}
       <small><span class="mono">${esc(x.matricula)}</span> · ${esc(x.ini)}${x.fin ? '–' + esc(x.fin) : ''}${x.recs.some(r => r.cor) ? ' · corregido' : ''}</small></span>
     <span class="num"><b>${fmt(tot(x))} l</b>${/CURSO/.test(x.estado) ? '<small><span class="badge">en curso</span></small>' : ''}</span></button>`;
-  const x = O.viajes.find(y => y.id === U.ofiSel);
+  const x = O.viajes.find(y => y.id === U.ofiSel), selExt = /^EXT:/.test(U.ofiSel || '') ? U.ofiSel.slice(4) : null;
   v.innerHTML = `${O.off ? `<div class="msg warn">Sin conexión: datos de las ${esc(O.hasta)}.</div>` : ''}
     <div class="ofi2"><div class="card lista">
+      <button class="btn sec" id="ofiExtN" style="margin:4px 4px 8px;width:calc(100% - 8px)">+ Camión externo (con albarán)</button>
+      ${extLista(selExt)}
       ${enCurso.length ? `<div class="dia">En curso ahora</div>${enCurso.map(fila).join('')}` : ''}
       ${Object.keys(dias).map(f => `<div class="dia">${esc(diaTxt(f))}</div>${dias[f].map(fila).join('')}`).join('')}
       ${O.viajes.length ? '' : '<p class="small muted">No hay viajes en los últimos 15 días.</p>'}
       <p class="small muted" style="padding:8px 10px 0">Datos de las ${esc(O.hasta)} · últimos 15 días.</p></div>
-    <div class="stack">${x ? ofiDetalle(x) : '<div class="card"><p class="muted">Elige un viaje de la lista.</p></div>'}</div></div>`;
+    <div class="stack">${selExt ? extFicha(selExt) : x ? ofiDetalle(x) : '<div class="card"><p class="muted">Elige un viaje de la lista.</p></div>'}</div></div>`;
   v.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { U.ofiSel = b.dataset.v; ofiEsc(v); });
+  $('#ofiExtN').onclick = () => { U.extNuevo = null; U.ofiSel = 'EXT:nuevo'; ofiEsc(v); };
+  v.querySelectorAll('[data-ext2]').forEach(b => b.onclick = () => { U.extNuevo = null; U.ofiSel = 'EXT:' + b.dataset.ext2; ofiEsc(v); });
+  if (selExt) { extEnlazar(selExt, () => ofiEsc(v)); return; }
   if (x) {
     v.querySelectorAll('[data-r]').forEach(tr => tr.onclick = () => ofiEditar(x, x.recs[+tr.dataset.r], null));
     v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => ofiEditar(x, null, x.falta[+b.dataset.f]));
   }
+}
+/* CAMIÓN EXTERNO (otro proveedor) con su albarán: la oficina lo da de alta aquí y sale ese día en Contadores y en Recepción */
+const EXT_ESP = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' };
+const extTot = e => (e.comps || []).reduce((a, k) => a + (+k.l || 0), 0);
+function extLista(sel) {
+  const l = (O.externos || []).slice().sort((a, b) => esAiso(b.fecha) + b.hora < esAiso(a.fecha) + a.hora ? -1 : 1);
+  if (!l.length) return '';
+  return `<div class="dia">Camiones externos</div>${l.map(e => `<button class="vrow${sel === e.id ? ' on' : ''}" data-ext2="${esc(e.id)}"><span><b>${esc(e.prov)}</b>
+      <small>${esc(e.fecha.slice(0, 5))}${e.mat ? ' · <span class="mono">' + esc(e.mat) + '</span>' : ''}${e.albaran ? ' · albarán ' + esc(e.albaran) : ''} · ${[...new Set(e.comps.map(k => EXT_ESP[k.esp]))].join(', ')}</small></span>
+    <span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}`;
+}
+function extDatos(id) {
+  if (U.extNuevo && U.extNuevo.id === id) return U.extNuevo;
+  const e = (O.externos || []).find(z => z.id === id);
+  const hoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  U.extNuevo = e ? JSON.parse(JSON.stringify(Object.assign({}, e, { comps: Array.from({ length: Math.max(e.nComp || 0, e.comps.length) }, (_, i) => e.comps.find(k => k.n === i + 1) || { n: i + 1, esp: '', l: '' }) })))
+    : { id, nuevo: true, fecha: hoy, prov: '', mat: '', albaran: '', obs: '', nComp: 1, comps: [{ n: 1, esp: '', l: '' }] };
+  return U.extNuevo;
+}
+function extFicha(id) {
+  const e = extDatos(id), tot = extTot(e);
+  return `<div class="card stack" id="extF"><h2 style="margin:0">${e.nuevo ? 'Camión externo nuevo' : 'Camión externo · ' + esc(e.prov)}</h2>
+    <p class="small muted" style="margin:0">Los litros del albarán del proveedor. Ese día el camión sale en <b>Contadores</b> y en <b>Recepción</b> como uno más, y el albarán hace de «cartilla»: en el papel sale la diferencia con el contador.</p>
+    <div class="row" style="gap:10px;flex-wrap:wrap">
+      <div class="field" style="flex:1 1 140px"><label class="lbl">Fecha</label><input class="sm" type="date" id="extFe" value="${esc(esAiso(e.fecha))}"></div>
+      <div class="field" style="flex:3 1 220px"><label class="lbl">Proveedor</label><input class="sm" id="extPr" value="${esc(e.prov)}" placeholder="Ej.: Agrupación Ganadera San Blas"></div></div>
+    <div class="row" style="gap:10px;flex-wrap:wrap">
+      <div class="field" style="flex:1 1 140px"><label class="lbl">Matrícula</label><input class="sm" id="extMa" value="${esc(e.mat)}" placeholder="1234-ABC"></div>
+      <div class="field" style="flex:1 1 140px"><label class="lbl">Nº de albarán</label><input class="sm" id="extAl" value="${esc(e.albaran)}"></div></div>
+    <div class="field"><label class="lbl">Compartimentos de la cisterna</label><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${e.comps.length === n ? 'on' : ''}" data-extn="${n}" style="min-width:52px">${n}</button>`).join('')}</div></div>
+    ${e.comps.map((k, i) => `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px"><b style="min-width:120px">Compartimento ${k.n}</b>
+      <div class="r3k">${'DOVC'.split('').map(sp => `<button class="${k.esp === sp ? 'on' : ''}" data-exte="${i}|${sp}" style="padding:4px 10px">${EXT_ESP[sp]}</button>`).join('')}<button class="${!k.esp ? 'on' : ''}" data-exte="${i}|" style="padding:4px 10px" title="Viene vacío">vacío</button></div>
+      <div class="unit" style="flex:0 1 190px;position:relative"><input inputmode="numeric" data-extl="${i}" value="${esc(k.l || '')}" placeholder="litros albarán" ${k.esp ? '' : 'disabled'} style="width:100%;font-size:22px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div>`).join('')}
+    <div class="field"><label class="lbl">Observaciones</label><input class="sm" id="extOb" value="${esc(e.obs)}"></div>
+    <div class="row" style="justify-content:space-between;align-items:center"><span>Total albarán: <b class="num" id="extTo">${fmt(tot)} l</b></span></div>
+    <div id="extMsg" hidden></div>
+    <button class="btn" id="extOk">${e.nuevo ? 'Dar de alta el camión externo' : 'Guardar cambios'}</button>
+    ${e.nuevo ? '' : '<button class="btn ghost" id="extBo" style="color:var(--bad);border-color:var(--bad)">Borrar este camión externo</button>'}
+    <button class="btn sec" id="extVo">Volver</button></div>`;
+}
+function extEnlazar(id, repinta, volver) {
+  const e = extDatos(id), m = $('#extMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
+  const lee = () => { e.fecha = (() => { const d = $('#extFe').value; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : e.fecha; })(); e.prov = $('#extPr').value; e.mat = $('#extMa').value; e.albaran = $('#extAl').value; e.obs = $('#extOb').value; };
+  $('#extF').querySelectorAll('[data-extn]').forEach(b => b.onclick = () => { lee(); const n = +b.dataset.extn; e.comps = Array.from({ length: n }, (_, i) => e.comps[i] || { n: i + 1, esp: '', l: '' }); e.nComp = n; repinta(); });
+  $('#extF').querySelectorAll('[data-exte]').forEach(b => b.onclick = () => { lee(); const [i, sp] = b.dataset.exte.split('|'); e.comps[+i].esp = sp; if (!sp) e.comps[+i].l = ''; repinta(); });
+  $('#extF').querySelectorAll('[data-extl]').forEach(inp => inp.oninput = () => { e.comps[+inp.dataset.extl].l = inp.value.replace(/\D/g, ''); $('#extTo').textContent = fmt(extTot(e)) + ' l'; });
+  $('#extVo').onclick = () => { U.extNuevo = null; volver ? volver() : (U.ofiSel = null, repinta()); };
+  $('#extOk').onclick = async () => { lee(); const b = $('#extOk');
+    if (!e.prov.trim()) return err('Pon el proveedor.');
+    const cs = e.comps.filter(k => k.esp); if (!cs.length) return err('Elige la leche de al menos un compartimento.');
+    if (!cs.some(k => +k.l > 0)) return err('Pon los litros del albarán.');
+    ocupado(b, 'Guardando…');
+    try { const r = await api('guardarExterno', { ext: { id: e.nuevo ? '' : e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, nComp: e.comps.length, comps: cs.map(k => ({ n: k.n, esp: k.esp, l: +k.l || 0 })) } });
+      O.externos = (O.externos || []).filter(z => z.id !== r.ext.id).concat([r.ext]); U.extNuevo = null; toast(e.nuevo ? 'Camión externo dado de alta' : 'Guardado');
+      if (U.ofiSel) U.ofiSel = 'EXT:' + r.ext.id; volver ? volver() : repinta(); }
+    catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
+  if ($('#extBo')) $('#extBo').onclick = async () => { const b = $('#extBo'); if (!confirm2(b)) return; ocupado(b, 'Borrando…');
+    try { await api('borrarExterno', { id: e.id, motivo: 'borrado desde Recogidas' }); O.externos = (O.externos || []).filter(z => z.id !== e.id); U.extNuevo = null; U.ofiSel = null; toast('Borrado'); volver ? volver() : repinta(); }
+    catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha borrado.' : x.message); } };
+}
+function ofiExtMovil(id) {
+  const v = $('#vOfi'); const pinta = () => { v.innerHTML = extFicha(id === 'nuevo' && U.extNuevo ? U.extNuevo.id : id); extEnlazar(id === 'nuevo' && U.extNuevo ? U.extNuevo.id : id, pinta, () => oficina(true)); };
+  if (id === 'nuevo') extDatos('nuevo'); pinta(); show('vOfi', 'Camión externo', D().usuario.nombre);
 }
 /** Enlace para ver/imprimir el PDF del DeCA en Drive (el guardado es de descarga directa). */
 const decaVer = u => { const m = String(u || '').match(/[?&]id=([\w-]+)/); return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : String(u || ''); };
@@ -1265,7 +1333,7 @@ async function oficina(sinCargar) {
   if (!sinCargar || !O.viajes) {
     v.innerHTML = '<div class="card"><p class="muted">Cargando rutas…</p></div>';
     show('vOfi', 'Oficina', u.nombre);
-    try { const r = await api('oficinaViajes', { dias: 15 }); O.viajes = r.viajes; O.hasta = r.hasta; O.off = false; }
+    try { const r = await api('oficinaViajes', { dias: 15 }); O.viajes = r.viajes; O.externos = r.externos || []; O.hasta = r.hasta; O.off = false; }
     catch (e) { O.off = true; if (!O.viajes) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin cobertura.' : e.message)}</div><button class="btn" id="ofiRe">Reintentar</button>`; $('#ofiRe').onclick = () => oficina(); return; } }
   }
   const tot = x => x.recs.reduce((a, r) => a + (r.sin ? 0 : r.l), 0);
@@ -1281,6 +1349,8 @@ async function oficina(sinCargar) {
     <div class="row"><button class="btn sec" id="ofiAct">Actualizar</button><button class="btn ghost" id="ofiSalir">Salir</button></div>
     <button class="btn sec" id="ofiRecep">Recepción en fábrica</button>
     <button class="btn ghost" id="ofiHisto">Histórico de viajes y DeCA</button>
+    <button class="btn sec" id="ofiExtN">+ Camión externo (con albarán)</button>
+    ${(O.externos || []).length ? `<div class="card lista" style="padding:4px">${extLista()}</div>` : ''}
     <span class="lbl">En curso ahora</span>
     <div class="stack">${enCurso.length ? enCurso.map(tarjeta).join('') : '<p class="small muted">Ningún camión en ruta.</p>'}</div>
     ${Object.keys(dias).map(f => `<span class="lbl" style="text-transform:capitalize">${esc(diaTxt(f))}</span><div class="stack">${dias[f].map(tarjeta).join('')}</div>`).join('')}
@@ -1289,6 +1359,8 @@ async function oficina(sinCargar) {
   $('#ofiAct').onclick = () => oficina();
   $('#ofiRecep').onclick = () => recepcion();
   $('#ofiHisto').onclick = () => historico();
+  $('#ofiExtN').onclick = () => { U.extNuevo = null; ofiExtMovil('nuevo'); };
+  v.querySelectorAll('[data-ext2]').forEach(b => b.onclick = () => { U.extNuevo = null; ofiExtMovil(b.dataset.ext2); });
   $('#ofiSalir').onclick = salir;
   show('vOfi', 'Oficina', u.nombre);
   clearTimeout(U.ofiT); if (enCurso.length) U.ofiT = setTimeout(() => { if (U.view === 'vOfi') oficina(); }, 60000);
@@ -1645,7 +1717,7 @@ function contadores2(v, u) {
   st.agLeida = 1;
   if (st.cola) { st.cola.forEach(id => { if (!st.orden.includes(id)) st.orden.push(id); }); delete st.cola; }   // lo que se tenía a medias aquí, detrás
   st.orden = st.orden.filter(id => esAg(id) || todos.some(x => x.id === id)); c2Escribir();
-  const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra);
+  const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && (!x.otra || x.ext));
   const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
   const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, n0: String(c.n || '') }));
   const silos = R.deps.map(d => d.id);
@@ -1670,7 +1742,7 @@ function contadores2(v, u) {
     if (!err && tot !== suma) avisos.push(`El total (${fmt(tot)} l) no cuadra con la suma de las filas (${fmt(suma)} l).`);
     if (!err && faltan.length) avisos.push(`Quedan cisternas sin descargar (${faltan.map(f => f.id).join(', ')}).`);
     const cart = Object.values(x.cart || {}).reduce((a, n) => a + (n || 0), 0), cist = hechas.reduce((a, f) => a + (f.decl || 0), 0);
-    const recep = { viajeId: x.id, fecha: R.esHoy ? '' : R.dia, total: tot, cuadre: x.otra ? null : { cartilla: Math.round(cart), cisterna: Math.round(cist) }, limpieza: '', filtro: '', obs: '',
+    const recep = { viajeId: x.id, fecha: R.esHoy ? '' : R.dia, total: tot, cuadre: x.otra && !x.ext ? null : { cartilla: Math.round(cart), cisterna: Math.round(cist) }, limpieza: '', filtro: '', obs: '',
       matricula: x.matricula || '', proveedor: x.otra ? x.conductor : '', ruta: x.ruta || '', hora: t.hora || '', comps };
     return { recep, err, avisos, huella, cuadra: !err && tot === suma };
   };
@@ -1740,7 +1812,7 @@ function contadores2(v, u) {
     if (ags.length > 2) err.push('El programa solo admite dos aguas al día (AG1 y AG2): junta o saca alguna.');
     const agua = []; ags.slice(0, 2).forEach((id, k) => { Object.entries(AV[id].vals).forEach(([dep, l]) => { if (l > 0) agua.push({ cod: 'AG' + (k + 1), dep, l, desde: k ? AV[id].desde : '' }); }); });
     if (!camiones.length) err.push('No hay ningún camión en la hoja.');
-    const hoyF = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }), quedan = R.viajes.filter(x => !x.otra && !st.orden.includes(x.id) && x.fecha === R.dia);
+    const hoyF = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }), quedan = R.viajes.filter(x => (!x.otra || x.ext) && !st.orden.includes(x.id) && x.fecha === R.dia);
     if (quedan.length && R.dia === hoyF) avisos.push(`Quedan camiones de hoy sin pasar a la hoja: ${quedan.map(x => x.conductor).join(', ')}.`);
     if (!ags.length && camiones.length) avisos.push('No has puesto el agua de arrastre.');
     const huella = JSON.stringify([camiones.map(r => [r.viajeId, r.total, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), agua.map(a => [a.cod, a.dep, a.l])]);
@@ -1829,14 +1901,15 @@ function contadores2(v, u) {
         const lineas = g.fs.length ? g.fs : [null];
         return lineas.map((f, i) => { const r = f ? f.r : null, as = r ? c2Arrs(r) : [];
           const dep = r ? `<b>${esc(r.dep || '')}</b>${as.map(z => `<br><small>${z.pos === 'ant' ? '↱' : '↳'} ${fmt(Math.round(num(z.l) || 0))} al ${esc(z.dep)}</small>`).join('')}` : '';
-          const cel = `${primera ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor || '')}</b>${x.otra ? '' : `<br>Ruta ${esc(String(x.rutas || '').split(',').map(z => +z).join(' y '))}`}${x.matricula ? `<br><small>${esc(x.matricula)}</small>` : ''}${t.hora ? `<br><small>${esc(t.hora)}</small>` : ''}</td>` : ''}
-            <td>${r ? r.ord + 'º' : ''}</td><td class="cis">${i === 0 ? '<b>' + EP[g.e] + '</b>' : ''}${f ? ` <small>${esc(f.id)}</small>` : ''}</td><td>${dep}</td><td class="n">${f ? fmt(cont(f)) : ''}</td>
-            ${i === 0 ? `<td class="n" rowspan="${lineas.length}">${cart && g.fs.length ? fmt(cart) : ''}</td><td class="g" rowspan="${lineas.length}">${cart && g.fs.length ? dif(cg - cart) : ''}</td>` : ''}
-            <td class="n">${f && f.decl ? fmt(f.decl) : ''}</td><td class="g">${f && f.decl ? dif(cont(f) - f.decl) : ''}</td>
+          const sinC = !f && cart > 0, declE = filas(x).filter(z => z.esp === g.e).reduce((a, z) => a + (z.decl || 0), 0);   // cartilla sin contador: sale a cero
+          const cel = `${primera ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor || '')}</b>${x.otra ? '' : `<br>Ruta ${esc(String(x.rutas || '').split(',').map(z => +z).join(' y '))}`}${x.matricula ? `<br><small>${esc(x.matricula)}</small>` : ''}${x.ext ? `<br><small>Externo${x.albaran ? ' · albarán ' + esc(x.albaran) : ''}</small>` : ''}${t.hora ? `<br><small>${esc(t.hora)}</small>` : ''}</td>` : ''}
+            <td>${r ? r.ord + 'º' : ''}</td><td class="cis"><b>${EP[g.e]}</b>${f ? ` <small>${esc(f.id)}</small>` : ''}</td><td>${dep}</td><td class="n">${f ? fmt(cont(f)) : sinC ? '0' : ''}</td>
+            ${i === 0 ? `<td class="n" rowspan="${lineas.length}">${cart ? fmt(cart) : ''}</td><td class="g" rowspan="${lineas.length}">${cart ? dif(cg - cart) : ''}</td>` : ''}
+            <td class="n">${f && f.decl ? fmt(f.decl) : sinC ? fmt(declE) : ''}</td><td class="g">${f && f.decl ? dif(cont(f) - f.decl) : sinC ? dif(-declE) : ''}</td>
             ${primera ? `<td rowspan="${nf}" class="firma"><div class="fnom">${esc(quien)}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}`;
           primera = false; return `<tr class="r">${cel}</tr>`; }).join(''); }).join('');
       return `<table class="b"><colgroup>${[13, 7, 13, 11, 10, 9, 9, 9, 9, 10].map(w => `<col style="width:${w}%">`).join('')}</colgroup>
-        <thead><tr><th>Ruta / Nº</th><th>Orden de descarga</th><th>Cisterna</th><th>Depósito</th><th>Litros contador</th><th>Litros cartilla</th><th>Diferencia cont./cartilla</th><th>Litros cisterna</th><th>Diferencia cont./cister.</th><th>Firma</th></tr></thead>
+        <thead><tr><th>${x.ext ? 'Proveedor' : 'Ruta / Nº'}</th><th>Orden de descarga</th><th>Cisterna</th><th>Depósito</th><th>Litros contador</th><th>${x.ext ? 'Litros albarán' : 'Litros cartilla'}</th><th>${x.ext ? 'Diferencia cont./albarán' : 'Diferencia cont./cartilla'}</th><th>${x.ext ? 'Litros albarán' : 'Litros cisterna'}</th><th>Diferencia cont./cister.</th><th>Firma</th></tr></thead>
         <tbody>${filasHtml}</tbody></table>`; }).join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Registro litros contador ${esc(R.dia)}</title><style>
       @page{size:A4;margin:10mm}body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0}
@@ -2274,7 +2347,7 @@ async function imprimirParte() {
     const total = src.total || src.comps.reduce((a, c) => a + (Number(c.contador) || 0), 0);
     const nf = Math.max(4, comps.length), vacia = '<td></td>'.repeat(11);   // siempre 4 filas como mínimo, todas iguales
     return `<table class="b"><colgroup>${[11, 12, 6, 6, 6, 6, 6, 7, 5, 7, 5, 8, 15].map(w => `<col style="width:${w}%">`).join('')}</colgroup><thead><tr><th class="prov">Proveedor / Ruta</th><th>Cisterna</th><th>T &lt;10ºC</th><th>pH</th><th>ºD</th><th>Visual leche</th><th>Mezcla</th><th>Limpieza cisterna</th><th>Filtro (C/I)</th><th>Nº comp. cisterna</th><th>Dep. nº</th><th>Litros</th><th>Firma</th></tr></thead><tbody>
-      ${comps.map((c, i) => `<tr class="r">${i === 0 ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor)}</b>${!x.otra && (R2() ? rutaR2(x) : rutasTxt(x)) ? `<br><span style="white-space:nowrap">Ruta ${esc(R2() ? rutaR2(x) : rutasTxt(x))}</span>` : ''}<br>Matrícula:<br>${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
+      ${comps.map((c, i) => `<tr class="r">${i === 0 ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor)}</b>${(ve => ve ? `<br><small>Externo${ve.albaran ? ' · albarán ' + esc(ve.albaran) : ''}<br>Albarán: <b>${fmt(Object.values(ve.cart || {}).reduce((a, n) => a + n, 0))} l</b></small>` : '')((R.viajes || []).find(v => v.ext && (x.id === 'Q' + v.id || x.id === v.id)))}${!x.otra && (R2() ? rutaR2(x) : rutasTxt(x)) ? `<br><span style="white-space:nowrap">Ruta ${esc(R2() ? rutaR2(x) : rutasTxt(x))}</span>` : ''}<br>Matrícula:<br>${esc(x.matricula || '')}${x.deca ? '<br><small>DeCA ' + esc(x.deca) + '</small>' : ''}</td>` : ''}
         <td class="cis"><b>${EP[espDe(c)] || esc(c.esp)}</b> ${R2() ? '' : `<small>${esc(c.id)}</small>`}</td><td>${num1(c.temp)}</td><td>${num1(c.ph)}</td><td>${num1(c.dornic)}</td><td>${esc(c.visual || '')}</td>
         <td>${espDe(c) === 'V' ? '' : esc((R.mezclas || {})[x.id + '|' + c.id] || '')}</td><td>${esc(src.limpieza || '')}</td><td>${esc(src.filtro || '')}</td><td>${nComp(c, i)}</td>
         <td>${[...new Set(c.reps.map(r => r.dep))].join(' + ')}</td><td class="n">${fmt(c.contador)}</td>
@@ -2357,6 +2430,8 @@ function lista2() {
   const l = R.camiones.map(t => ({ id: nuevoId(t), r2: true, matricula: t.matricula, conductor: t.conductor, desc: t.desc,
     comps: t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })), cal: null,
     veces: regs.filter(([, r]) => normMat(r.matricula) === normMat(t.matricula)).length }));
+  (R.viajes || []).filter(v => v.ext && !(R.calDia || {})['Q' + v.id]).forEach(v => l.push({ id: 'Q' + v.id, r2: true, otra: true, ext: v.id, matricula: v.matricula, conductor: v.conductor,
+    desc: 'Externo' + (v.albaran ? ' · albarán ' + v.albaran : '') + ' · ' + fmt(Object.values(v.cart || {}).reduce((a, n) => a + n, 0)) + ' l', comps: Array.from({ length: Math.max(1, v.nCompCam || v.comps.length) }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: null, veces: 0 }));
   const cuenta = {};
   regs.forEach(([id, r]) => {   // cada registro guardado, con los compartimentos de su camión (o los que trajo, si es de otro proveedor)
     const t = R.camiones.find(z => normMat(z.matricula) === normMat(r.matricula)), m = normMat(r.matricula) || id;
@@ -2425,7 +2500,9 @@ function edNuevo2(x) {
     return p ? Object.assign({}, p, { id: k.id, n: k.n, nComp: String(k.n), contador: String(p.contador), reps: p.reps.map(r => Object.assign({}, r, { l: String(r.l) })) })
       : { id: k.id, n: k.n, nComp: String(k.n), esp: '', ord: 0, contador: '', temp: '', ph: '', dornic: '', visual: '', reps: [] }; });
   // Litros propuestos: los de la cartilla del viaje de hoy de ese camión (si hay dos viajes, el último), por especie
-  const vj = (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
+  const ve = (R.viajes || []).find(v => v.ext && x.id === 'Q' + v.id);   // camión externo: su albarán hace de cartilla
+  const vj = ve || (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
+  if (ve && !prev) ve.comps.forEach((k, i) => { const c = comps.find(z => String(z.n) === String(k.n)); if (c && !c.esp) { c.esp = k.esp[0]; c.ord = i + 1; } });   // la leche de cada compartimento, la del albarán
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
   return { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };

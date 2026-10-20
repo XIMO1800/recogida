@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 11;
+const API_VERSION = 12;
 
 function doPost(e) {
   try {
@@ -25,7 +25,7 @@ function doPost(e) {
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
       OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad,
-        anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
+        anularRecepcion: anularRecepcion, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
       CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
       RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
@@ -417,7 +417,8 @@ function oficinaViajes(req, c) {
     v.falta = falta;
   });
   lista.sort(function (a, b) { return (fecha(b.fecha) - fecha(a.fecha)) || (String(a.ini) < String(b.ini) ? -1 : 1); });
-  return { ok: true, viajes: lista, hasta: ahora_('dd/MM/yyyy HH:mm') };
+  const fs = []; for (let d = new Date(lim); d <= new Date(); d.setDate(d.getDate() + 1)) fs.push(Utilities.formatDate(d, TZ, 'dd/MM/yyyy'));
+  return { ok: true, viajes: lista, externos: externosDe_(fs), hasta: ahora_('dd/MM/yyyy HH:mm') };
 }
 /** Histórico de viajes para la oficina: todos los de VIAJES entre dos fechas (por defecto, el último año), sin las recogidas
  *  (rápido), con su DeCA. El detalle de uno se pide aparte con oficinaViajes({ids:[id]}). */
@@ -850,6 +851,8 @@ function recepViajes(req, c) {
       nCompCam: k ? (Number(k.N_COMPARTIMENTOS) || Math.max.apply(null, [0].concat(camionObj_(k, compTab).letras.map(function (x) { return x.n; })))) : 0,
       recep: recepObj_(hechas[v.VIAJE_ID], camiones[v.VIAJE_ID]) };
   });
+  // Camiones externos dados de alta por la oficina con su albarán
+  externosDe_(fechas).forEach(function (e) { ids[e.id] = true; salida.push(extViaje_(e, recepObj_(hechas[e.id], camiones[e.id]))); });
   // Entradas sin viaje de la app (cisterna de otro proveedor, agua…) de hoy
   Object.keys(camiones).forEach(function (id) {
     const r = camiones[id]; if (ids[id] || fechas.indexOf(r.FECHA) < 0) return;
@@ -1103,6 +1106,62 @@ function fechaAtrasada_(f, c) {
 /** Anula por completo la recepción de un camión (prueba, error de día, camión equivocado…): borra sus líneas de RECEPCIONES
  *  y RECEPCION_CAMION, lo apunta en CAMBIOS y rehace el fichero del día sin ese camión. Si era un viaje de la app,
  *  vuelve a «Por recibir». */
+/* ───────────── Camiones externos (otro proveedor) con su albarán ─────────────
+ * La oficina los da de alta en Recogidas con los litros del albarán por compartimento. Salen ese día en Contadores
+ * (id X…: el fichero los junta por especie, VC/VV/VO/VD) y en Recepción (registro de calidad 'Q' + id), y el albarán hace
+ * de «cartilla» para la diferencia con el contador. */
+const CAB_EXT = ['ID', 'FECHA', 'HORA', 'PROVEEDOR', 'MATRICULA', 'N_COMP', 'ALBARAN', 'COMPARTIMENTOS', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
+function hojaExt_() { const sh = hoja_('EXTERNOS', CAB_EXT); return sh; }
+/** COMPARTIMENTOS: «1:C:8000|2:C:7900|3:C:8100» (nº : especie : litros del albarán) */
+function extObj_(r) {
+  const comps = String(r.COMPARTIMENTOS || '').split('|').filter(String).map(function (t) { const q = t.split(':'); return { n: Number(q[0]) || 0, esp: String(q[1] || '').toUpperCase(), l: numES_(q[2]) }; })
+    .filter(function (k) { return 'DOVC'.indexOf(k.esp) >= 0 && k.esp; });
+  const cart = {}; comps.forEach(function (k) { cart[k.esp] = (cart[k.esp] || 0) + k.l; });
+  return { id: String(r.ID), fecha: String(r.FECHA), hora: String(r.HORA || ''), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), nComp: Number(r.N_COMP) || comps.length,
+    albaran: String(r.ALBARAN || ''), comps: comps, cart: cart, obs: String(r.OBSERVACIONES || ''), usuario: String(r.USUARIO || '') };
+}
+function externosDe_(fechas) { if (!SS.getSheetByName('EXTERNOS')) return []; return tabla_('EXTERNOS').filas.filter(function (r) { return fechas.indexOf(String(r.FECHA)) >= 0; }).map(extObj_); }
+/** Como un viaje del día, para Contadores y Recepción: un compartimento por fila (VC, o VC1/VC2… si se repite especie) */
+function extViaje_(e, recep) {
+  const cuenta = {}, total = {}; e.comps.forEach(function (k) { total[k.esp] = (total[k.esp] || 0) + 1; });
+  const comps = e.comps.map(function (k) { cuenta[k.esp] = (cuenta[k.esp] || 0) + 1; return { id: 'V' + k.esp + (total[k.esp] > 1 ? cuenta[k.esp] : ''), n: k.n, esp: [k.esp], cap: 0, decl: Math.round(k.l) }; });
+  return { id: e.id, fecha: e.fecha, deca: '', matricula: e.mat, conductor: e.prov, rutas: '', ruta: '', estado: 'EXTERNO', ini: e.hora, fin: '', comps: comps, cart: e.cart,
+    nCompCam: e.nComp, otra: true, ext: true, albaran: e.albaran, recep: recep };
+}
+function guardarExterno(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const e = req.ext || {}, prov = String(e.prov || '').trim();
+    if (!prov) throw new Error('Pon el proveedor.');
+    const fecha = /^\d{2}\/\d{2}\/\d{4}$/.test(String(e.fecha || '')) ? String(e.fecha) : ahora_('dd/MM/yyyy');
+    const comps = (e.comps || []).map(function (k, i) { return { n: Number(k.n) || i + 1, esp: String(k.esp || '').toUpperCase(), l: Math.round(Number(k.l) || 0) }; }).filter(function (k) { return 'DOVC'.indexOf(k.esp) >= 0 && k.esp; });
+    if (!comps.length) throw new Error('Pon la leche de al menos un compartimento.');
+    if (!comps.some(function (k) { return k.l > 0; })) throw new Error('Pon los litros del albarán.');
+    const sh = hojaExt_(), t = tabla_('EXTERNOS'), ya = e.id ? t.filas.filter(function (r) { return String(r.ID) === String(e.id); })[0] : null;
+    const id = ya ? String(ya.ID) : 'XE' + fecha.slice(8, 10) + fecha.slice(3, 5) + fecha.slice(0, 2) + '-' + Date.now().toString(36).toUpperCase().slice(-5);
+    const o = { ID: id, FECHA: fecha, HORA: ya ? String(ya.HORA) : ahora_('HH:mm'), PROVEEDOR: prov, MATRICULA: String(e.mat || '').trim().toUpperCase(), N_COMP: Math.max(Number(e.nComp) || 0, comps.length),
+      ALBARAN: String(e.albaran || '').trim(), COMPARTIMENTOS: comps.map(function (k) { return k.n + ':' + k.esp + ':' + k.l; }).join('|'), OBSERVACIONES: String(e.obs || '').trim(),
+      USUARIO: String(c.NOMBRE), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
+    if (ya) actualizar_('EXTERNOS', ya._fila, o);
+    else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
+    return { ok: true, ext: extObj_(o) };
+  } finally { lock.releaseLock(); }
+}
+function borrarExterno(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const id = String(req.id || ''); hojaExt_();
+    const ya = tabla_('EXTERNOS').filas.filter(function (r) { return String(r.ID) === id; })[0];
+    if (!ya) throw new Error('Ese camión externo ya no está.');
+    if (buscar_('RECEPCION_CAMION', 'VIAJE_ID', id)) throw new Error('Ya está en Contadores: sácalo de la hoja de contadores (o anula su recepción) antes de borrarlo.');
+    if (SS.getSheetByName('RECEPCION_CALIDAD') && tabla_('RECEPCION_CALIDAD').filas.some(function (r) { return String(r.VIAJE_ID) === 'Q' + id; })) throw new Error('Ya tiene registro de calidad: elimínalo antes en Recepción.');
+    SS.getSheetByName('EXTERNOS').deleteRow(ya._fila);
+    const shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
+    shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), id, '', String(ya.FECHA), '', String(ya.PROVEEDOR || '') + ' ' + String(ya.MATRICULA || ''),
+      'CAMIÓN EXTERNO BORRADO', 'albarán ' + String(ya.ALBARAN || '') + ' · ' + String(ya.COMPARTIMENTOS || ''), 'BORRADO', String(req.motivo || '')]]);
+    return { ok: true };
+  } finally { lock.releaseLock(); }
+}
 /** Eliminar entero un registro de CALIDAD guardado por error (p. ej. un «segundo viaje» que no existió): sus filas, su firma y
  *  sus marcas de mezcla. No toca el fichero del programa (eso sale de Contadores). Queda apuntado en CAMBIOS con el motivo.
  *  Un día pasado solo lo puede eliminar la oficina. */

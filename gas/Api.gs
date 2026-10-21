@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 18;
+const API_VERSION = 19;
 
 function doPost(e) {
   try {
@@ -762,7 +762,7 @@ const CAB_AGUA = ['FECHA', 'CODIGO', 'DEPOSITO', 'LITROS', 'DESDE_VIAJE', 'USUAR
 const CAB_RCAL = ['FECHA', 'HORA', 'VIAJE_ID', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'ORDEN', 'ID', 'ESPECIE', 'N_COMP_CISTERNA', 'LITROS', 'DEPOSITOS',
   'TEMPERATURA', 'PH', 'DORNIC', 'VISUAL', 'LIMPIEZA_CISTERNA', 'LIMPIEZA_FILTRO', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
 const CAB_MEZCLA = ['FECHA', 'VIAJE_ID', 'COMPARTIMENTO', 'MEZCLA', 'USUARIO', 'HORA'];
-const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO', 'CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'];
+const CAB_PARTE = ['FECHA', 'OBSERVACIONES', 'OBS_USUARIO', 'VERIFICADO_POR', 'HORA_VERIFICACION', 'CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO', 'CONTADORES_ENVIO_POR', 'CONTADORES_SELLO', 'RESTOS'];
 const CAB_VENTA = ['ID', 'FECHA', 'HORA', 'DEPOSITO', 'ESPECIE', 'LITROS', 'CLIENTE', 'USUARIO'];
 const CAB_RECEP_CAM = ['VIAJE_ID', 'FECHA', 'HORA', 'DECA_NUM', 'MATRICULA', 'CONDUCTOR', 'RUTA', 'TOTAL_CONTADOR', 'SUMA_PARCIALES', 'DIFERENCIA',
   'LIMPIEZA_CISTERNA', 'FILTRO', 'OBSERVACIONES', 'USUARIO', 'FICHERO', 'LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'];
@@ -938,7 +938,7 @@ function recepViajes(req, c) {
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
   return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, camionesExt: camionesExt_(), viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
-    mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || ''), envioPor: String(pd.CONTADORES_ENVIO_POR || ''), sello: String(pd.CONTADORES_SELLO || '') },
+    mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || ''), envioPor: String(pd.CONTADORES_ENVIO_POR || ''), sello: String(pd.CONTADORES_SELLO || ''), restos: restos_(pd.RESTOS) },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
     aguaHoy: tabla_('AGUA').filas.filter(function (r) { return r.FECHA === fechas[0]; })
@@ -1085,6 +1085,10 @@ function guardarParte(req, c) {
     hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'], 'HORA_VERIFICACION'); columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO');
     const hora = ahora_('dd/MM/yyyy HH:mm');
     const sello = 'S' + Date.now(), env = { CONTADORES_ENVIO: hora, CONTADORES_ENVIO_POR: String(c.NOMBRE), CONTADORES_SELLO: sello };
+    // Restos del día anterior en los depósitos (solo para Contadores: no van al fichero del programa ni a la recepción)
+    if (Array.isArray(req.restos)) { columnas_('PARTE_DIA', ['RESTOS'], 'CONTADORES_SELLO');
+      env.RESTOS = req.restos.filter(function (z) { return String(z.dep || '').trim() && Math.round(Number(z.l) || 0) > 0; })
+        .map(function (z) { return [String(z.dep).trim(), Math.round(Number(z.l)), String(z.esp || '').replace(/[^CVDO]/g, '')].join(':'); }).join('|'); }
     parteDia_(fecha, cerrar ? Object.assign({ CONTADORES_POR: String(c.NOMBRE), CONTADORES_HORA: hora }, env) : env);
     exportarDia_(fecha);
     return { ok: true, fichero: nombre, fecha: fecha, camiones: cams.length, quitados: fuera.length, por: String(c.NOMBRE), hora: hora, cerrado: cerrar, sello: sello };
@@ -1817,6 +1821,10 @@ function puente_(p) {
     }
     return txt('ERROR;tipo no válido');
   } catch (err) { return txt('ERROR;' + (err && err.message || err)); }
+}
+/** «4:3760:V|3:200:O» → [{dep, l, esp}] */
+function restos_(t) {
+  return String(t || '').split('|').filter(String).map(function (z) { const p = z.split(':'); return { dep: p[0], l: Number(p[1]) || 0, esp: p[2] || '' }; }).filter(function (z) { return z.dep && z.l > 0; });
 }
 function hojaPuente_() { return hoja_('PUENTE', CAB_PUENTE); }
 /** Ficheros R/D de la carpeta de exportación tocados en los últimos 45 días, con su versión (fecha de modificación). */

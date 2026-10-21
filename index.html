@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=179">
+<link rel="manifest" href="manifest.json?v=180">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -175,7 +175,7 @@ table.hist td .tank{display:inline-block;margin-bottom:3px}
 .c2td{width:34%}.c2deps{display:flex;gap:3px}.c2deps button{flex:1;min-width:0;min-height:40px;border-radius:9px;border:2px solid var(--line);background:#fff;font-weight:800;font-size:17px;font-family:var(--mono)}
 .c2deps button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}.c2deps button:disabled{opacity:.3}.c2tx{width:1%;text-align:right}.c2ta{width:1%;text-align:center}.c2mas{width:30px;height:34px;border-radius:9px;border:1.5px dashed rgba(0,0,0,.18);background:transparent;font-size:22px;font-weight:700;line-height:1;padding:0;color:var(--muted);cursor:pointer}
 .c2otra{display:flex;flex-direction:column;gap:8px}.c2otra input{font:inherit;font-size:18px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.c2otra .c2es{display:flex;gap:6px;flex-wrap:wrap}.c2otra .c2es button{min-width:64px}.c2sel{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:34px}
-.c2ht{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}.c2ht .unit{width:180px}.c2ht input{width:100%;font-size:22px;font-weight:700;padding:3px 28px 3px 8px;text-align:right;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2ht .unit span{right:9px;top:auto;bottom:8px;transform:none;font-size:12px;line-height:1}.c2cuad{min-height:18px;text-transform:none;letter-spacing:0;font-size:15px!important;font-weight:700}.c2acc{display:flex;gap:4px;align-items:center}.c2acc .lnk{padding:4px 8px;min-height:34px;white-space:nowrap}
+.c2ht{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px}.c2ht .unit{width:180px}.c2rdl .unit{width:170px;flex:0 0 170px;min-width:0}.c2rdl input{width:100%;font-size:22px;font-weight:700;padding:3px 28px 3px 8px;text-align:right;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2rdl .unit span{right:9px;top:auto;bottom:8px;transform:none;font-size:12px;line-height:1}.c2rst{font-size:13px}.c2resto{display:grid;grid-template-columns:auto minmax(0,300px) 170px 1fr auto;gap:8px;align-items:center}.c2resto .unit{width:170px;min-width:0}.c2resto input{width:100%;font-size:22px;font-weight:700;padding:3px 28px 3px 8px;text-align:right;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2resto .unit span{right:9px;top:auto;bottom:8px;transform:none;font-size:12px;line-height:1}.c2resto .esps{display:flex;gap:4px;flex-wrap:wrap}.c2resto .c2chip{font-size:14px;padding:6px 10px}@media(max-width:760px){.c2resto{grid-template-columns:1fr auto}.c2resto .c2deps,.c2resto .esps{grid-column:1/-1}}.c2ht input{width:100%;font-size:22px;font-weight:700;padding:3px 28px 3px 8px;text-align:right;border:1.5px solid var(--line);border-radius:10px;font-family:var(--display);background:var(--surface);color:var(--ink)}.c2ht .unit span{right:9px;top:auto;bottom:8px;transform:none;font-size:12px;line-height:1}.c2cuad{min-height:18px;text-transform:none;letter-spacing:0;font-size:15px!important;font-weight:700}.c2acc{display:flex;gap:4px;align-items:center}.c2acc .lnk{padding:4px 8px;min-height:34px;white-space:nowrap}
 
 .sep-blq{height:6px;background:var(--brand);border-radius:3px;margin:14px 0 4px}.lbl.blq{color:var(--brand);font-size:14px;letter-spacing:.08em}
 .plit{cursor:pointer;border-bottom:2px dotted currentColor;padding:2px 4px;border-radius:6px}.plit.on{background:rgba(0,0,0,.08);border-bottom-style:solid}
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v179 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v180 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1728,7 +1728,7 @@ async function c2Auto() {
   if (C2.enviando) return c2Programar(5000);
   const P = C2.pt(); if (!P.editable || P.hAuto === C2.st.envH || (R.parte || {}).cerradoPor) { C2.pend = false; return; }   // cerrado: los cambios solo se mandan al volver a cerrar
   C2.enviando = true;
-  try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua, base: C2.st.base || '' });
+  try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: P.completos, mantener: P.mantener, agua: P.agua, restos: P.restos, base: C2.st.base || '' });
     C2.st.base = r.sello || C2.st.base || ''; C2.conf = null;
     const prev = C2.st.envIds || []; C2.st.envIds = P.completos.map(z => z.viajeId).concat(P.mantener.filter(id => prev.includes(id) || (R.viajes.find(z => z.id === id) || {}).recep));
     C2.st.envH = P.hAuto; C2.st.envHora = String(r.hora).slice(-5); C2.st.envN = C2.st.envIds.length; C2.err = ''; C2.pend = false;
@@ -1756,6 +1756,7 @@ function contadores2(v, u) {
     [...new Set(R.agua.map(a => a.cod))].sort().forEach(cod => { const id = 'AG' + cod; st.ag[id] = { manual: true, l: {}, deSrv: 1 }; st.srv = 1; R.agua.filter(a => a.cod === cod).forEach(a => { st.ag[id].l[a.dep] = String(a.l); });
       if (cod === 'AG1' && a2 && st.orden.includes(a2)) st.orden.splice(st.orden.indexOf(a2), 0, id); else st.orden.push(id); }); }
   st.agLeida = 1;
+  if (!Array.isArray(st.restos)) st.restos = ((R.parte || {}).restos || []).map(z => ({ dep: String(z.dep), l: String(z.l), esp: z.esp || '' }));
   if (st.cola) { st.cola.forEach(id => { if (!st.orden.includes(id)) st.orden.push(id); }); delete st.cola; }   // lo que se tenía a medias aquí, detrás
   st.orden = st.orden.filter(id => esAg(id) || todos.some(x => x.id === id)); c2Escribir();
   const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra);
@@ -1863,12 +1864,14 @@ function contadores2(v, u) {
     const hoyF = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }), quedan = R.viajes.filter(x => !x.otra && !st.orden.includes(x.id) && x.fecha === R.dia);
     if (quedan.length && R.dia === hoyF) avisos.push(`Quedan camiones de hoy sin pasar a la hoja: ${quedan.map(x => x.conductor).join(', ')}.`);
     if (!ags.length && camiones.length) avisos.push('No has puesto el agua de arrastre.');
-    const huella = JSON.stringify([camiones.map(r => [r.viajeId, r.total, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), agua.map(a => [a.cod, a.dep, a.l])]);
-    const hAuto = JSON.stringify([completos.map(r => [r.viajeId, r.total, r.hora, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), mantener, agua.map(a => [a.cod, a.dep, a.l])]);
+    const restos = (st.restos || []).filter(z => z.dep && Math.round(num(z.l) || 0) > 0).map(z => ({ dep: String(z.dep), l: Math.round(num(z.l)), esp: z.esp || '' })), hr = restos.length ? [restos.map(z => [z.dep, z.l, z.esp])] : [];
+    if ((st.restos || []).some(z => Math.round(num(z.l) || 0) > 0 && !z.dep)) err.push('Hay un resto del día anterior sin depósito.');
+    const huella = JSON.stringify([camiones.map(r => [r.viajeId, r.total, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), agua.map(a => [a.cod, a.dep, a.l])].concat(hr));
+    const hAuto = JSON.stringify([completos.map(r => [r.viajeId, r.total, r.hora, r.comps.map(c => [c.id, c.reps.map(p => [p.dep, p.l, p.tipo])])]), mantener, agua.map(a => [a.cod, a.dep, a.l])].concat(hr));
     if (st.srv && (R.parte || {}).cerradoPor && !st.ok) st.ok = huella;   // lo que hay es lo que vino de la hoja: ya está enviado
     if (st.srv && !st.envH) { st.envH = hAuto; st.envHora = String((R.parte || {}).envio || (R.parte || {}).horaCierre || '').slice(-5); st.envIds = completos.map(z => z.viajeId).concat(mantener.filter(id => (todos.find(z => z.id === id) || {}).recep)); st.envN = st.envIds.length; }
     st.srv = 0;
-    PT = { camiones, agua, err, avisos, huella, completos, mantener, aMedias, hAuto, editable }; return PT; };
+    PT = { camiones, agua, restos, err, avisos, huella, completos, mantener, aMedias, hAuto, editable }; return PT; };
   C2.pt = pt;
   const estCorto = () => { const pp = R.parte || {}, al = PT.hAuto === st.envH;
     if (pp.cerradoPor && !al) return `● cambios sin guardar · cerrado ${String(pp.horaCierre).slice(-5)}`;
@@ -1895,9 +1898,10 @@ function contadores2(v, u) {
     st.orden.filter(id => !esAg(id)).forEach(id => { const x = todos.find(z => z.id === id); if (!x) return; filas(x).forEach(f => { const r = (st.t[id] || { f: {} }).f[f.id]; if (!r || !r.ord) return;
       [[r.dep, r.l]].concat(c2Arrs(r).map(z => [z.dep, z.l])).forEach(([d, l]) => { const n = Math.round(num(l) || 0); if (!k[d] || !n) return; k[d].l += n; if (!k[d].esps.includes(f.esp)) k[d].esps.push(f.esp); }); }); });
     st.orden.filter(esAg).forEach(id => Object.entries((AV[id] || { vals: {} }).vals).forEach(([d, l]) => { if (k[d]) k[d].agua += l; }));
+    (st.restos || []).forEach(z => { const n = Math.round(num(z.l) || 0); if (!k[z.dep] || !n) return; k[z.dep].resto = (k[z.dep].resto || 0) + n; });
     const tipo = es => !es.length ? '' : es.every(e => e === 'D') ? 'Oveja D.O.' : es.every(e => e === 'D' || e === 'O') ? 'Oveja' : es.length === 1 ? (ESPS[es[0]] || es[0]) : 'Mezcla';
-    return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card${C2.depSel === d.id ? ' c2dsel' : ''}" data-c2dp="${esc(d.id)}" style="cursor:pointer"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l + z.agua)}</b>
-      <small>${tipo(z.esps) ? '<b>' + esc(tipo(z.esps)) + '</b>' : '<span class="muted">—</span>'}${z.agua ? ` <span class="muted">· agua ${fmt(z.agua)}</span>` : ''}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(z.esps)}</div>`; }).join(''); };
+    return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card${C2.depSel === d.id ? ' c2dsel' : ''}" data-c2dp="${esc(d.id)}" style="cursor:pointer"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l + z.agua + (z.resto || 0))}</b>
+      <small>${tipo(z.esps) ? '<b>' + esc(tipo(z.esps)) + '</b>' : '<span class="muted">—</span>'}${z.agua ? ` <span class="muted">· agua ${fmt(z.agua)}</span>` : ''}</small>${z.resto ? `<small class="c2rst">Resto <b>${fmt(z.resto)}</b> + hoy <b>${fmt(z.l + z.agua)}</b></small>` : ''}<small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(z.esps)}</div>`; }).join(''); };
   // Tocar un depósito: lo que ha entrado en él según la hoja, en orden (cada cisterna, sus arrastres y el agua)
   const depDet = dep => { const it = []; let nA2 = 0;
     st.orden.forEach(id => { if (esAg(id)) { nA2++; const l = (AV[id] || { vals: {} }).vals[dep] || 0; if (l) it.push({ c: `<span class="tank">AG${nA2}</span> <b>Agua de arrastre</b>`, q: '', l }); return; }
@@ -1905,9 +1909,11 @@ function contadores2(v, u) {
       filas(x).map(f => Object.assign(f, { r: t.f[f.id] })).filter(f => f.r && f.r.ord).sort((a, c) => a.r.ord - c.r.ord).forEach(f => { const r = f.r, quien = `${esc(t.hora || '')} · ${esc(x.conductor)}`;
         if (String(r.dep) === String(dep) && num(r.l) > 0) it.push({ c: `${tqc(f.id)} <b>${esc(ESPS[f.esp] || f.esp)}</b>`, q: quien, l: Math.round(num(r.l)), e: f.esp });
         c2Arrs(r).forEach(z => { if (String(z.dep) === String(dep) && num(z.l) > 0) it.push({ c: `${tqc(f.id)} <b>${esc(ESPS[f.esp] || f.esp)}</b> <span class="muted">· arrastre ${z.pos === 'ant' ? 'por delante' : 'por detrás'}</span>`, q: quien, l: Math.round(num(z.l)), e: f.esp }); }); }); });
-    const tot = it.reduce((a, z) => a + z.l, 0);
-    return `<div class="card stack c2det"><div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:20px">Depósito ${esc(dep)} · ${fmt(tot)} l</b><button class="lnk" id="c2detX" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ cerrar</button></div>
-      <p class="small muted" style="margin:0">Lo que ha entrado ${R.esHoy === false ? 'ese día' : 'hoy'} según la hoja, en orden. No incluye lo que ya hubiera en el depósito.</p>
+    const tot = it.reduce((a, z) => a + z.l, 0), rst = (st.restos || []).filter(z => String(z.dep) === String(dep)).reduce((a, z) => a + Math.round(num(z.l) || 0), 0);
+    return `<div class="card stack c2det"><div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:20px">Depósito ${esc(dep)} · ${rst ? `resto ${fmt(rst)} + hoy ${fmt(tot)} = ${fmt(rst + tot)} l` : fmt(tot) + ' l'}</b><button class="lnk" id="c2detX" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ cerrar</button></div>
+      ${editable ? `<div class="row c2rdl" style="gap:10px;align-items:center;flex-wrap:wrap"><b>Resto del día anterior</b><div class="unit"><input inputmode="numeric" enterkeyhint="done" data-c2rdl="${esc(dep)}" value="${rst || ''}" placeholder="0"><span>L</span></div><span class="small muted">Leche que quedó sin fabricar. Se suma arriba en la tarjeta del depósito; no va a recepción ni al programa.</span></div>`
+        : rst ? `<p style="margin:0"><b>Resto del día anterior: ${fmt(rst)} l</b></p>` : ''}
+      <p class="small muted" style="margin:0">Lo que ha entrado ${R.esHoy === false ? 'ese día' : 'hoy'} según la hoja, en orden.</p>
       ${it.length ? `<div class="c2dl">${it.map(z => `<div class="c2di ${z.e ? bgEsp(z.e) : ''}"><span>${z.c}${z.q ? `<br><span class="small muted">${z.q}</span>` : ''}</span><b class="num">${fmt(z.l)}</b></div>`).join('')}</div>` : '<p class="muted" style="margin:0">Todavía no ha entrado nada.</p>'}</div>`; };
   v.innerHTML = `${C2.conf ? `<div class="msg bad stack" style="gap:8px"><b>⚠ ${esc(C2.conf.por || 'Otro aparato')} ha enviado el parte${C2.conf.hora ? ' a las ' + esc(C2.conf.hora) : ''}, después de lo que tienes aquí.</b><span>Lo de aquí no se ha enviado, para no machacar lo suyo. Elige:</span><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="c2confHoja" style="width:auto;min-height:42px;padding:4px 16px">Coger lo de la hoja (lo último enviado)</button><button class="btn ghost" id="c2confMio" style="width:auto;min-height:42px;padding:4px 16px">Mandar lo de aquí (sustituye lo suyo)</button></div></div>` : ''}${R.esHoy === false ? `<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="c2hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button>${editable ? '' : '<span class="small muted">Solo lectura: los días anteriores solo los cambia oficina.</span>'}</div>` : ''}<div class="card stack"><span class="lbl">Depósitos de leche · toca uno para ver qué ha entrado</span><div class="tally" id="c2deps">${depsHtml()}</div></div>${C2.depSel ? depDet(C2.depSel) : ''}
     ${hoja}
@@ -1927,6 +1933,10 @@ function contadores2(v, u) {
       : '<button class="btn ghost" id="c2otra" style="margin-top:8px">+ Otra entrada (camión de fuera)</button>'}`;
   if (C2.solo) v.innerHTML = `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" id="c2entera" style="width:auto;min-height:40px;padding:4px 16px">Ver la hoja entera del ${esc(R.dia)}</button>
       ${R.esHoy === false ? '<button class="btn ghost" id="c2hoy" style="width:auto;min-height:40px;padding:4px 14px">Ir a hoy</button>' : ''}${editable ? '' : '<span class="small muted">Solo lectura.</span>'}</div>${bloques.find(z => z[0] === C2.solo)[1]}`;
+  // resto del día anterior, en el detalle del depósito: al escribir se actualizan las tarjetas de arriba
+  v.querySelectorAll('[data-c2rdl]').forEach(inp => { inp.oninput = () => { const d = inp.dataset.c2rdl, n = inp.value.replace(/\D/g, '');
+    st.restos = (st.restos || []).filter(z => String(z.dep) !== d); if (+n > 0) st.restos.push({ dep: d, l: n, esp: '' }); c2Escribir();
+    const dd = $('#c2deps'); if (dd) { dd.innerHTML = depsHtml(); enlDeps(); } }; });
   const enlDeps = () => v.querySelectorAll('[data-c2dp]').forEach(b => b.onclick = () => { C2.depSel = C2.depSel === b.dataset.c2dp ? null : b.dataset.c2dp; contadores2(v, u); });
   enlDeps(); if ($('#c2detX')) $('#c2detX').onclick = () => { C2.depSel = null; contadores2(v, u); };
   if ($('#c2entera')) $('#c2entera').onclick = () => { C2.solo = null; contadores2(v, u); scrollTo(0, 0); };
@@ -2015,7 +2025,7 @@ function contadores2(v, u) {
     if (PT.avisos.length && b.dataset.ok !== PT.huella) { b.dataset.ok = PT.huella; return msg(PT.avisos.map(esc).join('<br>') + '<br><b>Revisa; si está bien, pulsa otra vez.</b>', 'warn'); }
     ocupado(b, 'Enviando…');
     clearTimeout(C2.tA);
-    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua, cerrar: true, base: st.base || '' });
+    try { const r = await api('guardarParte', { fecha: R.esHoy ? '' : R.dia, camiones: PT.camiones, agua: PT.agua, restos: PT.restos, cerrar: true, base: st.base || '' });
       st.base = r.sello || st.base || ''; C2.conf = null;
       st.ok = PT.huella; st.envH = PT.hAuto; st.envHora = String(r.hora).slice(-5); st.envIds = PT.camiones.map(z => z.viajeId); st.envN = PT.camiones.length; st.fuera = []; C2.err = ''; c2Escribir(); C2.pend = false; clearTimeout(C2.tA);
       toast(`Parte cerrado · ${r.camiones} ${r.camiones > 1 ? 'camiones' : 'camión'} · fichero ${r.fichero}`); recepcion(); }

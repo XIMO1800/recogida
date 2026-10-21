@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=170">
+<link rel="manifest" href="manifest.json?v=171">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v170 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v171 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1202,7 +1202,7 @@ function marcoEsc() {
   { const g = grupos.find(([, it]) => it.some(([k, , , vs]) => vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')))); $('#hZ').textContent = g ? g[0] : ''; }
   { const h = $('.top'); if (h && h.offsetHeight) $('#side').style.setProperty('--hdrH', h.offsetHeight + 'px'); }
   const ir = { rec: () => oficina(), histo: () => historico(), recep: () => { R.modo = ''; R.ed = null; recepcion(); }, c2: () => { R.modo = 'c2'; R.ed = null; R.fecha = ''; C2.solo = null; recepcion(); },
-    recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), ext: () => { U.ofiSel = null; U.extNuevo = null; externosVista(); }, agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
+    recep2: () => { R.modo = 'esp'; R.ed = null; recepcion(); }, histo2: () => historico2(true), histo3: () => historico3(true), ext: () => { U.extCam = null; U.extAlb = null; externosVista(true); }, agua: async () => { if (!R.viajes) await recepcion(); U.ag = null; recepAgua(); } };
   $('#side').querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); ir[b.dataset.nav](); });
   $('#sideAct').onclick = () => { if (!salirSinGuardar()) return; cerrarDrawer(); if (/^vOfi/.test(U.view)) return oficina(); if (U.view === 'vHisto') return historico(true); if (U.view === 'vHisto2') return historico2(true); if (U.view === 'vHisto3') return historico3(true); if (U.view === 'vAgua') return ir.agua(); recepcion(); };
   $('#sideSalir').onclick = salir;
@@ -1242,78 +1242,97 @@ function ofiEsc(v) {
 /* CAMIÓN EXTERNO (otro proveedor) con su albarán: la oficina lo da de alta aquí y sale ese día en Contadores y en Recepción */
 const EXT_ESP = { D: 'Oveja D.O.', O: 'Oveja', V: 'Vaca', C: 'Cabra' };
 const extTot = e => (e.comps || []).reduce((a, k) => a + (+k.l || 0), 0);
-function extLista(sel) {
-  const l = (O.externos || []).slice().sort((a, b) => esAiso(b.fecha) + b.hora < esAiso(a.fecha) + a.hora ? -1 : 1);
-  if (!l.length) return '';
-  return `<div class="dia">Camiones externos</div>${l.map(e => `<button class="vrow${sel === e.id ? ' on' : ''}" data-ext2="${esc(e.id)}"><span><b>${esc(e.prov)}</b>
-      <small>${esc(e.fecha.slice(0, 5))}${e.mat ? ' · <span class="mono">' + esc(e.mat) + '</span>' : ''}${e.albaran ? ' · albarán ' + esc(e.albaran) : ''} · ${[...new Set(e.comps.map(k => EXT_ESP[k.esp]))].join(', ')}</small></span>
-    <span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}`;
-}
-function extDatos(id) {
-  if (U.extNuevo && U.extNuevo.id === id) return U.extNuevo;
-  const e = (O.externos || []).find(z => z.id === id);
-  const hoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  U.extNuevo = e ? { id: e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, esp: (e.comps.find(k => k.esp) || {}).esp || '', l: String(extTot(e) || '') }
-    : { id, nuevo: true, fecha: hoy, prov: '', mat: '', albaran: '', obs: '', esp: '', l: '' };
-  return U.extNuevo;
-}
-function extFicha(id) {
-  const e = extDatos(id);
-  return `<div class="card stack" id="extF"><h2 style="margin:0">${e.nuevo ? 'Camión externo nuevo' : 'Camión externo · ' + esc(e.prov)}</h2>
-    <p class="small muted" style="margin:0">Los litros del albarán del proveedor. Ese día el camión sale en <b>Contadores</b> y en <b>Recepción</b> como uno más, y el albarán hace de «cartilla»: en el papel sale la diferencia con el contador. Si ya lo metieron como «otra entrada», se enlaza solo si el proveedor (o la matrícula) es el mismo.</p>
-    <div class="row" style="gap:10px;flex-wrap:wrap">
-      <div class="field" style="flex:1 1 140px"><label class="lbl">Fecha</label><input class="sm" type="date" id="extFe" value="${esc(esAiso(e.fecha))}"></div>
-      <div class="field" style="flex:3 1 220px"><label class="lbl">Proveedor</label><input class="sm" id="extPr" value="${esc(e.prov)}" placeholder="Ej.: Agrupación Ganadera San Blas"></div></div>
-    <div class="row" style="gap:10px;flex-wrap:wrap">
-      <div class="field" style="flex:1 1 140px"><label class="lbl">Matrícula</label><input class="sm" id="extMa" value="${esc(e.mat)}" placeholder="1234-ABC"></div>
-      <div class="field" style="flex:1 1 140px"><label class="lbl">Nº de albarán</label><input class="sm" id="extAl" value="${esc(e.albaran)}"></div></div>
-    <div class="row" style="gap:14px;align-items:flex-end;flex-wrap:wrap">
-      <div class="field" style="flex:2 1 300px"><label class="lbl">Leche</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${e.esp === sp ? 'on' : ''}" data-exte="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
-      <div class="field" style="flex:1 1 200px"><label class="lbl">Total litros del albarán</label><div class="unit" style="position:relative"><input inputmode="numeric" id="extL" value="${esc(e.l || '')}" placeholder="0" style="width:100%;font-size:24px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div></div>
-    <div class="field"><label class="lbl">Observaciones</label><input class="sm" id="extOb" value="${esc(e.obs)}"></div>
-    <div id="extMsg" hidden></div>
-    <button class="btn" id="extOk">${e.nuevo ? 'Dar de alta el camión externo' : 'Guardar cambios'}</button>
-    ${e.nuevo ? '' : '<button class="btn ghost" id="extBo" style="color:var(--bad);border-color:var(--bad)">Borrar este camión externo</button>'}
-    <button class="btn sec" id="extVo">Volver</button></div>`;
-}
-function extEnlazar(id, repinta, volver) {
-  const e = extDatos(id), m = $('#extMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
-  const lee = () => { e.fecha = (() => { const d = $('#extFe').value; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : e.fecha; })(); e.prov = $('#extPr').value; e.mat = $('#extMa').value; e.albaran = $('#extAl').value; e.obs = $('#extOb').value; e.l = $('#extL').value.replace(/\D/g, ''); };
-  $('#extF').querySelectorAll('[data-exte]').forEach(b => b.onclick = () => { lee(); e.esp = b.dataset.exte; repinta(); });
-  $('#extL').oninput = () => { e.l = $('#extL').value.replace(/\D/g, ''); };
-  $('#extVo').onclick = () => { U.extNuevo = null; volver ? volver() : (U.ofiSel = null, repinta()); };
-  $('#extOk').onclick = async () => { lee(); const b = $('#extOk');
-    if (!e.prov.trim()) return err('Pon el proveedor.');
-    if (!e.esp) return err('Elige la leche.');
-    if (!(+e.l > 0)) return err('Pon el total de litros del albarán.');
-    ocupado(b, 'Guardando…');
-    try { const r = await api('guardarExterno', { ext: { id: e.nuevo ? '' : e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, nComp: 4, comps: [{ n: 1, esp: e.esp, l: +e.l || 0 }] } });
-      O.externos = (O.externos || []).filter(z => z.id !== r.ext.id).concat([r.ext]); U.extNuevo = null;
-      const en = r.enlazado || {}; if (en.error) setTimeout(() => toast('Guardado, pero no se ha podido enlazar con lo ya metido: ' + en.error), 2500); toast((e.nuevo ? 'Camión externo dado de alta' : 'Guardado') + (en.contadores || en.calidad ? ' · enlazado con lo ya metido en ' + [en.contadores ? 'Contadores' : '', en.calidad ? 'Recepción' : ''].filter(Boolean).join(' y ') : ''));
-      if (U.ofiSel) U.ofiSel = 'EXT:' + r.ext.id; volver ? volver() : repinta(); }
-    catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
-  if ($('#extBo')) $('#extBo').onclick = async () => { const b = $('#extBo'); if (!confirm2(b)) return; ocupado(b, 'Borrando…');
-    try { await api('borrarExterno', { id: e.id, motivo: 'borrado desde Recogidas' }); O.externos = (O.externos || []).filter(z => z.id !== e.id); U.extNuevo = null; U.ofiSel = null; toast('Borrado'); volver ? volver() : repinta(); }
-    catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha borrado.' : x.message); } };
-}
+const hoyES = () => new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const entIn = (id, val, ph, extra) => `<input class="sm" id="${id}" value="${esc(val || '')}" placeholder="${esc(ph || '')}" ${extra || ''}>`;
+/* CAMIONES EXTERNOS (oficina): la lista fija de camiones de otros proveedores y, dentro de cada uno, sus albaranes */
 async function externosVista(recargar) {
   const v = $('#vExt'), u = D().usuario;
-  if (recargar !== false && (!O.externos || recargar)) { v.innerHTML = '<div class="card"><p class="muted">Cargando…</p></div>'; show('vExt', 'Camiones externos', u.nombre);
-    try { const r = await api('oficinaViajes', { dias: 15 }); O.viajes = r.viajes; O.externos = r.externos || []; O.hasta = r.hasta; } catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div>`; return; } }
-  const sel = /^EXT:/.test(U.ofiSel || '') ? U.ofiSel.slice(4) : null, pinta = () => externosVista(false);
+  if (recargar !== false && (!O.camionesExt || recargar)) { v.innerHTML = '<div class="card"><p class="muted">Cargando…</p></div>'; show('vExt', 'Camiones externos', u.nombre);
+    try { const r = await api('oficinaViajes', { dias: 15 }); O.viajes = r.viajes; O.externos = r.externos || []; O.camionesExt = r.camionesExt || []; O.hasta = r.hasta; }
+    catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div>`; return; } }
+  const cams = (O.camionesExt || []).filter(k => k.activo), sel = U.extCam, k = cams.find(z => z.cod === sel);
+  const albs = cod => (O.externos || []).filter(e => e.camion === cod).sort((a, b) => esAiso(b.fecha) + b.viaje < esAiso(a.fecha) + a.viaje ? -1 : 1);
+  const fila = z => { const ul = albs(z.cod)[0];
+    return `<button class="vrow${sel === z.cod ? ' on' : ''}" data-xc="${esc(z.cod)}"><span><b>${esc(z.prov)}</b><small>${z.mat ? '<span class="mono">' + esc(z.mat) + '</span> · ' : ''}${esc(EXT_ESP[z.esp] || '—')} · ${z.nComp} comp.</small></span>
+      <span class="num"><small>${ul ? 'último ' + esc(ul.fecha.slice(0, 5)) : 'sin albaranes'}</small></span></button>`; };
+  const pinta = () => externosVista(false);
+  let der = '<div class="card"><p class="muted">Aquí están los camiones de otros proveedores. Se dan de alta una vez, como un camión vuestro, y salen siempre en Contadores y en Recepción al pulsar «+ Otra entrada». Toca uno para meter su albarán de un día o ver su historial.</p></div>';
+  if (sel === 'nuevo' || k) {
+    const c = U.extCamEd = U.extCamEd && U.extCamEd.cod === (k ? k.cod : '') ? U.extCamEd : (k ? Object.assign({}, k) : { cod: '', prov: '', mat: '', esp: '', nComp: 1, notas: '' });
+    const fichaCam = `<div class="card stack" id="xcF"><h2 style="margin:0">${k ? esc(k.prov) : 'Camión externo nuevo'}</h2>
+      <div class="row" style="gap:10px;flex-wrap:wrap"><div class="field" style="flex:3 1 220px"><label class="lbl">Proveedor</label>${entIn('xcPr', c.prov, 'Ej.: Agrupación Ganadera San Blas')}</div>
+        <div class="field" style="flex:1 1 140px"><label class="lbl">Matrícula</label>${entIn('xcMa', c.mat, '1234-ABC')}</div></div>
+      <div class="row" style="gap:14px;flex-wrap:wrap;align-items:flex-end"><div class="field"><label class="lbl">Leche que trae</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${c.esp === sp ? 'on' : ''}" data-xce="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
+        <div class="field"><label class="lbl">Compartimentos</label><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${+c.nComp === n ? 'on' : ''}" data-xcn="${n}" style="min-width:46px">${n}</button>`).join('')}</div></div></div>
+      <div class="field"><label class="lbl">Notas</label>${entIn('xcNo', c.notas, '')}</div>
+      <div id="xcMsg" hidden></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xcOk" style="flex:1">${k ? 'Guardar datos del camión' : 'Dar de alta el camión'}</button>${k ? '<button class="btn ghost" id="xcBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Quitar de la lista</button>' : ''}</div></div>`;
+    let albHtml = '';
+    if (k) { const a = U.extAlb = U.extAlb && U.extAlb.camion === k.cod ? U.extAlb : { camion: k.cod, id: '', fecha: hoyES(), viaje: 1, albaran: '', esp: k.esp, l: '', obs: '' };
+      const h = albs(k.cod);
+      albHtml = `<div class="card stack" id="xaF"><h3 style="margin:0">${a.id ? 'Corregir albarán' : 'Albarán de un día'}</h3>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="flex:1 1 150px"><label class="lbl">Fecha</label><input class="sm" type="date" id="xaFe" value="${esc(esAiso(a.fecha))}"></div>
+          <div class="field"><label class="lbl">Viaje ese día</label><div class="r3k">${[1, 2, 3].map(n => `<button class="${+a.viaje === n ? 'on' : ''}" data-xav="${n}" style="min-width:46px">${n}º</button>`).join('')}</div></div>
+          <div class="field" style="flex:1 1 140px"><label class="lbl">Nº de albarán</label>${entIn('xaAl', a.albaran, '')}</div></div>
+        <div class="row" style="gap:14px;flex-wrap:wrap;align-items:flex-end"><div class="field"><label class="lbl">Leche</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${a.esp === sp ? 'on' : ''}" data-xae="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
+          <div class="field" style="flex:1 1 200px"><label class="lbl">Total litros del albarán</label><div class="unit" style="position:relative"><input inputmode="numeric" id="xaL" value="${esc(a.l || '')}" placeholder="0" style="width:100%;font-size:24px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div></div>
+        <div class="field"><label class="lbl">Observaciones</label>${entIn('xaOb', a.obs, '')}</div>
+        <div id="xaMsg" hidden></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xaOk" style="flex:1">${a.id ? 'Guardar cambios del albarán' : 'Guardar albarán'}</button>${a.id ? '<button class="btn sec" id="xaNu" style="width:auto">Otro albarán</button><button class="btn ghost" id="xaBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Borrar</button>' : ''}</div></div>
+        <div class="card stack"><h3 style="margin:0">Albaranes de ${esc(k.prov)}</h3>${h.length ? `<div class="lista">${h.map(e => `<button class="vrow${a.id === e.id ? ' on' : ''}" data-xa="${esc(e.id)}"><span><b>${esc(e.fecha)}</b>${e.viaje > 1 ? ' · ' + e.viaje + 'º viaje' : ''}<small>${e.albaran ? 'albarán ' + esc(e.albaran) + ' · ' : ''}${esc([...new Set(e.comps.map(z => EXT_ESP[z.esp]))].join(', '))}</small></span><span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene albaranes.</p>'}</div>`; }
+    der = fichaCam + albHtml;
+  }
   v.innerHTML = `<div class="ofi2"><div class="card lista">
-      <button class="btn sec" id="ofiExtN" style="margin:4px 4px 8px;width:calc(100% - 8px)">+ Camión externo (con albarán)</button>
-      ${extLista(sel) || '<p class="small muted" style="padding:6px 10px">Todavía no hay camiones externos en los últimos 15 días.</p>'}</div>
-    <div class="stack">${sel ? extFicha(sel) : '<div class="card"><p class="muted">Da de alta un camión de otro proveedor con los litros de su albarán, o toca uno de la lista para verlo o corregirlo. Ese día sale en Contadores y en Recepción, en «+ Otra entrada».</p></div>'}</div></div>`;
-  $('#ofiExtN').onclick = () => { U.extNuevo = null; U.ofiSel = 'EXT:nuevo'; pinta(); };
-  v.querySelectorAll('[data-ext2]').forEach(b => b.onclick = () => { U.extNuevo = null; U.ofiSel = 'EXT:' + b.dataset.ext2; pinta(); });
-  if (sel) extEnlazar(sel, pinta);
+      <button class="btn sec" id="xcN" style="margin:4px 4px 8px;width:calc(100% - 8px)">+ Nuevo camión externo</button>
+      ${cams.length ? `<div class="dia">Camiones externos</div>${cams.map(fila).join('')}` : '<p class="small muted" style="padding:6px 10px">Todavía no hay camiones externos.</p>'}</div>
+    <div class="stack">${der}</div></div>`;
+  $('#xcN').onclick = () => { U.extCam = 'nuevo'; U.extCamEd = null; U.extAlb = null; pinta(); };
+  v.querySelectorAll('[data-xc]').forEach(b => b.onclick = () => { U.extCam = b.dataset.xc; U.extCamEd = null; U.extAlb = null; pinta(); });
+  if ($('#xcF')) { const c = U.extCamEd, m = $('#xcMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
+    const lee = () => { c.prov = $('#xcPr').value; c.mat = $('#xcMa').value; c.notas = $('#xcNo').value; };
+    v.querySelectorAll('[data-xce]').forEach(b => b.onclick = () => { lee(); c.esp = b.dataset.xce; pinta(); });
+    v.querySelectorAll('[data-xcn]').forEach(b => b.onclick = () => { lee(); c.nComp = +b.dataset.xcn; pinta(); });
+    $('#xcOk').onclick = async () => { lee(); const b = $('#xcOk'); if (!c.prov.trim()) return err('Pon el proveedor.'); if (!c.esp) return err('Elige la leche que trae.');
+      ocupado(b, 'Guardando…');
+      try { const r = await api('guardarCamionExt', { cam: c }); O.camionesExt = (O.camionesExt || []).filter(z => z.cod !== r.cam.cod).concat([r.cam]); U.extCam = r.cam.cod; U.extCamEd = null; toast('Guardado'); pinta(); }
+      catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
+    if ($('#xcBo')) $('#xcBo').onclick = async () => { const b = $('#xcBo'); if (!confirm2(b)) return; ocupado(b, 'Quitando…');
+      try { await api('borrarCamionExt', { cod: c.cod }); O.camionesExt.forEach(z => { if (z.cod === c.cod) z.activo = false; }); U.extCam = null; toast('Quitado de la lista (su historial se guarda)'); pinta(); }
+      catch (x) { libre(b); err(esRed(x) ? 'Sin conexión.' : x.message); } }; }
+  if ($('#xaF')) { const a = U.extAlb, m = $('#xaMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
+    const lee = () => { const d = $('#xaFe').value; if (d) a.fecha = d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4); a.albaran = $('#xaAl').value; a.l = $('#xaL').value.replace(/\D/g, ''); a.obs = $('#xaOb').value; };
+    v.querySelectorAll('[data-xav]').forEach(b => b.onclick = () => { lee(); a.viaje = +b.dataset.xav; pinta(); });
+    v.querySelectorAll('[data-xae]').forEach(b => b.onclick = () => { lee(); a.esp = b.dataset.xae; pinta(); });
+    v.querySelectorAll('[data-xa]').forEach(b => b.onclick = () => { const e = O.externos.find(z => z.id === b.dataset.xa); if (!e) return;
+      U.extAlb = { camion: e.camion, id: e.id, fecha: e.fecha, viaje: e.viaje || 1, albaran: e.albaran, esp: (e.comps.find(z => z.esp) || {}).esp || '', l: String(extTot(e) || ''), obs: e.obs }; pinta(); });
+    if ($('#xaNu')) $('#xaNu').onclick = () => { U.extAlb = null; pinta(); };
+    $('#xaOk').onclick = async () => { lee(); const b = $('#xaOk'); if (!a.esp) return err('Elige la leche.'); if (!(+a.l > 0)) return err('Pon el total de litros del albarán.');
+      ocupado(b, 'Guardando…');
+      try { const r = await api('guardarExterno', { ext: { id: a.id, camion: a.camion, fecha: a.fecha, viaje: a.viaje, albaran: a.albaran, obs: a.obs, comps: [{ n: 1, esp: a.esp, l: +a.l }] } });
+        O.externos = (O.externos || []).filter(z => z.id !== r.ext.id && z.id !== a.id).concat([r.ext]); U.extAlb = Object.assign({}, a, { id: r.ext.id });
+        const en = r.enlazado || {}; toast('Albarán guardado' + (en.contadores || en.calidad ? ' · enlazado con lo ya recepcionado' : '')); if (en.error) setTimeout(() => toast('No se ha podido enlazar: ' + en.error), 2500); pinta(); }
+      catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
+    if ($('#xaBo')) $('#xaBo').onclick = async () => { const b = $('#xaBo'); if (!confirm2(b)) return; ocupado(b, 'Borrando…');
+      try { await api('borrarExterno', { id: a.id, motivo: 'borrado desde Camiones externos' }); O.externos = O.externos.filter(z => z.id !== a.id); U.extAlb = null; toast('Albarán borrado'); pinta(); }
+      catch (x) { libre(b); err(esRed(x) ? 'Sin conexión.' : x.message); } }; }
   show('vExt', 'Camiones externos', u.nombre);
 }
-function ofiExtMovil(id) {
-  const v = $('#vOfi'); const pinta = () => { v.innerHTML = extFicha(id === 'nuevo' && U.extNuevo ? U.extNuevo.id : id); extEnlazar(id === 'nuevo' && U.extNuevo ? U.extNuevo.id : id, pinta, () => oficina(true)); };
-  if (id === 'nuevo') extDatos('nuevo'); pinta(); show('vOfi', 'Camión externo', D().usuario.nombre);
+/* Elegir un camión externo de la lista en «+ Otra entrada»: la entrada de ese día (la del albarán si ya está; si no, nueva con el id fijo) */
+function extCal(k, usado) {
+  const e = entradaExt(k, usado), n = Math.max(1, k.nComp || 1, e.nCompCam || 0), lit = Object.values(e.cart || {}).reduce((a, z) => a + z, 0);
+  return { id: 'Q' + e.id, r2: true, otra: true, ext: e.id, extEsp: k.esp, matricula: k.mat, conductor: k.prov, desc: 'Externo' + (e.albaran ? ' · albarán ' + e.albaran : '') + (lit ? ' · ' + fmt(lit) + ' l' : ''),
+    comps: Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: null, veces: 0 };
 }
+const idDiaExt = (cod, n) => 'XE' + yymmdd(R.dia) + '-' + cod + (n > 1 ? '-' + n : '');
+function entradaExt(k, usado) {
+  const v = (R.viajes || []).find(z => z.ext && z.camion === k.cod && !usado(z.id));   // ya tiene albarán ese día
+  if (v) return v;
+  let n = 1; while (usado(idDiaExt(k.cod, n)) || (R.viajes || []).some(z => z.id === idDiaExt(k.cod, n) && !z.ext)) n++;
+  const id = idDiaExt(k.cod, n), sv = (R.viajes || []).find(z => z.id === id);
+  return sv || { id, otra: true, ext: true, camion: k.cod, conductor: k.prov, matricula: k.mat, rutas: '', ruta: '', comps: [{ id: 'V' + (k.esp || 'V'), esp: [k.esp || 'V'], decl: 0, n: 1 }], cart: {}, albaran: '' };
+}
+const camsExtHtml = (attr, hechos) => { const cs = (R.camionesExt || []); if (!cs.length) return '';
+  return `<span class="small"><b>Camiones externos</b> · toca el que llega</span><div class="g2">${cs.map(k => `<button class="farm ${bgEsp(k.esp)}" ${attr}="${esc(k.cod)}"><span class="main"><span class="name">${esc(k.prov)} <span class="mono" style="font-weight:500;opacity:.75">${esc(k.mat || '')}</span></span><span class="sub">${esc(EXT_ESP[k.esp] || '')} · ${k.nComp} comp.${(R.viajes || []).some(z => z.ext && z.camion === k.cod && z.cart && Object.keys(z.cart).length) ? ' · <b>albarán de hoy ✓</b>' : ''}${hechos(k) ? ` · <b class="ya-txt">ya ${hechos(k)} hoy</b>` : ''}</span></span><span class="st num">Añadir</span></button>`).join('')}</div><span class="small muted">O, si no está en la lista, apúntalo a mano:</span>`; };
 /** Enlace para ver/imprimir el PDF del DeCA en Drive (el guardado es de descarga directa). */
 const decaVer = u => { const m = String(u || '').match(/[?&]id=([\w-]+)/); return m ? 'https://drive.google.com/file/d/' + m[1] + '/view' : String(u || ''); };
 function ofiDetalle(x) {
@@ -1563,7 +1582,7 @@ async function recepcion(sinCargar) {
       R.viajes.filter(x => !x.otra && x.matricula && !R.camiones.some(t => normMat(t.matricula) === normMat(x.matricula))).forEach(x => {
         const porN = {}; (x.comps || []).forEach(k => { if (k.n) porN[k.n] = Math.max(porN[k.n] || 0, k.cap || 0); });
         const n = Math.max(x.nCompCam || 0, ...Object.keys(porN).map(Number), 0) || (x.comps || []).length;
-        R.camiones.push({ id: 'M' + normMat(x.matricula), matricula: x.matricula, conductor: x.conductor, desc: n + ' compartimentos', nComp: n, comps: Array.from({ length: n }, (_, i) => ({ n: i + 1, cap: porN[i + 1] || 0 })) }); }); R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; }
+        R.camiones.push({ id: 'M' + normMat(x.matricula), matricula: x.matricula, conductor: x.conductor, desc: n + ' compartimentos', nComp: n, comps: Array.from({ length: n }, (_, i) => ({ n: i + 1, cap: porN[i + 1] || 0 })) }); }); R.mezclas = r.mezclas || {}; R.parte = r.parte || {}; R.ventas = r.ventas || []; R.externos = r.externos || []; R.camionesExt = r.camionesExt || []; }
     catch (e) { v.innerHTML = `<div class="msg bad">${esc(esRed(e) ? 'Sin conexión.' : e.message)}</div><button class="btn" id="reRe">Reintentar</button>`; $('#reRe').onclick = () => recepcion(); return; }
   }
   if (R2()) return recep2Lista(v, u);
@@ -1713,7 +1732,7 @@ function contadores2(v, u) {
   const st = C2.st = c2Leer(), nuevo = !(st.orden || []).length; st.ext = st.ext || []; st.ag = st.ag || {}; st.t = st.t || {}; st.orden = st.orden || [];
   const cal = !!D().calidad, ofi = !!D().oficina, editable = (!cal || ofi) && (R.esHoy !== false || ofi); st.fuera = st.fuera || [];   // otro día: solo oficina lo cambia
   R.viajes.filter(x => x.otra && !(x.comps || []).length && x.recep).forEach(x => { x.comps = x.recep.comps.map((c, i) => ({ id: c.id, esp: [c.esp], decl: 0, n: i + 1 })); });
-  const todos = R.viajes.filter(x => !st.ext.some(e => e.id === x.id)).concat(st.ext);
+  const todos = st.ext.filter(e => !R.viajes.some(x => x.id === e.id)).concat(R.viajes);   // lo de la hoja (p. ej. con su albarán) manda sobre lo apuntado aquí
   const esAg = id => !!st.ag[id];
   // Lo guardado (desde esta u otra tablet) entra solo en la hoja, en el orden en que se guardó, con lo que se guardó
   R.viajes.filter(x => x.recep && (x.recep.comps || []).length).sort((a, b) => String(a.recep.hora || '99:99').localeCompare(String(b.recep.hora || '99:99')) || (a.recep.pos || 0) - (b.recep.pos || 0)).forEach(x => {
@@ -1725,7 +1744,7 @@ function contadores2(v, u) {
   st.agLeida = 1;
   if (st.cola) { st.cola.forEach(id => { if (!st.orden.includes(id)) st.orden.push(id); }); delete st.cola; }   // lo que se tenía a medias aquí, detrás
   st.orden = st.orden.filter(id => esAg(id) || todos.some(x => x.id === id)); c2Escribir();
-  const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra), extHoy = (editable ? R.viajes : []).filter(x => x.ext && !st.orden.includes(x.id));
+  const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra);
   const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
   const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, n0: String(c.n || '') }));
   const silos = R.deps.map(d => d.id);
@@ -1879,7 +1898,7 @@ function contadores2(v, u) {
     <span class="lbl blq">Llega un camión · tócalo para añadirlo a la hoja</span>
     <div class="g2">${pend.map(x => `<button class="farm" data-c2add="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${x.otra ? 'Otra entrada' : 'Ruta ' + String(x.rutas).split(',').map(z => +z).join(' y ')}${x.fecha && x.fecha !== R.dia ? ' · del ' + esc(x.fecha) : ''}${/CURSO/.test(x.estado || '') ? ' · <b style="color:var(--warn)">viaje sin cerrar</b>' : ''}</span><span class="comps">${(x.comps || []).map(c => tqc(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('') || '<p class="muted">No quedan camiones del día.</p>'}</div>
     ${C2.otra ? `<div class="card c2otra" id="c2otraF"><span class="lbl" style="margin:0">Otra entrada</span>
-      ${extHoy.length ? `<span class="small"><b>Camiones externos de hoy</b> (con su albarán) · toca para añadirlo a la hoja</span><div class="g2">${extHoy.map(x => `<button class="farm" data-c2ext="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor)} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">Albarán${x.albaran ? ' ' + esc(x.albaran) : ''} · ${fmt(Object.values(x.cart || {}).reduce((a, n) => a + n, 0))} l · ${x.comps.map(c => tqc(c.id)).join(' ')}</span></span><span class="st num">Añadir</span></button>`).join('')}</div><span class="small muted">O, si no está, apúntalo a mano:</span>` : ''}
+      ${camsExtHtml('data-c2ext', k => st.orden.filter(id => new RegExp('^XE\\d{6}-' + k.cod + '(-\\d+)?$').test(id) || (todos.find(z => z.id === id) || {}).camion === k.cod).length || '')}
       <input id="c2oN" placeholder="Nombre (quién trae la leche)" value="${esc(C2.otra.nom || '')}" enterkeyhint="done" autocomplete="off">
       <span class="tiny">Qué trae en cada compartimento · deja vacíos los que no lleve</span>
       ${[0, 1, 2, 3].map(i => `<div class="c2orow"><b>Compartimento ${i + 1}</b>${[['C', 'cabra'], ['V', 'vaca'], ['D', 'D.O.'], ['O', 'oveja']].map(([e, t]) => `<button class="c2chip ${C2.otra.sel[i] === e ? bgEsp(e) : ''}" style="${C2.otra.sel[i] === e ? 'outline:2.5px solid var(--brand)' : 'opacity:.75'}" data-c2oe="${i}|${e}"><b>V${e}</b> ${t}</button>`).join('')}</div>`).join('')}
@@ -1944,7 +1963,9 @@ function contadores2(v, u) {
   if ($('#c2oN')) $('#c2oN').oninput = e => { C2.otra.nom = e.target.value; };
   v.querySelectorAll('[data-c2oe]').forEach(b => b.onclick = () => { const [i, e] = b.dataset.c2oe.split('|'); C2.otra.sel[+i] = C2.otra.sel[+i] === e ? '' : e; contadores2(v, u); });
   if ($('#c2oNo')) $('#c2oNo').onclick = () => { C2.otra = null; contadores2(v, u); };
-  v.querySelectorAll('[data-c2ext]').forEach(b => b.onclick = () => { const id = b.dataset.c2ext; C2.otra = null; st.orden.push(id); st.fuera = st.fuera.filter(z => z !== id); (st.t[id] = st.t[id] || { f: {}, total: '' }).hora = new Date().toTimeString().slice(0, 5); pinta();
+  v.querySelectorAll('[data-c2ext]').forEach(b => b.onclick = () => { const k = (R.camionesExt || []).find(z => z.cod === b.dataset.c2ext); if (!k) return;
+    const x = entradaExt(k, id => st.orden.includes(id) || !!(R.viajes.find(z => z.id === id) || {}).recep), id = x.id; C2.otra = null;
+    if (!R.viajes.some(z => z.id === id) && !st.ext.some(z => z.id === id)) st.ext.push(x); st.orden.push(id); st.fuera = st.fuera.filter(z => z !== id); (st.t[id] = st.t[id] || { f: {}, total: '' }).hora = new Date().toTimeString().slice(0, 5); pinta();
     setTimeout(() => { const el = v.querySelector(`[data-c2b="${id}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   if ($('#c2oOk')) $('#c2oOk').onclick = () => { const nom = (C2.otra.nom || '').trim(); if (!nom) { toast('Pon el nombre'); $('#c2oN').focus(); return; }
     const x = { id: 'X' + Date.now().toString(36).toUpperCase(), otra: true, conductor: nom, matricula: '', rutas: '', comps: c2Ids(C2.otra.sel).map((c, i) => ({ id: c, esp: c[1], decl: 0, n: i + 1 })) };
@@ -2081,7 +2102,7 @@ function recepcion3(v, u) {
     const tipo = es => !es.length ? '' : es.every(e => e === 'D') ? 'Oveja D.O.' : es.every(e => e === 'D' || e === 'O') ? 'Oveja' : es.length === 1 ? NOM[es[0]] : 'Mezcla';
     return R.deps.map(d => { const z = k[d.id]; return `<div class="dep-card" style="cursor:default"><b style="font-size:20px">Depósito ${esc(d.id)}</b><b class="num">${fmt(z.l)}</b><small>${tipo(z.esps) ? '<b>' + esc(tipo(z.esps)) + '</b>' : '<span class="muted">—</span>'}</small><small class="muted" style="font-size:11px">${d.cap ? fmt(d.cap) + ' l' : ''}</small>${bandaEsp(z.esps)}</div>`; }).join(''); };
   const totE = () => { const te = {}; Object.values(EDS).forEach(E => E.comps.filter(c => c.esp).forEach(c => { te[c.esp] = (te[c.esp] || 0) + (num(c.contador) || 0); })); return te; };
-  const pend = lista.filter(x => !st.orden.includes(x.id) && !x.cal && !x.ext), extHoy = lista.filter(x => x.ext && !st.orden.includes(x.id) && !x.cal), te = totE();
+  const pend = lista.filter(x => !st.orden.includes(x.id) && !x.cal && !x.ext), te = totE();
   v.innerHTML = `${R.esHoy === false ? '<div class="row" style="gap:8px;align-items:center"><button class="btn ghost" id="r3hoy" style="width:auto;min-height:36px;padding:4px 14px">Ir a hoy</button></div>' : ''}
     <div class="card stack"><span class="lbl">Depósitos de leche</span><div class="tally" id="r3deps">${depsR3()}</div></div>
     ${hoja}
@@ -2089,13 +2110,17 @@ function recepcion3(v, u) {
     ${editable ? `${enHoja.length ? '<div class="sep-blq"></div>' : ''}<span class="lbl blq">Camiones disponibles</span>
     <div class="g2">${pend.map(x => `<button class="farm${x.veces ? ' ya' : ''}" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor || '')} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${esc(x.desc || '')}${x.veces ? '<br><b class="ya-txt">✓ Ya registrado hoy</b>' : ''}</span><span class="comps">${x.comps.map(k => `<span class="tank">${k.n}</span>`).join(' ')}</span></span><span class="st num">${x.veces ? 'Otro viaje' : 'Registrar'}</span></button>`).join('') || '<p class="muted">No hay camiones.</p>'}</div>
     ${R3.otra ? `<div class="card c2otra"><span class="lbl" style="margin:0">Otra entrada</span>
-      ${extHoy.length ? `<span class="small"><b>Camiones externos de hoy</b> (con su albarán) · toca para añadirlo</span><div class="g2">${extHoy.map(x => `<button class="farm" data-r3add0="${esc(x.id)}"><span class="main"><span class="name">${esc(x.conductor || '')} <span class="mono" style="font-weight:500;opacity:.75">${esc(x.matricula || '')}</span></span><span class="sub">${esc(x.desc || '')}</span></span><span class="st num">Registrar</span></button>`).join('')}</div><span class="small muted">O, si no está, apúntalo a mano:</span>` : ''}<input id="r3oN" placeholder="Proveedor" value="${esc(R3.otra.nom || '')}" autocomplete="off" enterkeyhint="done"><input id="r3oM" placeholder="Matrícula" value="${esc(R3.otra.mat || '')}" autocomplete="off" enterkeyhint="done" style="font-family:var(--mono)">
+      ${camsExtHtml('data-r3ext', k => Object.keys(R.calDia || {}).concat(st.orden).filter((id, i, a) => a.indexOf(id) === i && new RegExp('^QXE\\d{6}-' + k.cod + '(-\\d+)?$').test(id)).length || '')}<input id="r3oN" placeholder="Proveedor" value="${esc(R3.otra.nom || '')}" autocomplete="off" enterkeyhint="done"><input id="r3oM" placeholder="Matrícula" value="${esc(R3.otra.mat || '')}" autocomplete="off" enterkeyhint="done" style="font-family:var(--mono)">
       <span class="tiny">Compartimentos</span><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${R3.otra.n === n ? 'on' : ''}" data-r3on="${n}">${n}</button>`).join('')}</div>
       <div class="row" style="gap:8px"><button class="btn" id="r3oOk">Añadir</button><button class="btn ghost" id="r3oNo">Cancelar</button></div></div>` : '<button class="btn ghost" id="r3otra" style="margin-top:8px">+ Otra entrada (cisterna de otro proveedor)</button>'}` : ''}`;
   const pinta = () => { r3Escribir(); recepcion3(v, u); };
   const E_ = id => EDS[id], C_ = (id, cid) => E_(id).comps.find(c => c.id === cid);
   const vivo = id => { const E = E_(id); if (!E) return; const el = v.querySelector(`[data-r3tot="${id}"]`); if (el) el.textContent = fmt(E.comps.filter(c => c.esp).reduce((a, c) => a + (num(c.contador) || 0), 0)) + ' L';
     const t2 = totE(); v.querySelectorAll('#r3te b').forEach((b, k) => { b.textContent = fmt(t2[ORD_ESP[k]] || 0); }); const dd = $('#r3deps'); if (dd) dd.innerHTML = depsR3(); };
+  v.querySelectorAll('[data-r3ext]').forEach(b => b.onclick = () => { const k = (R.camionesExt || []).find(z => z.cod === b.dataset.r3ext); if (!k) return;
+    const x = extCal(k, id => !!(R.calDia || {})['Q' + id] || st.orden.includes('Q' + id)); R3.otra = null;
+    if (!lista.some(z => z.id === x.id) && !st.ext.some(z => z.id === x.id)) st.ext.push(x); st.orden.push(x.id); const E = edDe(x); graba(E); pinta();
+    setTimeout(() => { const el = v.querySelector(`[data-r3b="${x.id}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-r3add0]').forEach(b => b.onclick = () => { R3.otra = null; const x = xx(b.dataset.r3add0), E = edDe(x); if (!x.cal && !E.comps.some(c => c.esp)) prepara(x, E); graba(E); st.orden.push(x.id); pinta();
     setTimeout(() => { const el = v.querySelector(`[data-r3b="${x.id}"]`); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 60); });
   v.querySelectorAll('[data-r3fuera]').forEach(b => b.onclick = () => { if (!confirm2(b)) return; const id = b.dataset.r3fuera, x = xx(id); borrarBorrador(x, true); delete FIRMAS[borrClave(x, true)];
@@ -2395,9 +2420,7 @@ function recepOtra() {
   const o = U.otra;
   v.innerHTML = `<div class="card stack"><h2>Otra entrada</h2>
     <p class="small muted">Para cisternas que no vienen de la app (otro proveedor, compra de leche). El agua de arrastre va aparte, en «Agua de arrastre del día».</p>
-    ${R2() && (R.l2 || []).some(x => x.ext && !x.cal) ? `<span class="lbl">Camiones externos de hoy (con su albarán) · toca para registrarlo</span>
-      <div class="stack" style="gap:6px">${R.l2.filter(x => x.ext && !x.cal).map(x => `<button class="farm" data-extq="${esc(x.id)}" style="min-height:56px"><span class="main"><span class="name">${esc(x.conductor || '')}</span><span class="sub"><span class="mono">${esc(x.matricula || '')}</span> · ${esc(x.desc || '')}</span></span><span class="st num">Registrar</span></button>`).join('')}</div>
-      <span class="lbl">O apúntalo a mano</span>` : ''}
+
     ${(R.externos || []).length ? `<span class="lbl">Ya vinieron antes · toca para rellenar</span>
       <div class="stack" style="gap:6px">${R.externos.slice(0, 8).map((e, i) => `<button class="farm ${bgEsp(e.esp)}" data-ext="${i}" style="min-height:56px"><span class="main"><span class="name">${esc(e.prov)}</span><span class="sub"><span class="mono">${esc(e.mat || 'sin matrícula')}</span>${e.esp ? ' · ' + esc(ESPS[e.esp] || '') : ''}</span></span></button>`).join('')}</div>` : ''}
     <div class="field"><label class="lbl" for="oProv">Proveedor o descripción</label><input class="big" id="oProv" style="font-size:22px" value="${esc(o.prov)}" placeholder="Ej.: Cisterna cabra Cooperativa X"></div>
@@ -2406,7 +2429,6 @@ function recepOtra() {
     <div class="dests">${Object.entries(ESPS).map(([k, t]) => `<button class="dest ${bgEsp(k)}" aria-pressed="${o.esp === k}" data-e="${k}"><b class="sp-${k}">${k}</b><small>${t}</small></button>`).join('')}</div>
     <div id="oMsg" hidden></div>
     <button class="btn" id="oOk">Continuar</button></div>`;
-  v.querySelectorAll('[data-extq]').forEach(b => b.onclick = () => { const x = (R.l2 || []).find(z => z.id === b.dataset.extq); U.otra = null; if (x) recepCamion2(x); });
   v.querySelectorAll('[data-ext]').forEach(b => b.onclick = () => { const e = R.externos[+b.dataset.ext]; o.prov = e.prov; o.mat = e.mat; if (e.esp) o.esp = e.esp; recepOtra(); });
   $('#oProv').oninput = e => o.prov = e.target.value; $('#oMat').oninput = e => o.mat = e.target.value.toUpperCase();
   v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { o.esp = b.dataset.e; recepOtra(); });
@@ -2446,8 +2468,6 @@ function lista2() {
   const l = R.camiones.map(t => ({ id: nuevoId(t), r2: true, matricula: t.matricula, conductor: t.conductor, desc: t.desc,
     comps: t.comps.map(k => ({ id: 'C' + k.n, n: k.n, cap: k.cap })), cal: null,
     veces: regs.filter(([, r]) => normMat(r.matricula) === normMat(t.matricula)).length }));
-  (R.viajes || []).filter(v => v.ext && !(R.calDia || {})['Q' + v.id]).forEach(v => l.push({ id: 'Q' + v.id, r2: true, otra: true, ext: v.id, matricula: v.matricula, conductor: v.conductor,
-    desc: 'Externo' + (v.albaran ? ' · albarán ' + v.albaran : '') + ' · ' + fmt(Object.values(v.cart || {}).reduce((a, n) => a + n, 0)) + ' l', comps: Array.from({ length: Math.max(1, v.nCompCam || v.comps.length) }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: null, veces: 0 }));
   const cuenta = {};
   regs.forEach(([id, r]) => {   // cada registro guardado, con los compartimentos de su camión (o los que trajo, si es de otro proveedor)
     const t = R.camiones.find(z => normMat(z.matricula) === normMat(r.matricula)), m = normMat(r.matricula) || id;
@@ -2494,15 +2514,13 @@ function recepOtra2() {
   const v = $('#vRecepC'), o = U.otra2 = U.otra2 || { prov: '', mat: '', n: 1 };
   v.innerHTML = `<div class="card stack"><h2>Otra entrada</h2>
     <p class="small muted">Cisterna de otro proveedor. Pon quién es, la matrícula y cuántos compartimentos trae.</p>
-    ${(R.l2 || []).some(x => x.ext && !x.cal) ? `<span class="lbl">Camiones externos de hoy (con su albarán) · toca para registrarlo</span>
-      <div class="stack" style="gap:6px">${R.l2.filter(x => x.ext && !x.cal).map(x => `<button class="farm" data-extq="${esc(x.id)}" style="min-height:56px"><span class="main"><span class="name">${esc(x.conductor || '')}</span><span class="sub"><span class="mono">${esc(x.matricula || '')}</span> · ${esc(x.desc || '')}</span></span><span class="st num">Registrar</span></button>`).join('')}</div>
-      <span class="lbl">O apúntalo a mano</span>` : ''}
+    ${camsExtHtml('data-extq', () => '')}
     <div class="field"><label class="lbl" for="o2Prov">Proveedor</label><input class="big" id="o2Prov" style="font-size:22px" value="${esc(o.prov)}"></div>
     <div class="field"><label class="lbl" for="o2Mat">Matrícula</label><input class="big" id="o2Mat" style="font-size:22px;font-family:var(--mono)" value="${esc(o.mat)}" placeholder="0000-XXX"></div>
     <span class="lbl">Compartimentos</span><div class="ncb" style="max-width:320px">${[1, 2, 3, 4].map(n => `<button class="${o.n === n ? 'on' : ''}" data-on="${n}">${n}</button>`).join('')}</div>
     <div id="o2Msg" hidden></div><button class="btn" id="o2Ok">Seguir</button></div>`;
   $('#o2Prov').oninput = e => { o.prov = e.target.value; }; $('#o2Mat').oninput = e => { o.mat = e.target.value; };
-  v.querySelectorAll('[data-extq]').forEach(b => b.onclick = () => { const x = (R.l2 || []).find(z => z.id === b.dataset.extq); U.otra2 = null; if (x) recepCamion2(x); });
+  v.querySelectorAll('[data-extq]').forEach(b => b.onclick = () => { const k = (R.camionesExt || []).find(z => z.cod === b.dataset.extq); if (!k) return; U.otra2 = null; recepCamion2(extCal(k, id => !!(R.calDia || {})['Q' + id])); });
   v.querySelectorAll('[data-on]').forEach(b => b.onclick = () => { o.n = +b.dataset.on; recepOtra2(); });
   $('#o2Ok').onclick = () => {
     if (!o.prov.trim()) { const m = $('#o2Msg'); m.hidden = false; m.className = 'msg bad'; m.textContent = 'Escribe el proveedor.'; return; }
@@ -2522,7 +2540,8 @@ function edNuevo2(x) {
   // Litros propuestos: los de la cartilla del viaje de hoy de ese camión (si hay dos viajes, el último), por especie
   const ve = (R.viajes || []).find(v => v.ext && x.id === 'Q' + v.id);   // camión externo: su albarán hace de cartilla
   const vj = ve || (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
-  if (ve && !prev) ve.comps.forEach((k, i) => { const c = comps.find(z => String(z.n) === String(k.n)); if (c && !c.esp) { c.esp = k.esp[0]; c.ord = i + 1; } });   // la leche de cada compartimento, la del albarán
+  if (ve && !prev) ve.comps.forEach((k, i) => { const c = comps.find(z => String(z.n) === String(k.n)); if (c && !c.esp) { c.esp = k.esp[0]; c.ord = i + 1; } });
+  else if (!prev && x.extEsp && comps[0] && !comps[0].esp) { comps[0].esp = x.extEsp; comps[0].ord = 1; }   // camión externo de la lista: su leche   // la leche de cada compartimento, la del albarán
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
   return { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };

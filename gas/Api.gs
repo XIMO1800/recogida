@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 14;
+const API_VERSION = 15;
 
 function doPost(e) {
   try {
@@ -25,7 +25,7 @@ function doPost(e) {
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
       OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad,
-        anularRecepcion: anularRecepcion, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
+        anularRecepcion: anularRecepcion, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarCamionExt: guardarCamionExt, borrarCamionExt: borrarCamionExt, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
       CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
       RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
@@ -418,7 +418,7 @@ function oficinaViajes(req, c) {
   });
   lista.sort(function (a, b) { return (fecha(b.fecha) - fecha(a.fecha)) || (String(a.ini) < String(b.ini) ? -1 : 1); });
   const fs = []; for (let d = new Date(lim); d <= new Date(); d.setDate(d.getDate() + 1)) fs.push(Utilities.formatDate(d, TZ, 'dd/MM/yyyy'));
-  return { ok: true, viajes: lista, externos: externosDe_(fs), hasta: ahora_('dd/MM/yyyy HH:mm') };
+  return { ok: true, viajes: lista, externos: SS.getSheetByName('EXTERNOS') ? tabla_('EXTERNOS').filas.map(extObj_) : [], camionesExt: camionesExt_(true), hasta: ahora_('dd/MM/yyyy HH:mm') };
 }
 /** Histórico de viajes para la oficina: todos los de VIAJES entre dos fechas (por defecto, el último año), sin las recogidas
  *  (rápido), con su DeCA. El detalle de uno se pide aparte con oficinaViajes({ids:[id]}). */
@@ -857,7 +857,7 @@ function recepViajes(req, c) {
   Object.keys(camiones).forEach(function (id) {
     const r = camiones[id]; if (ids[id] || fechas.indexOf(r.FECHA) < 0) return;
     salida.push({ id: id, fecha: r.FECHA, deca: r.DECA_NUM, matricula: r.MATRICULA, conductor: r.CONDUCTOR, rutas: r.RUTA, ruta: r.RUTA, estado: 'OTRA ENTRADA',
-      ini: r.HORA, fin: '', comps: [], otra: true, recep: recepObj_(hechas[id], r) });
+      ini: r.HORA, fin: '', comps: [], otra: true, ext: /^XE/.test(id), cart: {}, albaran: '', recep: recepObj_(hechas[id], r) });
   });
   const cfg = cfg_();
   hoja_('MEZCLAS', CAB_MEZCLA); hoja_('PARTE_DIA', CAB_PARTE); hoja_('VENTAS_LECHE', CAB_VENTA);
@@ -895,7 +895,7 @@ function recepViajes(req, c) {
   });
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
-  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
+  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, camionesExt: camionesExt_(), viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
     mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || ''), envioPor: String(pd.CONTADORES_ENVIO_POR || ''), sello: String(pd.CONTADORES_SELLO || '') },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
@@ -1110,15 +1110,60 @@ function fechaAtrasada_(f, c) {
  * La oficina los da de alta en Recogidas con los litros del albarán por compartimento. Salen ese día en Contadores
  * (id X…: el fichero los junta por especie, VC/VV/VO/VD) y en Recepción (registro de calidad 'Q' + id), y el albarán hace
  * de «cartilla» para la diferencia con el contador. */
-const CAB_EXT = ['ID', 'FECHA', 'HORA', 'PROVEEDOR', 'MATRICULA', 'N_COMP', 'ALBARAN', 'COMPARTIMENTOS', 'OBSERVACIONES', 'USUARIO', 'ALTA'];
-function hojaExt_() { const sh = hoja_('EXTERNOS', CAB_EXT); return sh; }
+const CAB_EXT = ['ID', 'FECHA', 'HORA', 'PROVEEDOR', 'MATRICULA', 'N_COMP', 'ALBARAN', 'COMPARTIMENTOS', 'OBSERVACIONES', 'USUARIO', 'ALTA', 'CAMION', 'VIAJE'];
+function hojaExt_() { const sh = hoja_('EXTERNOS', CAB_EXT); columnas_('EXTERNOS', ['CAMION', 'VIAJE'], 'ALTA'); return sh; }
+/* Ficha fija de cada camión externo (como un camión propio): se da de alta una vez y sale siempre en «+ Otra entrada».
+ * La entrada de un día tiene un id fijo por camión y fecha (XEaammdd-CODIGO, y -2, -3… si viene otra vez ese día), así el
+ * albarán (oficina) y la recepción (contadores / calidad) se enlazan solos, se meta antes uno u otro. */
+const CAB_EXTCAM = ['CODIGO', 'PROVEEDOR', 'MATRICULA', 'ESPECIE', 'N_COMP', 'ACTIVO', 'NOTAS', 'ALTA'];
+function diaExt_(fecha, cod, viaje) { const f = String(fecha); return 'XE' + f.slice(8, 10) + f.slice(3, 5) + f.slice(0, 2) + '-' + cod + (Number(viaje) > 1 ? '-' + Number(viaje) : ''); }
+function camExtObj_(r) { return { cod: String(r.CODIGO), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), esp: String(r.ESPECIE || '').toUpperCase(), nComp: Number(r.N_COMP) || 1, activo: String(r.ACTIVO || '').toUpperCase() !== 'NO', notas: String(r.NOTAS || '') }; }
+function camionesExt_(todos) {
+  const sh = hoja_('EXTERNOS_CAMIONES', CAB_EXTCAM);
+  if (sh.getLastRow() < 2 && SS.getSheetByName('EXTERNOS') && SS.getSheetByName('EXTERNOS').getLastRow() > 1) {   // primera vez: los que ya se dieron de alta con albarán
+    const vistos = {}; hojaExt_(); const t = tabla_('EXTERNOS');
+    t.filas.forEach(function (r) { const e = extObj_(r), k = (String(e.prov).toUpperCase() + '|' + String(e.mat).toUpperCase());
+      if (!vistos[k]) { vistos[k] = 'E' + (Object.keys(vistos).length + 1);
+        const o = { CODIGO: vistos[k], PROVEEDOR: e.prov, MATRICULA: e.mat, ESPECIE: (e.comps[0] || {}).esp || '', N_COMP: Math.max(1, e.nComp || 1), ACTIVO: 'SI', NOTAS: '', ALTA: ahora_('yyyy-MM-dd HH:mm:ss') };
+        sh.getRange(sh.getLastRow() + 1, 1, 1, CAB_EXTCAM.length).setNumberFormat('@').setValues([CAB_EXTCAM.map(function (h) { return String(o[h]); })]); }
+      if (!String(r.CAMION || '')) actualizar_('EXTERNOS', r._fila, { CAMION: vistos[k], VIAJE: 1 }); });
+  }
+  return tabla_('EXTERNOS_CAMIONES').filas.map(camExtObj_).filter(function (k) { return todos || k.activo; });
+}
+function guardarCamionExt(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const k = req.cam || {}, prov = String(k.prov || '').trim();
+    if (!prov) throw new Error('Pon el proveedor.');
+    const sh = hoja_('EXTERNOS_CAMIONES', CAB_EXTCAM), t = tabla_('EXTERNOS_CAMIONES'), ya = k.cod ? t.filas.filter(function (r) { return String(r.CODIGO) === String(k.cod); })[0] : null;
+    let cod = ya ? String(ya.CODIGO) : ''; if (!cod) { let n = t.filas.length + 1; while (t.filas.some(function (r) { return String(r.CODIGO) === 'E' + n; })) n++; cod = 'E' + n; }
+    const o = { CODIGO: cod, PROVEEDOR: prov, MATRICULA: String(k.mat || '').trim().toUpperCase(), ESPECIE: 'DOVC'.indexOf(String(k.esp || '').toUpperCase()) >= 0 ? String(k.esp || '').toUpperCase() : '',
+      N_COMP: Math.min(Math.max(Number(k.nComp) || 1, 1), 4), ACTIVO: 'SI', NOTAS: String(k.notas || '').trim(), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
+    if (ya) actualizar_('EXTERNOS_CAMIONES', ya._fila, o);
+    else sh.getRange(sh.getLastRow() + 1, 1, 1, CAB_EXTCAM.length).setNumberFormat('@').setValues([CAB_EXTCAM.map(function (h) { return String(o[h]); })]);
+    return { ok: true, cam: camExtObj_(o) };
+  } finally { lock.releaseLock(); }
+}
+function borrarCamionExt(req, c) {   // no se borra (tiene historial): deja de salir
+  const ya = tabla_('EXTERNOS_CAMIONES').filas.filter(function (r) { return String(r.CODIGO) === String(req.cod || ''); })[0];
+  if (!ya) throw new Error('Ese camión externo no está.');
+  actualizar_('EXTERNOS_CAMIONES', ya._fila, { ACTIVO: 'NO' }); return { ok: true };
+}
+/** Lo que ya se recepcionó en Contadores de esa entrada: el albarán pasa a ser su cartilla */
+function cartillaContadores_(id, cart) {
+  const cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id); if (!cam) return false;
+  const l = Math.round(Object.keys(cart).reduce(function (a, k) { return a + cart[k]; }, 0)), cuenta = numES_(cam.TOTAL_CONTADOR) || numES_(cam.SUMA_PARCIALES);
+  columnas_('RECEPCION_CAMION', ['LITROS_CARTILLA', 'DIF_CARTILLA', 'LITROS_CISTERNA', 'DIF_CISTERNA'], 'FICHERO');
+  actualizar_('RECEPCION_CAMION', cam._fila, { LITROS_CARTILLA: l, DIF_CARTILLA: cuenta - l, LITROS_CISTERNA: l, DIF_CISTERNA: cuenta - l });
+  return true;
+}
 /** COMPARTIMENTOS: «1:C:8000|2:C:7900|3:C:8100» (nº : especie : litros del albarán) */
 function extObj_(r) {
   const comps = String(r.COMPARTIMENTOS || '').split('|').filter(String).map(function (t) { const q = t.split(':'); return { n: Number(q[0]) || 0, esp: String(q[1] || '').toUpperCase(), l: numES_(q[2]) }; })
     .filter(function (k) { return 'DOVC'.indexOf(k.esp) >= 0 && k.esp; });
   const cart = {}; comps.forEach(function (k) { cart[k.esp] = (cart[k.esp] || 0) + k.l; });
   return { id: String(r.ID), fecha: String(r.FECHA), hora: String(r.HORA || ''), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), nComp: Number(r.N_COMP) || comps.length,
-    albaran: String(r.ALBARAN || ''), comps: comps, cart: cart, obs: String(r.OBSERVACIONES || ''), usuario: String(r.USUARIO || '') };
+    albaran: String(r.ALBARAN || ''), comps: comps, cart: cart, obs: String(r.OBSERVACIONES || ''), usuario: String(r.USUARIO || ''), camion: String(r.CAMION || ''), viaje: Number(r.VIAJE) || 1 };
 }
 function externosDe_(fechas) { if (!SS.getSheetByName('EXTERNOS')) return []; return tabla_('EXTERNOS').filas.filter(function (r) { return fechas.indexOf(String(r.FECHA)) >= 0; }).map(extObj_); }
 /** Como un viaje del día, para Contadores y Recepción: un compartimento por fila (VC, o VC1/VC2… si se repite especie) */
@@ -1126,26 +1171,36 @@ function extViaje_(e, recep) {
   const cuenta = {}, total = {}; e.comps.forEach(function (k) { total[k.esp] = (total[k.esp] || 0) + 1; });
   const comps = e.comps.map(function (k) { cuenta[k.esp] = (cuenta[k.esp] || 0) + 1; return { id: 'V' + k.esp + (total[k.esp] > 1 ? cuenta[k.esp] : ''), n: k.n, esp: [k.esp], cap: 0, decl: Math.round(k.l) }; });
   return { id: e.id, fecha: e.fecha, deca: '', matricula: e.mat, conductor: e.prov, rutas: '', ruta: '', estado: 'EXTERNO', ini: e.hora, fin: '', comps: comps, cart: e.cart,
-    nCompCam: e.nComp, otra: true, ext: true, albaran: e.albaran, recep: recep };
+    nCompCam: e.nComp, otra: true, ext: true, albaran: e.albaran, camion: e.camion, viaje: e.viaje, recep: recep };
 }
 function guardarExterno(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     const e = req.ext || {}, prov = String(e.prov || '').trim();
-    if (!prov) throw new Error('Pon el proveedor.');
+    if (!prov && !e.camion) throw new Error('Pon el proveedor.');
     const fecha = /^\d{2}\/\d{2}\/\d{4}$/.test(String(e.fecha || '')) ? String(e.fecha) : ahora_('dd/MM/yyyy');
     const comps = (e.comps || []).map(function (k, i) { return { n: Number(k.n) || i + 1, esp: String(k.esp || '').toUpperCase(), l: Math.round(Number(k.l) || 0) }; }).filter(function (k) { return 'DOVC'.indexOf(k.esp) >= 0 && k.esp; });
     if (!comps.length) throw new Error('Pon la leche de al menos un compartimento.');
     if (!comps.some(function (k) { return k.l > 0; })) throw new Error('Pon los litros del albarán.');
-    const sh = hojaExt_(), t = tabla_('EXTERNOS'), ya = e.id ? t.filas.filter(function (r) { return String(r.ID) === String(e.id); })[0] : null;
-    const id = ya ? String(ya.ID) : 'XE' + fecha.slice(8, 10) + fecha.slice(3, 5) + fecha.slice(0, 2) + '-' + Date.now().toString(36).toUpperCase().slice(-5);
-    const o = { ID: id, FECHA: fecha, HORA: ya ? String(ya.HORA) : ahora_('HH:mm'), PROVEEDOR: prov, MATRICULA: String(e.mat || '').trim().toUpperCase(), N_COMP: Math.max(Number(e.nComp) || 0, comps.length),
+    const sh = hojaExt_(), t = tabla_('EXTERNOS');
+    const cam = e.camion ? camionesExt_(true).filter(function (k) { return k.cod === String(e.camion); })[0] : null;
+    if (e.camion && !cam) throw new Error('Ese camión externo no está en la lista.');
+    const idDia = cam ? diaExt_(fecha, cam.cod, e.viaje) : '';
+    let ya = e.id ? t.filas.filter(function (r) { return String(r.ID) === String(e.id); })[0] : null;
+    if (!ya && idDia) { ya = t.filas.filter(function (r) { return String(r.ID) === idDia; })[0] || null; }   // ese camión ese día ya tenía albarán: se corrige
+    if (ya && idDia && String(ya.ID) !== idDia) {   // se cambió la fecha o el viaje: es otra entrada
+      if (t.filas.some(function (r) { return String(r.ID) === idDia; })) throw new Error('Ese camión ya tiene albarán ese día (viaje ' + (Number(e.viaje) || 1) + ').');
+      if (buscar_('RECEPCION_CAMION', 'VIAJE_ID', String(ya.ID))) throw new Error('Ese albarán ya está enlazado con su recepción: no se le puede cambiar el día. Bórralo y crea otro.');
+      SS.getSheetByName('EXTERNOS').deleteRow(ya._fila); ya = null; }
+    const id = ya ? String(ya.ID) : (idDia || 'XE' + fecha.slice(8, 10) + fecha.slice(3, 5) + fecha.slice(0, 2) + '-' + Date.now().toString(36).toUpperCase().slice(-5));
+    const o = { ID: id, FECHA: fecha, HORA: ya ? String(ya.HORA) : ahora_('HH:mm'), PROVEEDOR: cam ? cam.prov : prov, MATRICULA: cam ? cam.mat : String(e.mat || '').trim().toUpperCase(), N_COMP: cam ? cam.nComp : Math.max(Number(e.nComp) || 0, comps.length), CAMION: cam ? cam.cod : '', VIAJE: Number(e.viaje) || 1,
       ALBARAN: String(e.albaran || '').trim(), COMPARTIMENTOS: comps.map(function (k) { return k.n + ':' + k.esp + ':' + k.l; }).join('|'), OBSERVACIONES: String(e.obs || '').trim(),
       USUARIO: String(c.NOMBRE), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
     if (ya) actualizar_('EXTERNOS', ya._fila, o);
     else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
     const ext = extObj_(o); let enl = {};
-    try { enl = enlazarOtras_(ext, c); } catch (err) { enl = { error: String(err && err.message || err) }; }   // el alta ya está hecha: un fallo al enlazar no la deshace
+    try { enl = enlazarOtras_(ext, c); if (cartillaContadores_(id, ext.cart)) { enl.contadores = enl.contadores || id; columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO'); parteDia_(fecha, { CONTADORES_SELLO: 'S' + Date.now(), CONTADORES_ENVIO_POR: String(c.NOMBRE) + ' (albarán)' }); } }
+    catch (err) { enl = { error: String(err && err.message || err) }; }   // el alta ya está hecha: un fallo al enlazar no la deshace
     return { ok: true, ext: ext, enlazado: enl };
   } finally { lock.releaseLock(); }
 }

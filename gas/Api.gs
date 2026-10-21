@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 17;
+const API_VERSION = 18;
 
 function doPost(e) {
   try {
@@ -326,15 +326,20 @@ function cerrarViaje(req, c) {
   const cfg = cfg_();
   const litros = Math.round(Number(req.litros) || 0);
   const ids = (req.viajes && req.viajes.length ? req.viajes : [req.viajeId]);
-
-  if (/^CERRADO$/.test(String(v.ESTADO).trim()) && /^R\w{7}\.TXT$/i.test(String(v.EXPORTADO))) return { ok: true, exportado: v.EXPORTADO };   // reintento
-  const exportado = exportar_(ids, null);
-  actualizar_('VIAJES', v._fila, {
-    HORA_FIN: ahora_('HH:mm'), LITROS_REALES: litros,
-    PESO_REAL_KG: Math.round(litros * (Number(cfg.FACTOR_KG_POR_LITRO) || 1.03)),
-    ESTADO: 'CERRADO', EXPORTADO: exportado
-  });
-  return { ok: true, exportado: exportado };
+  // Con candado: si el cierre llega dos veces a la vez (reintento del móvil, la app abierta dos veces), solo uno hace el fichero
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const v2 = buscar_('VIAJES', 'VIAJE_ID', req.viajeId) || v;
+    if (/^CERRADO$/.test(String(v2.ESTADO).trim()) && /^R\w{7}\.TXT$/i.test(String(v2.EXPORTADO))) return { ok: true, exportado: v2.EXPORTADO };   // reintento
+    const exportado = exportar_(ids, null);
+    actualizar_('VIAJES', v2._fila, {
+      HORA_FIN: ahora_('HH:mm'), LITROS_REALES: litros,
+      PESO_REAL_KG: Math.round(litros * (Number(cfg.FACTOR_KG_POR_LITRO) || 1.03)),
+      ESTADO: 'CERRADO', EXPORTADO: exportado
+    });
+    SpreadsheetApp.flush();
+    return { ok: true, exportado: exportado };
+  } finally { lock.releaseLock(); }
 }
 
 /** Fichero para el programa de gestión con todas las recogidas de esos viajes.
@@ -353,16 +358,20 @@ function exportar_(ids, nombre) {
   const carpetaExp = DriveApp.getFolderById(cfg.CARPETA_EXPORTACION_ID);
   const texto = lineas.join('\r\n') + '\r\n';
   if (nombre && nombre !== 'NO') {
-    const it = carpetaExp.getFilesByName(nombre);
-    if (it.hasNext()) { it.next().setContent(texto); return nombre; }
+    // Rehacer: se reescribe ESE fichero. Si por un fallo hubiera dos con el mismo nombre, se deja uno solo (los otros a la papelera).
+    // Drive tarda a veces unos segundos en «ver» un fichero recién creado: se mira otra vez antes de crear uno nuevo.
+    let fs = [];
+    for (let k = 0; k < 3 && !fs.length; k++) { if (k) Utilities.sleep(2000); const it = carpetaExp.getFilesByName(nombre); while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) fs.push(f); } }
+    if (fs.length) { fs.sort(function (a, b) { return b.getLastUpdated() - a.getLastUpdated(); }); fs[0].setContent(texto); fs.slice(1).forEach(function (f) { f.setTrashed(true); }); return nombre; }
     carpetaExp.createFile(nombre, texto, MimeType.PLAIN_TEXT); return nombre;
   }
   // Nombre corto MS-DOS (8.3): R + aammdd + nº del día (1-9, luego A-Z) → R2609281.TXT
+  // El último nº usado se guarda también aparte: así no se repite aunque Drive aún no «vea» el fichero de hace un momento
   const base = 'R' + Utilities.formatDate(new Date(), TZ, 'yyMMdd');
-  const SEQ = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  for (let i = 0; i < SEQ.length; i++) {
+  const SEQ = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', pr = PropertiesService.getScriptProperties(), kSeq = 'EXP_SEQ_' + base;
+  for (let i = Math.min(SEQ.length, Number(pr.getProperty(kSeq)) || 0); i < SEQ.length; i++) {
     const n = base + SEQ.charAt(i) + '.TXT';
-    if (!carpetaExp.getFilesByName(n).hasNext()) { carpetaExp.createFile(n, texto, MimeType.PLAIN_TEXT); return n; }
+    if (!carpetaExp.getFilesByName(n).hasNext()) { carpetaExp.createFile(n, texto, MimeType.PLAIN_TEXT); pr.setProperty(kSeq, String(i + 1)); return n; }
   }
   throw new Error('Demasiados ficheros de exportación hoy');
 }
@@ -1791,9 +1800,10 @@ function puente_(p) {
     const nombre = String(p.nombre || '').toUpperCase();
     if (!RE_PUENTE.test(nombre)) return txt('ERROR;nombre no válido');
     if (p.tipo === 'fichero') {
-      const it = carpeta.getFilesByName(nombre);
-      if (!it.hasNext()) return txt('ERROR;no existe ' + nombre);
-      return txt(it.next().getBlob().getDataAsString('UTF-8'));
+      const it = carpeta.getFilesByName(nombre); let f = null;
+      while (it.hasNext()) { const g = it.next(); if (g.isTrashed()) continue; if (!f || g.getLastUpdated() > f.getLastUpdated()) f = g; }
+      if (!f) return txt('ERROR;no existe ' + nombre);
+      return txt(f.getBlob().getDataAsString('UTF-8'));
     }
     if (p.tipo === 'entregado') {
       const lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -1816,7 +1826,9 @@ function ficherosPuente_(carpeta) {
   while (it.hasNext()) {
     const f = it.next(), n = String(f.getName()).toUpperCase();
     if (!RE_PUENTE.test(n)) continue;
-    out.push({ nombre: n, destino: n.charAt(0) === 'R' ? 'RECLECHE' : 'DESLECHE', version: String(f.getLastUpdated().getTime()) });
+    const o = { nombre: n, destino: n.charAt(0) === 'R' ? 'RECLECHE' : 'DESLECHE', version: String(f.getLastUpdated().getTime()), id: f.getId() };
+    const ya = out.filter(function (x) { return x.nombre === n; })[0];   // dos con el mismo nombre: vale el último modificado
+    if (!ya) out.push(o); else if (Number(o.version) > Number(ya.version)) { ya.version = o.version; ya.id = o.id; }
   }
   return out.sort(function (a, b) { return a.version - b.version; });
 }

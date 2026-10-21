@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=173">
+<link rel="manifest" href="manifest.json?v=174">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v173 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v174 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -397,6 +397,18 @@ let S = Object.assign({}, S0, cargar() || {});
 const U = { view: null, camMode: null, nt: null, map: null, volver: null, vistaPrev: null, pos: null, ocupado: false };
 function cargar() { try { return JSON.parse(localStorage.getItem(LS)); } catch (e) { return null; } }
 function persistir() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch (e) {} }
+/* La app abierta dos veces en el mismo móvil (icono instalado y una pestaña de Chrome, p. ej.): cuando una guarda, la otra lo
+   recoge al momento. Si en una se cierra o cambia el viaje, la otra deja de tenerlo abierto (no se puede seguir apuntando en él). */
+window.addEventListener('storage', e => {
+  if (e.key !== LS || !e.newValue) return;
+  let n; try { n = JSON.parse(e.newValue); } catch (x) { return; }
+  const antes = S.viaje && S.viaje.id; S = Object.assign({}, S0, n);
+  const conductor = ['vRutas', 'vCamion', 'vTras', 'vDeca', 'vLista', 'vFicha', 'vFin'].includes(U.view);
+  if (!conductor) { syncPill(); return; }
+  if (antes && (!S.viaje || S.viaje.id !== antes)) { toast('Este viaje se ha cerrado en otra ventana de la aplicación'); S.viaje ? (S.viaje.empezado ? lista : deca)() : rutas(); }
+  else if (U.view === 'vLista' && S.viaje) lista();
+  syncPill();
+});
 
 const $ = s => document.querySelector(s);
 const fmt = n => { const r = Math.round(n || 0); return (r < 0 ? '-' : '') + String(Math.abs(r)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };   // siempre con punto de miles: 8.152 (el formato español no lo pone con 4 cifras)

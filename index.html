@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=177">
+<link rel="manifest" href="manifest.json?v=178">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v177 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v178 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1827,7 +1827,10 @@ function contadores2(v, u) {
   const pasosDe = cams => cams.flatMap(x => Object.values((st.t[x.id] || { f: {} }).f).filter(z => z.ord && z.dep).sort((a, c) => a.ord - c.ord));
   const bloqueAg = (id, n, cams, pos) => {
     const a = st.ag[id], pasos = pasosDe(cams), m = {}; let txt = '';
-    if (pasos.length) { const ini = pasos[0].dep, ult = pasos[pasos.length - 1].dep;
+    // Orden real en que entra la leche de cada cisterna: el arrastre de delante, la principal y el de detrás.
+    // El último depósito es donde acabó de verdad la última cisterna (si su arrastre de detrás fue a otro, ese).
+    const seq = z => [...c2Arrs(z).filter(w => w.pos === 'ant').map(w => w.dep), z.dep, ...c2Arrs(z).filter(w => w.pos !== 'ant').map(w => w.dep)].filter(Boolean);
+    if (pasos.length) { const ini = seq(pasos[0])[0], su = seq(pasos[pasos.length - 1]), ult = su[su.length - 1];
       const usados = [...new Set(pasos.flatMap(z => [z.dep].concat(c2Arrs(z).map(w => w.dep))).filter(Boolean))];
       m[ini] = (m[ini] || 0) + dA.arranque; const fin = usados.filter(z => z === ult || +z > +ult).sort((p, q) => p - q); fin.forEach(z => { m[z] = (m[z] || 0) + dA.final; });
       txt = `Arranque → dep. ${ini} · final → dep. ${fin.join(', ')} (${dA.arranque} + ${dA.final} l)`; }
@@ -2969,7 +2972,10 @@ function recepAgua(guardado) {
     const ppalDe = c => (c.reps.find(r => r.tipo === 'PRINCIPAL') || c.reps[0] || {}).dep;
     const m = {}; if (!pasos.length) return { m, txt: '' };
     // Arranque: al primer depósito que recibe leche. Arrastre final: al depósito del último compartimento y a todos los de número mayor que recibieron leche
-    const ini = ppalDe(pasos[0]), ult = ppalDe(pasos[pasos.length - 1]);
+    // Orden real de cada compartimento: arrastre de delante, principal, arrastre de detrás; el último depósito es donde acabó de verdad
+    const seq = c => { const rs = c.reps.filter(r => r.dep), p = rs.find(r => r.tipo === 'PRINCIPAL') || rs[0];
+      return [...rs.filter(r => /DELANTE/.test(r.tipo)), p, ...rs.filter(r => r !== p && !/DELANTE/.test(r.tipo))].filter(Boolean).map(r => r.dep); };
+    const s0 = seq(pasos[0]), s1 = seq(pasos[pasos.length - 1]), ini = s0[0] || ppalDe(pasos[0]), ult = s1[s1.length - 1] || ppalDe(pasos[pasos.length - 1]);
     const usados = [...new Set(pasos.flatMap(c => c.reps.map(r => r.dep)).filter(Boolean))];
     m[ini] = (m[ini] || 0) + d.arranque;
     const fin = usados.filter(x => x === ult || +x > +ult); fin.forEach(x => { m[x] = (m[x] || 0) + d.final; });

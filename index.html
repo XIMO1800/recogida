@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=174">
+<link rel="manifest" href="manifest.json?v=175">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v174 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v175 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1271,7 +1271,7 @@ async function externosVista(recargar) {
   let der = '<div class="card"><p class="muted">Aquí están los camiones de otros proveedores. Se dan de alta una vez, como un camión vuestro, y salen siempre en Contadores y en Recepción al pulsar «+ Otra entrada». Toca uno para meter su albarán de un día o ver su historial.</p></div>';
   if (sel === 'nuevo' || k) {
     const c = U.extCamEd = U.extCamEd && U.extCamEd.cod === (k ? k.cod : '') ? U.extCamEd : (k ? Object.assign({}, k) : { cod: '', prov: '', mat: '', esp: '', nComp: 1, notas: '' });
-    const fichaCam = `<div class="card stack" id="xcF"><h2 style="margin:0">${k ? esc(k.prov) : 'Camión externo nuevo'}</h2>
+    const fichaCam = `<div class="card stack" id="xcF"><h2 style="margin:0">${k ? 'Datos del camión · ' + esc(k.prov) : 'Camión externo nuevo'}</h2>
       <div class="row" style="gap:10px;flex-wrap:wrap"><div class="field" style="flex:3 1 220px"><label class="lbl">Proveedor</label>${entIn('xcPr', c.prov, 'Ej.: Agrupación Ganadera San Blas')}</div>
         <div class="field" style="flex:1 1 140px"><label class="lbl">Matrícula</label>${entIn('xcMa', c.mat, '1234-ABC')}</div></div>
       <div class="row" style="gap:14px;flex-wrap:wrap;align-items:flex-end"><div class="field"><label class="lbl">Leche que trae</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${c.esp === sp ? 'on' : ''}" data-xce="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
@@ -1282,7 +1282,7 @@ async function externosVista(recargar) {
     let albHtml = '';
     if (k) { const a = U.extAlb = U.extAlb && U.extAlb.camion === k.cod ? U.extAlb : { camion: k.cod, id: '', fecha: hoyES(), viaje: 1, albaran: '', esp: k.esp, l: '', obs: '' };
       const h = albs(k.cod);
-      albHtml = `<div class="card stack" id="xaF"><h3 style="margin:0">${a.id ? 'Corregir albarán' : 'Albarán de un día'}</h3>
+      albHtml = `<div class="card stack" id="xaF"><h3 style="margin:0">${a.id ? 'Corregir albarán del ' + esc(a.fecha) : 'Nuevo albarán'}</h3>
         <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end"><div class="field" style="flex:1 1 150px"><label class="lbl">Fecha</label><input class="sm" type="date" id="xaFe" value="${esc(esAiso(a.fecha))}"></div>
           <div class="field"><label class="lbl">Viaje ese día</label><div class="r3k">${[1, 2, 3].map(n => `<button class="${+a.viaje === n ? 'on' : ''}" data-xav="${n}" style="min-width:46px">${n}º</button>`).join('')}</div></div>
           <div class="field" style="flex:1 1 140px"><label class="lbl">Nº de albarán</label>${entIn('xaAl', a.albaran, '')}</div></div>
@@ -1290,8 +1290,8 @@ async function externosVista(recargar) {
           <div class="field" style="flex:1 1 200px"><label class="lbl">Total litros del albarán</label><div class="unit" style="position:relative"><input inputmode="numeric" id="xaL" value="${esc(a.l || '')}" placeholder="0" style="width:100%;font-size:24px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div></div>
         <div class="field"><label class="lbl">Observaciones</label>${entIn('xaOb', a.obs, '')}</div>
         <div id="xaMsg" hidden></div>
-        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xaOk" style="flex:1">${a.id ? 'Guardar cambios del albarán' : 'Guardar albarán'}</button>${a.id ? '<button class="btn sec" id="xaNu" style="width:auto">Otro albarán</button><button class="btn ghost" id="xaBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Borrar</button>' : ''}</div></div>
-        <div class="card stack"><h3 style="margin:0">Albaranes de ${esc(k.prov)}</h3>${h.length ? `<div class="lista">${h.map(e => `<button class="vrow${a.id === e.id ? ' on' : ''}" data-xa="${esc(e.id)}"><span><b>${esc(e.fecha)}</b>${e.viaje > 1 ? ' · ' + e.viaje + 'º viaje' : ''}<small>${e.albaran ? 'albarán ' + esc(e.albaran) + ' · ' : ''}${esc([...new Set(e.comps.map(z => EXT_ESP[z.esp]))].join(', '))}</small></span><span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene albaranes.</p>'}</div>`; }
+        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xaOk" style="flex:1">${a.id ? 'Guardar cambios del albarán' : 'Guardar albarán'}</button>${a.id ? '<button class="btn sec" id="xaNu" style="width:auto">+ Nuevo albarán</button><button class="btn ghost" id="xaBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Borrar</button>' : ''}</div></div>
+        <div class="card stack"><h3 style="margin:0">Historial de albaranes · ${esc(k.prov)}</h3><p class="small muted" style="margin:0">Toca uno para verlo o corregirlo.</p>${h.length ? `<div class="lista">${h.map(e => `<button class="vrow${a.id === e.id ? ' on' : ''}" data-xa="${esc(e.id)}"><span><b>${esc(e.fecha)}</b>${e.viaje > 1 ? ' · ' + e.viaje + 'º viaje' : ''}<small>${e.albaran ? 'albarán ' + esc(e.albaran) + ' · ' : ''}${esc([...new Set(e.comps.map(z => EXT_ESP[z.esp]))].join(', '))}</small></span><span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene albaranes.</p>'}</div>`; }
     der = fichaCam + albHtml;
   }
   v.innerHTML = `<div class="ofi2"><div class="card lista">

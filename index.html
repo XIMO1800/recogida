@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=176">
+<link rel="manifest" href="manifest.json?v=177">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v176 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v177 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1946,10 +1946,14 @@ function contadores2(v, u) {
       const filasHtml = grupos.map(g => { const cart = Math.round(num((x.cart || {})[g.e]) || 0), cg = g.fs.reduce((a, f) => a + cont(f), 0);
         const lineas = g.fs.length ? g.fs : [null];
         return lineas.map((f, i) => { const r = f ? f.r : null, as = r ? c2Arrs(r) : [];
-          const dep = r ? `<b>${esc(r.dep || '')}</b>${as.map(z => `<br><small>${z.pos === 'ant' ? '↱' : '↳'} ${fmt(Math.round(num(z.l) || 0))} al ${esc(z.dep)}</small>`).join('')}` : '';
+          // Con arrastre: la casilla de depósito y la de litros contador se parten, un trozo por depósito (el arrastre de delante arriba, el de detrás abajo)
+          const trozos = r && as.length ? [...as.filter(z => z.pos === 'ant'), { dep: r.dep, l: r.l, prin: true }, ...as.filter(z => z.pos !== 'ant')] : null;
+          const parte = fn => `<div class="sp">${trozos.map(z => `<div>${fn(z)}</div>`).join('')}</div>`;
+          const dep = trozos ? parte(z => `<b>${esc(z.dep || '')}</b>`) : r ? `<b>${esc(r.dep || '')}</b>` : '';
+          const litC = trozos ? parte(z => fmt(Math.round(num(z.l) || 0))) : null;
           const sinC = !f && cart > 0, declE = filas(x).filter(z => z.esp === g.e).reduce((a, z) => a + (z.decl || 0), 0);   // cartilla sin contador: sale a cero
           const cel = `${primera ? `<td class="prov" rowspan="${nf}"><b>${esc(x.conductor || '')}</b>${x.otra ? '' : `<br>Ruta ${esc(String(x.rutas || '').split(',').map(z => +z).join(' y '))}`}${x.matricula ? `<br><small>${esc(x.matricula)}</small>` : ''}${x.ext ? `<br><small>Externo${x.albaran ? ' · albarán ' + esc(x.albaran) : ''}</small>` : ''}${t.hora ? `<br><small>${esc(t.hora)}</small>` : ''}</td>` : ''}
-            <td>${r ? r.ord + 'º' : ''}</td><td class="cis"><b>${EP[g.e]}</b>${f ? ` <small>${esc(f.id)}</small>` : ''}</td><td>${dep}</td><td class="n">${f ? fmt(cont(f)) : sinC ? '0' : ''}</td>
+            <td>${r ? r.ord + 'º' : ''}</td><td class="cis"><b>${EP[g.e]}</b>${f ? ` <small>${esc(f.id)}</small>` : ''}</td><td${trozos ? ' class="spc"' : ''}>${dep}</td><td class="n${trozos ? ' spc' : ''}">${litC || (f ? fmt(cont(f)) : sinC ? '0' : '')}</td>
             ${i === 0 ? `<td class="n" rowspan="${lineas.length}">${cart ? fmt(cart) : ''}</td><td class="g" rowspan="${lineas.length}">${cart ? dif(cg - cart) : ''}</td>` : ''}
             <td class="n">${f && f.decl ? fmt(f.decl) : sinC ? fmt(declE) : ''}</td><td class="g">${f && f.decl ? dif(cont(f) - f.decl) : sinC ? dif(-declE) : ''}</td>
             ${primera ? `<td rowspan="${nf}" class="firma"><div class="fnom">${esc(quien)}</div><div class="tot">TOTAL<br><b>${fmt(total)}</b></div></td>` : ''}`;
@@ -1964,6 +1968,7 @@ function contadores2(v, u) {
       table.b{margin-bottom:8px;page-break-inside:avoid;table-layout:fixed}tr.r td{height:20px}td.prov{text-align:left;font-size:11px}td.cis{text-align:left}td.n{text-align:right;font-weight:bold}td.g{background:#e6e6e6}
       td.firma{font-size:10px;vertical-align:bottom}td.firma .fnom{margin-bottom:10px}td.firma .tot{border-top:1px solid #555;padding-top:2px}small{font-size:8.5px;color:#333}
       table.ag td{text-align:left}table.ag td.n{text-align:right}
+      td.spc{padding:0}td.spc .sp>div{height:20px;line-height:20px;padding:0 4px}td.spc .sp>div+div{border-top:1px solid #555}
     </style></head><body>
       <div class="h">${logo ? `<img src="${logo}">` : ''}<h1>REGISTRO LITROS CONTADOR</h1><div class="f">Fecha:<br><b>${esc(R.dia)}</b></div></div>
       ${bloques || '<p>No hay camiones en la hoja.</p>'}

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=169">
+<link rel="manifest" href="manifest.json?v=170">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v169 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v170 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1191,8 +1191,8 @@ function marcoEsc() {
     RC = ['recep2', 'Recepción', 'Registro por camión (calidad)', ['vRecep', 'vRecepC', 'vDep']], HC = ['histo2', 'Histórico recepción', 'Registros de calidad por días', ['vHisto2']],
     EX = ['ext', 'Camiones externos', 'Albaranes de otros proveedores', ['vExt']];
   if (!CONTADORES_1) { CO.splice(0, 4, ...C2b); C2b.length = 0; }   // Contadores 2 pasa a ser «Contadores»
-  const grupos = [ofi && ['Recogida', [['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['histo', 'Histórico y DeCA', 'Viajes por días', ['vHisto']]]],
-    ['Recepción', [CO, C2b.length && C2b, CONTADORES_1 && !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC, ofi && EX].filter(Boolean)]].filter(Boolean);
+  const grupos = [ofi && ['Recogida', [['rec', 'Recogidas', 'Rutas de los recogedores', ['vOfi', 'vOfiV', 'vOfiE']], ['histo', 'Histórico y DeCA', 'Viajes por días', ['vHisto']], EX]],
+    ['Recepción', [CO, C2b.length && C2b, CONTADORES_1 && !cal && AG, H3, (ofi || cal) && RC, (ofi || cal) && HC].filter(Boolean)]].filter(Boolean);
   const btn = ([k, t, sub, vs]) => `<button data-nav="${k}" class="${vs.includes(v) && (!(k in MODO) || MODO[k] === (R.modo || '')) ? 'on' : ''}">${t}<small>${sub}</small></button>`;
   const logoSrc = ($('.brand .logo img') || {}).src || '';
   $('#side').innerHTML = `<div class="side-logo"><span class="logo"><img src="${logoSrc}" alt="El Hidalgo"></span><small>${esc(S.datos.usuario.nombre)} · ${ofi ? 'Oficina' + (S.datos.calidad ? ' · Calidad' : '') : cal ? 'Calidad' : 'Recepción'}<br><span id="sideVer" style="white-space:nowrap">${esc(String(VERSION).split(' ')[0] + (U.apiVer ? ' · API ' + U.apiVer : ''))}</span></small></div>
@@ -1253,12 +1253,12 @@ function extDatos(id) {
   if (U.extNuevo && U.extNuevo.id === id) return U.extNuevo;
   const e = (O.externos || []).find(z => z.id === id);
   const hoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  U.extNuevo = e ? JSON.parse(JSON.stringify(Object.assign({}, e, { comps: Array.from({ length: Math.max(e.nComp || 0, e.comps.length) }, (_, i) => e.comps.find(k => k.n === i + 1) || { n: i + 1, esp: '', l: '' }) })))
-    : { id, nuevo: true, fecha: hoy, prov: '', mat: '', albaran: '', obs: '', nComp: 1, comps: [{ n: 1, esp: '', l: '' }] };
+  U.extNuevo = e ? { id: e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, esp: (e.comps.find(k => k.esp) || {}).esp || '', l: String(extTot(e) || '') }
+    : { id, nuevo: true, fecha: hoy, prov: '', mat: '', albaran: '', obs: '', esp: '', l: '' };
   return U.extNuevo;
 }
 function extFicha(id) {
-  const e = extDatos(id), tot = extTot(e);
+  const e = extDatos(id);
   return `<div class="card stack" id="extF"><h2 style="margin:0">${e.nuevo ? 'Camión externo nuevo' : 'Camión externo · ' + esc(e.prov)}</h2>
     <p class="small muted" style="margin:0">Los litros del albarán del proveedor. Ese día el camión sale en <b>Contadores</b> y en <b>Recepción</b> como uno más, y el albarán hace de «cartilla»: en el papel sale la diferencia con el contador. Si ya lo metieron como «otra entrada», se enlaza solo si el proveedor (o la matrícula) es el mismo.</p>
     <div class="row" style="gap:10px;flex-wrap:wrap">
@@ -1267,12 +1267,10 @@ function extFicha(id) {
     <div class="row" style="gap:10px;flex-wrap:wrap">
       <div class="field" style="flex:1 1 140px"><label class="lbl">Matrícula</label><input class="sm" id="extMa" value="${esc(e.mat)}" placeholder="1234-ABC"></div>
       <div class="field" style="flex:1 1 140px"><label class="lbl">Nº de albarán</label><input class="sm" id="extAl" value="${esc(e.albaran)}"></div></div>
-    <div class="field"><label class="lbl">Compartimentos de la cisterna</label><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${e.comps.length === n ? 'on' : ''}" data-extn="${n}" style="min-width:52px">${n}</button>`).join('')}</div></div>
-    ${e.comps.map((k, i) => `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px"><b style="min-width:120px">Compartimento ${k.n}</b>
-      <div class="r3k">${'DOVC'.split('').map(sp => `<button class="${k.esp === sp ? 'on' : ''}" data-exte="${i}|${sp}" style="padding:4px 10px">${EXT_ESP[sp]}</button>`).join('')}<button class="${!k.esp ? 'on' : ''}" data-exte="${i}|" style="padding:4px 10px" title="Viene vacío">vacío</button></div>
-      <div class="unit" style="flex:0 1 190px;position:relative"><input inputmode="numeric" data-extl="${i}" value="${esc(k.l || '')}" placeholder="litros albarán" ${k.esp ? '' : 'disabled'} style="width:100%;font-size:22px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div>`).join('')}
+    <div class="row" style="gap:14px;align-items:flex-end;flex-wrap:wrap">
+      <div class="field" style="flex:2 1 300px"><label class="lbl">Leche</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${e.esp === sp ? 'on' : ''}" data-exte="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
+      <div class="field" style="flex:1 1 200px"><label class="lbl">Total litros del albarán</label><div class="unit" style="position:relative"><input inputmode="numeric" id="extL" value="${esc(e.l || '')}" placeholder="0" style="width:100%;font-size:24px;font-weight:700;padding:8px 28px 8px 10px;border:1.5px solid var(--line);border-radius:10px;text-align:right;font-family:var(--display);background:var(--surface);color:var(--ink)"><span>L</span></div></div></div>
     <div class="field"><label class="lbl">Observaciones</label><input class="sm" id="extOb" value="${esc(e.obs)}"></div>
-    <div class="row" style="justify-content:space-between;align-items:center"><span>Total albarán: <b class="num" id="extTo">${fmt(tot)} l</b></span></div>
     <div id="extMsg" hidden></div>
     <button class="btn" id="extOk">${e.nuevo ? 'Dar de alta el camión externo' : 'Guardar cambios'}</button>
     ${e.nuevo ? '' : '<button class="btn ghost" id="extBo" style="color:var(--bad);border-color:var(--bad)">Borrar este camión externo</button>'}
@@ -1280,17 +1278,16 @@ function extFicha(id) {
 }
 function extEnlazar(id, repinta, volver) {
   const e = extDatos(id), m = $('#extMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
-  const lee = () => { e.fecha = (() => { const d = $('#extFe').value; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : e.fecha; })(); e.prov = $('#extPr').value; e.mat = $('#extMa').value; e.albaran = $('#extAl').value; e.obs = $('#extOb').value; };
-  $('#extF').querySelectorAll('[data-extn]').forEach(b => b.onclick = () => { lee(); const n = +b.dataset.extn; e.comps = Array.from({ length: n }, (_, i) => e.comps[i] || { n: i + 1, esp: '', l: '' }); e.nComp = n; repinta(); });
-  $('#extF').querySelectorAll('[data-exte]').forEach(b => b.onclick = () => { lee(); const [i, sp] = b.dataset.exte.split('|'); e.comps[+i].esp = sp; if (!sp) e.comps[+i].l = ''; repinta(); });
-  $('#extF').querySelectorAll('[data-extl]').forEach(inp => inp.oninput = () => { e.comps[+inp.dataset.extl].l = inp.value.replace(/\D/g, ''); $('#extTo').textContent = fmt(extTot(e)) + ' l'; });
+  const lee = () => { e.fecha = (() => { const d = $('#extFe').value; return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : e.fecha; })(); e.prov = $('#extPr').value; e.mat = $('#extMa').value; e.albaran = $('#extAl').value; e.obs = $('#extOb').value; e.l = $('#extL').value.replace(/\D/g, ''); };
+  $('#extF').querySelectorAll('[data-exte]').forEach(b => b.onclick = () => { lee(); e.esp = b.dataset.exte; repinta(); });
+  $('#extL').oninput = () => { e.l = $('#extL').value.replace(/\D/g, ''); };
   $('#extVo').onclick = () => { U.extNuevo = null; volver ? volver() : (U.ofiSel = null, repinta()); };
   $('#extOk').onclick = async () => { lee(); const b = $('#extOk');
     if (!e.prov.trim()) return err('Pon el proveedor.');
-    const cs = e.comps.filter(k => k.esp); if (!cs.length) return err('Elige la leche de al menos un compartimento.');
-    if (!cs.some(k => +k.l > 0)) return err('Pon los litros del albarán.');
+    if (!e.esp) return err('Elige la leche.');
+    if (!(+e.l > 0)) return err('Pon el total de litros del albarán.');
     ocupado(b, 'Guardando…');
-    try { const r = await api('guardarExterno', { ext: { id: e.nuevo ? '' : e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, nComp: e.comps.length, comps: cs.map(k => ({ n: k.n, esp: k.esp, l: +k.l || 0 })) } });
+    try { const r = await api('guardarExterno', { ext: { id: e.nuevo ? '' : e.id, fecha: e.fecha, prov: e.prov, mat: e.mat, albaran: e.albaran, obs: e.obs, nComp: 4, comps: [{ n: 1, esp: e.esp, l: +e.l || 0 }] } });
       O.externos = (O.externos || []).filter(z => z.id !== r.ext.id).concat([r.ext]); U.extNuevo = null;
       const en = r.enlazado || {}; if (en.error) setTimeout(() => toast('Guardado, pero no se ha podido enlazar con lo ya metido: ' + en.error), 2500); toast((e.nuevo ? 'Camión externo dado de alta' : 'Guardado') + (en.contadores || en.calidad ? ' · enlazado con lo ya metido en ' + [en.contadores ? 'Contadores' : '', en.calidad ? 'Recepción' : ''].filter(Boolean).join(' y ') : ''));
       if (U.ofiSel) U.ofiSel = 'EXT:' + r.ext.id; volver ? volver() : repinta(); }

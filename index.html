@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=175">
+<link rel="manifest" href="manifest.json?v=176">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v175 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v176 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -2339,15 +2339,17 @@ function calidadHtml() {
         return `<div class="row ${bgEsp(espDe(c))}" style="align-items:center;padding:6px 10px;border-radius:10px;border:1px solid var(--cb,var(--line));border-left:5px solid var(--cs);background:var(--cf)"><span style="flex:1">${tq(c.id)} <b>${esc(ESPS[espDe(c)] || '')}</b> · ${fmt(c.contador)} l</span>
           <div class="tg" style="width:240px">${['C', 'I'].map(k => `<button class="${m === k ? 'on' + (k === 'I' ? ' bad' : '') : ''}" data-mz="${esc(x.id + '|' + c.id)}" data-val="${k}">${k === 'C' ? 'C correcto' : 'I incorrecto'}</button>`).join('')}</div></div>`; }).join('') || '<p class="small muted" style="margin:0">Solo vaca: no se verifica.</p>'}</div>`).join('')}</div>`;
 }
+// Orden de los depósitos (1 cabra, 2 vaca, 3 D.O., 4 oveja): así va también el parte del día
+const ORD_DEP = ['C', 'V', 'D', 'O'];
 function parteHtml() {
   const t = totEsp(), P = R.parte || {}, ve = R.ventas || [], cal = !!D().calidad;
   return `<div class="card stack"><span class="lbl">Parte del día · ${esc(R.dia || '')}</span>
-    <div class="tally">${ORD_ESP.map(e => `<div class="${bgEsp(e)}" style="border-left:5px solid var(--cs)"><small>${esc(ESPS[e])}</small><b class="num">${fmt(t[e])}</b></div>`).join('')}</div>
+    <div class="tally">${ORD_DEP.map(e => `<div class="${bgEsp(e)}" style="border-left:5px solid var(--cs)"><small>${esc(ESPS[e])}</small><b class="num">${fmt(t[e])}</b></div>`).join('')}</div>
     <p class="small muted" style="margin:0">Total de leche recepcionada por especie (contador, sin agua), incluidas las cisternas de otros proveedores.</p>
     <span class="lbl">Leche vendida</span>
     ${ve.length ? `<table class="hist"><tbody>${ve.map(x => `<tr class="${bgEsp(x.esp)}"><td><b>${esc(ESPS[x.esp] || x.esp)}</b>${x.dep ? ' · dep. ' + esc(x.dep) : ''}</td><td class="num">${fmt(x.l)} l</td><td>${esc(x.cliente)}</td><td><button class="lnk" style="flex:0" data-vdel="${esc(x.id)}">✕</button></td></tr>`).join('')}</tbody></table>` : '<p class="small muted" style="margin:0">Ninguna.</p>'}
     ${`<button class="btn ghost" id="vtNueva" ${R2() ? 'hidden' : ''}>+ Venta de leche</button>
-      <div id="vtForm" class="stack" ${R2() ? '' : 'hidden'}><div class="tg">${ORD_ESP.map(e => `<button data-vesp="${e}">${esc(ESPS[e])}</button>`).join('')}</div>
+      <div id="vtForm" class="stack" ${R2() ? '' : 'hidden'}><div class="tg">${ORD_DEP.map(e => `<button data-vesp="${e}">${esc(ESPS[e])}</button>`).join('')}</div>
         <div class="pair"><div class="field"><label class="lbl" for="vtDep">Depósito</label><select id="vtDep" class="big" style="font-size:20px"><option value="">—</option>${R.deps.map(d => `<option>${esc(d.id)}</option>`).join('')}</select></div>
           <div class="field"><label class="lbl" for="vtL">Litros</label><input class="sm" id="vtL" inputmode="numeric"></div></div>
         <div class="field"><label class="lbl" for="vtCli">Vendida a</label><input class="sm" id="vtCli" style="font-family:var(--body)"></div>

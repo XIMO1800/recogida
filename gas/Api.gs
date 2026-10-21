@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 13;
+const API_VERSION = 14;
 
 function doPost(e) {
   try {
@@ -1144,7 +1144,8 @@ function guardarExterno(req, c) {
       USUARIO: String(c.NOMBRE), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
     if (ya) actualizar_('EXTERNOS', ya._fila, o);
     else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
-    const ext = extObj_(o), enl = enlazarOtras_(ext, c);
+    const ext = extObj_(o); let enl = {};
+    try { enl = enlazarOtras_(ext, c); } catch (err) { enl = { error: String(err && err.message || err) }; }   // el alta ya está hecha: un fallo al enlazar no la deshace
     return { ok: true, ext: ext, enlazado: enl };
   } finally { lock.releaseLock(); }
 }
@@ -1154,6 +1155,7 @@ function enlazarOtras_(e, c) {
   const nrm = function (t) { return String(t || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9]/g, ''); };
   const es = function (r) { return (nrm(r.CONDUCTOR) && nrm(r.CONDUCTOR) === nrm(e.prov)) || (nrm(e.mat) && nrm(r.MATRICULA) === nrm(e.mat)); };
   const res = { contadores: false, calidad: false };
+  hoja_('RECEPCIONES', CAB_RECEP); hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
   const renombra = function (hoja, filas, col, de, a) { const t = tabla_(hoja), j = t.cab.indexOf(col); if (j < 0) return;
     filas.forEach(function (r) { t.sh.getRange(r._fila, j + 1).setNumberFormat('@').setValue(String(r[col]).replace(de, a)); }); };
   // Contadores

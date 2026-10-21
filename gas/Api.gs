@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 16;
+const API_VERSION = 17;
 
 function doPost(e) {
   try {
@@ -25,7 +25,7 @@ function doPost(e) {
     // Cada rol tiene sus acciones; quien tiene varios roles (p. ej. OFICINA y CALIDAD) tiene la suma. El login es el del rol principal.
     const POR_ROL = {
       OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad,
-        anularRecepcion: anularRecepcion, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarCamionExt: guardarCamionExt, borrarCamionExt: borrarCamionExt, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
+        anularRecepcion: anularRecepcion, rehacerFichero: rehacerFichero, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarCamionExt: guardarCamionExt, borrarCamionExt: borrarCamionExt, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
       CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
       RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
@@ -219,7 +219,8 @@ function guardar(req, c) {
     columnas_('RECOGIDAS', ['DESTINO_3', 'LITROS_DESTINO_3'], 'LITROS_DESTINO_2');
     const t = tabla_('RECOGIDAS');
     const idx = {}; t.filas.forEach(function (r) { idx[r.REC_ID] = r._fila; });
-    const nuevas = [], quitar = [];
+    const nuevas = [], quitar = [], tarde = {};
+    const cerrado = {}; viajes.forEach(function (v) { if (/^CERRADO/.test(String(v.ESTADO).trim()) && /^R\w{7}\.TXT$/i.test(String(v.EXPORTADO))) cerrado[v.VIAJE_ID] = v; });
     const recibido = ahora_('dd/MM/yyyy HH:mm:ss');
     // Recogidas de un viaje que ya no existe (borrado de la hoja, pruebas…): no bloquean el móvil.
     // Se guardan aparte en SIN_VIAJE para que la oficina las revise, y se dan por recibidas.
@@ -227,7 +228,7 @@ function guardar(req, c) {
     if (huerfanas.length) guardarSinViaje_(huerfanas, c);
     recs = recs.filter(function (r) { return mios[r.viajeId]; });
     recs.forEach(function (r) {
-      if (r.quitar) { if (idx[r.recId]) quitar.push(idx[r.recId]); return; }   // apuntado por error en un viaje en curso: se borra la fila
+      if (r.quitar) { if (idx[r.recId]) quitar.push(idx[r.recId]); if (cerrado[r.viajeId] && idx[r.recId]) (tarde[r.viajeId] = tarde[r.viajeId] || []).push([r.recId, r.cod, 'apuntada', '(quitada)']); return; }   // apuntado por error: se borra la fila
       // Hasta tres destinos: el principal, el arrastre de manguera y lo que no cupo (reparto)
       const a = r.arr ? Number(r.arr.l) || 0 : 0, rp = r.rep ? Number(r.rep.l) || 0 : 0;
       const obj = {
@@ -243,6 +244,11 @@ function guardar(req, c) {
       };
       if (r.mezcla) obj.INCIDENCIA_TEMP = (obj.INCIDENCIA_TEMP ? 'SI · ' : '') + 'MEZCLA';
       const row = t.cab.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
+      if (cerrado[r.viajeId]) {   // el viaje ya estaba cerrado (y su fichero hecho): se apunta qué cambia
+        const ant = t.filas.filter(function (x) { return x.REC_ID === r.recId; })[0] || {};
+        const txt = function (o) { return o.NO_RECOGIDO === 'SI' ? 'no recogido' : [o.LITROS + ' l', [o.DESTINO, o.LITROS_DESTINO], [o.DESTINO_2, o.LITROS_DESTINO_2], [o.DESTINO_3, o.LITROS_DESTINO_3]].map(function (z) { return Array.isArray(z) ? (z[0] ? z[0] + ' ' + z[1] : '') : z; }).filter(String).join(' · '); };
+        const a = ant.REC_ID ? txt(ant) : '(nueva)', d = r.quitar ? '(quitada)' : txt(obj);
+        if (a !== d) (tarde[r.viajeId] = tarde[r.viajeId] || []).push([r.recId, r.cod, a, d]); }
       if (idx[r.recId]) t.sh.getRange(idx[r.recId], 1, 1, row.length).setValues([row]);
       else nuevas.push(row);
     });
@@ -252,6 +258,13 @@ function guardar(req, c) {
       t.sh.getRange(f0, 1, nuevas.length, t.cab.length).setValues(nuevas);
     }
     quitar.sort(function (a, b) { return b - a; }).forEach(function (f) { t.sh.deleteRow(f); });
+    // Viajes ya cerrados que han cambiado: se apunta en CAMBIOS y se rehace su fichero (mismo nombre), con sus litros reales
+    Object.keys(tarde).forEach(function (vid) {
+      const v = cerrado[vid], shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
+      const filasK = tarde[vid].map(function (x) { return [ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), vid, String(v.DECA_NUM || ''), String(v.FECHA), x[0], x[1], 'CAMBIO DEL CONDUCTOR CON EL VIAJE CERRADO', x[2], x[3], 'Llegó después de cerrar el viaje: fichero rehecho'];  });
+      shK.getRange(shK.getLastRow() + 1, 1, filasK.length, 11).setNumberFormat('@').setValues(filasK);
+      try { rehacer_(vid); } catch (e) { /* el cambio ya está guardado; la oficina puede rehacer el fichero a mano */ }
+    });
 
     // Últimos litros y destino habitual (la letra) para el día siguiente
     const g = tabla_('GANADEROS');
@@ -550,6 +563,26 @@ function corregir(req, c) {
   } finally { lock.releaseLock(); }
 }
 
+/** Rehace el fichero del programa de un viaje cerrado (mismo nombre) con lo que hay ahora en la hoja, y sus litros reales. */
+function rehacer_(viajeId) {
+  const viajes = tabla_('VIAJES').filas, cad = cadena_(viajeId, viajes);
+  const total = tabla_('RECOGIDAS').filas.filter(function (r) { return cad.ids.indexOf(r.VIAJE_ID) >= 0 && r.NO_RECOGIDO !== 'SI'; }).reduce(function (a, r) { return a + numES_(r.LITROS); }, 0);
+  const cfg = cfg_();
+  actualizar_('VIAJES', cad.fin._fila, { LITROS_REALES: total, PESO_REAL_KG: Math.round(total * (Number(cfg.FACTOR_KG_POR_LITRO) || 1.03)) });
+  const nombre = exportar_(cad.ids, /^R\w{7}\.TXT$/i.test(String(cad.fin.EXPORTADO)) ? String(cad.fin.EXPORTADO) : null);
+  if (nombre !== cad.fin.EXPORTADO) actualizar_('VIAJES', cad.fin._fila, { EXPORTADO: nombre });
+  return nombre;
+}
+/** Oficina: «Rehacer el fichero del programa» de un viaje cerrado */
+function rehacerFichero(req, c) {
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const v = buscar_('VIAJES', 'VIAJE_ID', String(req.viajeId || ''));
+    if (!v) throw new Error('Viaje no encontrado.');
+    if (/CURSO/.test(String(v.ESTADO))) throw new Error('El viaje está en curso: el fichero se hace al cerrarlo.');
+    return { ok: true, fichero: rehacer_(v.VIAJE_ID) };
+  } finally { lock.releaseLock(); }
+}
 /** Anula un viaje recién iniciado por error: solo si está en curso y no tiene ningún ganadero apuntado.
  *  No genera fichero para el programa y no bloquea la ruta. El PDF del DeCA queda renombrado como ANULADO. */
 function anularViaje(req, c) {

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=178">
+<link rel="manifest" href="manifest.json?v=179">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v178 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v179 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1781,7 +1781,7 @@ function contadores2(v, u) {
       const as = c2Arrs(r);
       if (as.some(z => !(num(z.l) > 0) || !z.dep)) { err = `Al arrastre de ${f.id} le faltan los litros o el depósito.`; break; }
       if (as.some(z => String(z.dep) === String(r.dep))) { err = `El arrastre de ${f.id} va al mismo depósito que su leche: quítalo o cambia el depósito.`; break; }
-      if (as.length > 1 && String(as[0].dep) === String(as[1].dep)) { err = `Los dos arrastres de ${f.id} van al mismo depósito: júntalos en uno.`; break; } }
+      if (as.length > 1 && String(as[0].dep) === String(as[1].dep) && (as[0].pos === 'ant') === (as[1].pos === 'ant')) { err = `Los dos arrastres de ${f.id} van al mismo depósito y por el mismo lado: júntalos en uno.`; break; } }   // uno delante y otro detrás al mismo depósito sí vale (es lo que pasó)
     if (!err && !tot) err = 'Escribe el total del contador del camión.';
     const avisos = [];
     if (!err && tot !== suma) avisos.push(`El total (${fmt(tot)} l) no cuadra con la suma de las filas (${fmt(suma)} l).`);

@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 15;
+const API_VERSION = 16;
 
 function doPost(e) {
   try {
@@ -1169,7 +1169,9 @@ function externosDe_(fechas) { if (!SS.getSheetByName('EXTERNOS')) return []; re
 /** Como un viaje del día, para Contadores y Recepción: un compartimento por fila (VC, o VC1/VC2… si se repite especie) */
 function extViaje_(e, recep) {
   const cuenta = {}, total = {}; e.comps.forEach(function (k) { total[k.esp] = (total[k.esp] || 0) + 1; });
-  const comps = e.comps.map(function (k) { cuenta[k.esp] = (cuenta[k.esp] || 0) + 1; return { id: 'V' + k.esp + (total[k.esp] > 1 ? cuenta[k.esp] : ''), n: k.n, esp: [k.esp], cap: 0, decl: Math.round(k.l) }; });
+  let comps = e.comps.map(function (k) { cuenta[k.esp] = (cuenta[k.esp] || 0) + 1; return { id: 'V' + k.esp + (cuenta[k.esp] > 1 ? cuenta[k.esp] : ''), n: k.n, esp: [k.esp], cap: 0, decl: Math.round(k.l) }; });
+  if (e.camion && comps.length === 1 && Number(e.nComp) > 1) {   // albarán por el total: los compartimentos del camión, sin litros por compartimento
+    const sp = e.comps[0].esp; comps = Array.from({ length: Math.min(4, Number(e.nComp)) }, function (_, i) { return { id: 'V' + sp + (i ? i + 1 : ''), n: i + 1, esp: [sp], cap: 0, decl: 0 }; }); }
   return { id: e.id, fecha: e.fecha, deca: '', matricula: e.mat, conductor: e.prov, rutas: '', ruta: '', estado: 'EXTERNO', ini: e.hora, fin: '', comps: comps, cart: e.cart,
     nCompCam: e.nComp, otra: true, ext: true, albaran: e.albaran, camion: e.camion, viaje: e.viaje, recep: recep };
 }
@@ -1199,7 +1201,7 @@ function guardarExterno(req, c) {
     if (ya) actualizar_('EXTERNOS', ya._fila, o);
     else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
     const ext = extObj_(o); let enl = {};
-    try { enl = enlazarOtras_(ext, c); if (cartillaContadores_(id, ext.cart)) { enl.contadores = enl.contadores || id; columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO'); parteDia_(fecha, { CONTADORES_SELLO: 'S' + Date.now(), CONTADORES_ENVIO_POR: String(c.NOMBRE) + ' (albarán)' }); } }
+    try { enl = enlazarOtras_(ext, c); if (cartillaContadores_(id, ext.cart)) enl.contadores = enl.contadores || id; }
     catch (err) { enl = { error: String(err && err.message || err) }; }   // el alta ya está hecha: un fallo al enlazar no la deshace
     return { ok: true, ext: ext, enlazado: enl };
   } finally { lock.releaseLock(); }

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=171">
+<link rel="manifest" href="manifest.json?v=172">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v171 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v172 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1319,8 +1319,8 @@ async function externosVista(recargar) {
 }
 /* Elegir un camión externo de la lista en «+ Otra entrada»: la entrada de ese día (la del albarán si ya está; si no, nueva con el id fijo) */
 function extCal(k, usado) {
-  const e = entradaExt(k, usado), n = Math.max(1, k.nComp || 1, e.nCompCam || 0), lit = Object.values(e.cart || {}).reduce((a, z) => a + z, 0);
-  return { id: 'Q' + e.id, r2: true, otra: true, ext: e.id, extEsp: k.esp, matricula: k.mat, conductor: k.prov, desc: 'Externo' + (e.albaran ? ' · albarán ' + e.albaran : '') + (lit ? ' · ' + fmt(lit) + ' l' : ''),
+  const e = entradaExt(k, usado), n = 4, lit = Object.values(e.cart || {}).reduce((a, z) => a + z, 0);
+  return { id: 'Q' + e.id, r2: true, otra: true, ext: e.id, extEsp: k.esp, extN: Math.min(4, Math.max(1, k.nComp || 1)), matricula: k.mat, conductor: k.prov, desc: 'Externo' + (e.albaran ? ' · albarán ' + e.albaran : '') + (lit ? ' · ' + fmt(lit) + ' l' : ''),
     comps: Array.from({ length: n }, (_, i) => ({ id: 'C' + (i + 1), n: i + 1, cap: 0 })), cal: null, veces: 0 };
 }
 const idDiaExt = (cod, n) => 'XE' + yymmdd(R.dia) + '-' + cod + (n > 1 ? '-' + n : '');
@@ -1329,7 +1329,8 @@ function entradaExt(k, usado) {
   if (v) return v;
   let n = 1; while (usado(idDiaExt(k.cod, n)) || (R.viajes || []).some(z => z.id === idDiaExt(k.cod, n) && !z.ext)) n++;
   const id = idDiaExt(k.cod, n), sv = (R.viajes || []).find(z => z.id === id);
-  return sv || { id, otra: true, ext: true, camion: k.cod, conductor: k.prov, matricula: k.mat, rutas: '', ruta: '', comps: [{ id: 'V' + (k.esp || 'V'), esp: [k.esp || 'V'], decl: 0, n: 1 }], cart: {}, albaran: '' };
+  const e = k.esp || 'V';
+  return sv || { id, otra: true, ext: true, camion: k.cod, conductor: k.prov, matricula: k.mat, rutas: '', ruta: '', comps: Array.from({ length: Math.min(4, Math.max(1, k.nComp || 1)) }, (_, i) => ({ id: 'V' + e + (i ? i + 1 : ''), esp: [e], decl: 0, n: i + 1 })), cart: {}, albaran: '' };
 }
 const camsExtHtml = (attr, hechos) => { const cs = (R.camionesExt || []); if (!cs.length) return '';
   return `<span class="small"><b>Camiones externos</b> · toca el que llega</span><div class="g2">${cs.map(k => `<button class="farm ${bgEsp(k.esp)}" ${attr}="${esc(k.cod)}"><span class="main"><span class="name">${esc(k.prov)} <span class="mono" style="font-weight:500;opacity:.75">${esc(k.mat || '')}</span></span><span class="sub">${esc(EXT_ESP[k.esp] || '')} · ${k.nComp} comp.${(R.viajes || []).some(z => z.ext && z.camion === k.cod && z.cart && Object.keys(z.cart).length) ? ' · <b>albarán de hoy ✓</b>' : ''}${hechos(k) ? ` · <b class="ya-txt">ya ${hechos(k)} hoy</b>` : ''}</span></span><span class="st num">Añadir</span></button>`).join('')}</div><span class="small muted">O, si no está en la lista, apúntalo a mano:</span>`; };
@@ -1746,7 +1747,11 @@ function contadores2(v, u) {
   st.orden = st.orden.filter(id => esAg(id) || todos.some(x => x.id === id)); c2Escribir();
   const enHoja = st.orden.filter(id => !esAg(id)).map(id => todos.find(x => x.id === id)), pend = (editable ? R.viajes : []).filter(x => !st.orden.includes(x.id) && !x.otra);
   const T = x => (st.t[x.id] = st.t[x.id] || { f: {}, total: '' });
-  const filas = x => (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, n0: String(c.n || '') }));
+  const filas = x => { const fs = (x.comps || []).map(c => ({ id: c.id, esp: espComp(c), decl: c.decl || 0, n0: String(c.n || '') }));
+    if (x.ext && fs.length) { const t = st.t[x.id] || { f: {} }, e = fs[0].esp, n = Math.min(4, Math.max(fs.length, t.nx || 0));
+      Object.keys(t.f).forEach(id => { if (!fs.some(f => f.id === id)) fs.push({ id, esp: id[1] || e, decl: 0, n0: '' }); });
+      for (let i = fs.length + 1; i <= n; i++) fs.push({ id: 'V' + e + i, esp: e, decl: 0, n0: String(i) }); }
+    return fs; };
   const silos = R.deps.map(d => d.id);
   // Lo que se manda al guardar (lo mismo que mandaba Contadores): cada cisterna en su orden con su contador (fila + arrastre) y su reparto
   const payload = x => {
@@ -1767,7 +1772,7 @@ function contadores2(v, u) {
     if (!err && !tot) err = 'Escribe el total del contador del camión.';
     const avisos = [];
     if (!err && tot !== suma) avisos.push(`El total (${fmt(tot)} l) no cuadra con la suma de las filas (${fmt(suma)} l).`);
-    if (!err && faltan.length) avisos.push(`Quedan cisternas sin descargar (${faltan.map(f => f.id).join(', ')}).`);
+    if (!err && faltan.length && !x.ext) avisos.push(`Quedan cisternas sin descargar (${faltan.map(f => f.id).join(', ')}).`);
     const cart = Object.values(x.cart || {}).reduce((a, n) => a + (n || 0), 0), cist = hechas.reduce((a, f) => a + (f.decl || 0), 0);
     const recep = { viajeId: x.id, fecha: R.esHoy ? '' : R.dia, total: tot, cuadre: x.otra && !x.ext ? null : { cartilla: Math.round(cart), cisterna: Math.round(cist) }, limpieza: '', filtro: '', obs: '',
       matricula: x.matricula || '', proveedor: x.otra ? x.conductor : '', ruta: x.ruta || '', hora: t.hora || '', comps };
@@ -1799,7 +1804,7 @@ function contadores2(v, u) {
           <span class="tiny c2cuad" data-c2suma="${esc(x.id)}">${c2Cuad(t.total, suma)}</span></div>
         <button class="lnk" data-c2fuera="${esc(x.id)}" style="width:auto;flex:0 0 auto;padding:4px 10px">✕ sacar</button></div>
 
-      ${faltan.length ? `<div class="c2pend"><span class="tiny">${hechas.length ? 'Siguiente que descargas' : 'Toca en el orden en que descargas'}</span><div class="row" style="gap:6px;flex-wrap:wrap">${faltan.map(f => `<button class="c2chip ${bgEsp(f.esp)}" data-c2ord="${esc(x.id)}|${esc(f.id)}"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tqc(f.id)}</button>`).join('')}</div></div>` : ''}
+      ${faltan.length || (x.ext && fs.length < 4 && editable) ? `<div class="c2pend"><span class="tiny">${faltan.length ? (hechas.length ? 'Siguiente que descargas' : 'Toca en el orden en que descargas') : 'Compartimentos'}</span><div class="row" style="gap:6px;flex-wrap:wrap">${faltan.map(f => `<button class="c2chip ${bgEsp(f.esp)}" data-c2ord="${esc(x.id)}|${esc(f.id)}"><b>${esc(ESPS[f.esp] || f.esp)}</b> ${tqc(f.id)}</button>`).join('')}${x.ext && fs.length < 4 && editable ? `<button class="c2chip" data-c2mascomp="${esc(x.id)}" title="Otro compartimento de este camión">+ compartimento</button>` : ''}</div></div>` : ''}
       ${hechas.length ? `<table class="c2tab"><thead><tr><th>Orden</th><th>Cisterna</th><th class="c2c">Litros</th><th class="c2c">Depósito</th><th class="c2c" style="padding:0"><span class="c2thv">Arrastre</span></th><th></th></tr></thead><tbody>${hechas.map(fila).join('')}</tbody></table>` : ''}
 
       </div>`; };
@@ -1999,6 +2004,8 @@ function contadores2(v, u) {
     if (r.ord) { const o = r.ord; Object.values(t.f).forEach(z => { if (z.ord > o) z.ord--; }); r.ord = 0; }
     else r.ord = Math.max(0, ...Object.values(t.f).map(z => z.ord || 0)) + 1; pinta(); });
   // cambiar el orden de descarga: ▲ / ▼ intercambia con la de al lado
+  v.querySelectorAll('[data-c2mascomp]').forEach(b => b.onclick = () => { const id = b.dataset.c2mascomp, x = todos.find(z => z.id === id); if (!x) return;
+    const t = st.t[id] = st.t[id] || { f: {}, total: '' }; t.nx = Math.min(4, filas(x).length + 1); pinta(); });
   v.querySelectorAll('[data-c2mv]').forEach(b => b.onclick = () => { const [vid, cid, d] = b.dataset.c2mv.split('|'), f = st.t[vid].f, r = f[cid], o = r.ord + (+d);
     const otra = Object.values(f).find(z => z.ord === o); if (!otra) return; otra.ord = r.ord; r.ord = o; pinta(); });
   v.querySelectorAll('[data-c2dep]').forEach(b => b.onclick = () => { const [vid, cid, campo, s] = b.dataset.c2dep.split('|'); st.t[vid].f[cid][campo] = s; pinta(); });
@@ -2540,8 +2547,8 @@ function edNuevo2(x) {
   // Litros propuestos: los de la cartilla del viaje de hoy de ese camión (si hay dos viajes, el último), por especie
   const ve = (R.viajes || []).find(v => v.ext && x.id === 'Q' + v.id);   // camión externo: su albarán hace de cartilla
   const vj = ve || (R.viajes || []).filter(v => !v.otra && normMat(v.matricula) === normMat(x.matricula)).sort((a, b) => String(a.ini) < String(b.ini) ? -1 : 1).pop();
-  if (ve && !prev) ve.comps.forEach((k, i) => { const c = comps.find(z => String(z.n) === String(k.n)); if (c && !c.esp) { c.esp = k.esp[0]; c.ord = i + 1; } });
-  else if (!prev && x.extEsp && comps[0] && !comps[0].esp) { comps[0].esp = x.extEsp; comps[0].ord = 1; }   // camión externo de la lista: su leche   // la leche de cada compartimento, la del albarán
+  if (!prev && (x.extEsp || ve)) { const e = x.extEsp || ((ve.comps[0] || {}).esp || [])[0], n = x.extN || (ve ? Math.max(1, ve.comps.length) : 1);   // camión externo: su leche en sus compartimentos
+    comps.slice(0, n).forEach((c, i) => { if (!c.esp && e) { c.esp = e; c.ord = i + 1; } }); }   // la leche de cada compartimento, la del albarán
   const ya = {}; Object.entries(R.calDia || {}).forEach(([id, r]) => { if (id === x.id || !/^Q/.test(id) || r.fecha !== R.dia || normMat(r.matricula) !== normMat(x.matricula)) return;
     r.comps.forEach(c => { const e = espDe(c); ya[e] = (ya[e] || 0) + (+c.contador || 0); }); });
   return { x, comps, porEsp: true, porComp: true, nMax: comps.length, cart: vj && verPropuesta() ? vj.cart || {} : {}, cartTap: vj ? vj.cart || {} : {}, ya, viajeRef: vj && verPropuesta() ? `${vj.ini || ''}${vj.rutas ? ' · ruta ' + rutasTxt(vj) : ''}` : '', total: '', limpieza: prev ? prev.limpieza || '' : '', filtro: prev ? prev.filtro || '' : '', obs: prev ? prev.obs || '' : '' };

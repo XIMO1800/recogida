@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=182">
+<link rel="manifest" href="manifest.json?v=183">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -384,7 +384,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v182 · 21/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v183 · 22/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1955,7 +1955,9 @@ function contadores2(v, u) {
       const t = st.t[id] || { f: {} }, fs = filas(x).map(f => Object.assign({}, f, { r: t.f[f.id] || {} })).filter(f => f.r.ord);
       const cont = f => Math.round(num(f.r.l) || 0) + c2ArrL(f.r);
       const total = Math.round(num(t.total) || 0) || fs.reduce((a, f) => a + cont(f), 0);
-      const grupos = ORD_ESP.map(e => ({ e, fs: fs.filter(f => f.esp === e).sort((a, c) => a.r.ord - c.r.ord) }));
+      // En el orden de descarga (como en pantalla): cada leche donde se descargó su primera cisterna; las que no vienen, al final
+      const grupos = ORD_ESP.map(e => ({ e, fs: fs.filter(f => f.esp === e).sort((a, c) => a.r.ord - c.r.ord) }))
+        .sort((a, c) => (a.fs.length ? a.fs[0].r.ord : 99 + ORD_ESP.indexOf(a.e)) - (c.fs.length ? c.fs[0].r.ord : 99 + ORD_ESP.indexOf(c.e)));
       const nf = grupos.reduce((a, g) => a + Math.max(1, g.fs.length), 0);
       let primera = true;
       const filasHtml = grupos.map(g => { const cart = Math.round(num((x.cart || {})[g.e]) || 0), cg = g.fs.reduce((a, f) => a + cont(f), 0);

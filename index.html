@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=184">
+<link rel="manifest" href="manifest.json?v=185">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -244,10 +244,13 @@ pre{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1px
 
 body{margin:0}
 .btn:disabled{opacity:.6}
-#scanner{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.92);display:flex;flex-direction:column;justify-content:center;gap:14px;padding:16px}
-#scanner p{color:#fff;text-align:center;font-weight:700;margin:0}
-#reader{width:100%;max-width:640px;margin:0 auto;background:#000;border-radius:12px;overflow:hidden}
-#scanner .btn{max-width:640px;width:100%;margin:0 auto;background:#fff;color:var(--brand)}
+#scanner{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column;gap:0;padding:0}
+#scanner .scTop{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#fff;color:var(--ink)}
+#scanner .scTop b{font-size:16px;letter-spacing:.03em;text-transform:uppercase}
+#scanLuz{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700}#scanLuz.on{background:#ffd84d;border-color:#e0b800}
+#scanVid,#reader{flex:1 1 auto;min-height:0;width:100%;object-fit:cover;background:#000}#reader video{object-fit:cover}
+#scanner p{color:#fff;text-align:center;font-weight:700;margin:0;padding:10px 12px 4px}
+#scanner .btn{margin:8px 14px 14px;width:auto;background:#fff;color:var(--brand)}
   table.hist { width: 100%; border-collapse: collapse; font-size: 15px; }
   table.hist th { text-align: left; font-size: 12px; color: var(--muted, #777); font-weight: 600; padding: 4px 4px 6px; border-bottom: 1px solid rgba(0,0,0,.12); }
   table.hist td { padding: 8px 4px; border-bottom: 1px solid rgba(0,0,0,.07); vertical-align: top; }
@@ -370,10 +373,10 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
   </main>
 </div>
 <div id="scanner" hidden>
-  <p id="scanMsg">Apunta al código de barras de la pegatina</p>
-  <div id="reader"></div>
-  <p class="small" style="font-weight:500;opacity:.8">Ponlo recto, a un palmo del móvil, que el código llene casi todo el recuadro</p>
-  <button class="btn" id="scanLuz" hidden>🔦 Encender linterna</button>
+  <div class="scTop"><b>Lectura del código de barras</b><button id="scanLuz" hidden>🔦 Linterna</button></div>
+  <video id="scanVid" playsinline muted autoplay hidden></video>
+  <div id="reader" hidden></div>
+  <p id="scanMsg">Apunta a la pegatina</p>
   <button class="btn" id="scanCancel">Cancelar</button>
 </div>
 <div id="veil" hidden></div><aside id="drawer" hidden><div id="drawerIn" class="stack"></div></aside>
@@ -386,7 +389,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v184 · 24/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v185 · 24/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1072,28 +1075,52 @@ function ficha(i) {
 /* 4b. Escáner del código de barras de la muestra */
 let lector = null;
 async function escanear(onCode) {
-  if (!window.Html5Qrcode) { toast('Escáner no disponible: escribe el número'); return; }
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // que no se quede el teclado abierto tapando la cámara
-  const m = $('#scanner'); m.hidden = false; $('#scanMsg').textContent = 'Apunta al código de barras de la pegatina';
+  const m = $('#scanner'), vid = $('#scanVid'), luzB = $('#scanLuz'), msg = t => { $('#scanMsg').textContent = t; };
+  let hecho = false, ult = '', veces = 0, stream = null, timer = null, luz = false, pista = null;
+  const cerrar = async () => { hecho = true; clearTimeout(timer);
+    if (stream) stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} }); stream = null; vid.srcObject = null;
+    if (lector) { try { await lector.stop(); } catch (e) {} try { lector.clear(); } catch (e) {} lector = null; }
+    m.hidden = true; luzB.hidden = true; };
+  // Solo vale cuando lee el MISMO número dos veces seguidas: así no se cuela una lectura mala (un dígito cambiado)
+  const lee = txt => { if (hecho) return; const code = ((String(txt).match(/\d{6,}/) || [String(txt)])[0]).trim(); if (!code) return;
+    if (code === ult) veces++; else { ult = code; veces = 1; }
+    if (veces < 2) { msg('Leyendo… no te muevas'); return; }
+    if (navigator.vibrate) navigator.vibrate(80); cerrar(); onCode(code); };
+  const ponLuz = t => { pista = t; let cap = {}; try { cap = t.getCapabilities ? t.getCapabilities() : {}; } catch (e) {}
+    if (!cap.torch) return; luzB.hidden = false; luzB.textContent = '🔦 Linterna';
+    luzB.onclick = async () => { luz = !luz; try { await pista.applyConstraints({ advanced: [{ torch: luz }] }); luzB.classList.toggle('on', luz); } catch (e) { luzB.hidden = true; } }; };
+  $('#scanCancel').onclick = cerrar;
+  m.hidden = false; msg('Apunta a la pegatina: el código puede ir de pie o tumbado');
+  // 1) El lector de códigos del propio móvil (el mismo que usan las aplicaciones normales): mira toda la imagen y en cualquier postura
+  let det = null;
+  if ('BarcodeDetector' in window) { try { const sup = await BarcodeDetector.getSupportedFormats();
+    const f = ['code_128', 'code_39', 'code_93', 'itf', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar'].filter(x => sup.includes(x));
+    if (f.length) det = new BarcodeDetector({ formats: f }); } catch (e) { det = null; } }
+  if (det) {
+    $('#reader').hidden = true; vid.hidden = false;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] } }); }
+    catch (e) { cerrar(); toast('No se pudo abrir la cámara. Da permiso a la cámara o escribe el número.'); return; }
+    if (hecho) { cerrar(); return; }
+    vid.srcObject = stream; try { await vid.play(); } catch (e) {}
+    ponLuz(stream.getVideoTracks()[0]);
+    const bucle = async () => { if (hecho) return;
+      try { if (vid.readyState >= 2) { const r = await det.detect(vid); for (const b of r) { lee(b.rawValue); if (hecho) return; } } } catch (e) {}
+      timer = setTimeout(bucle, 70); };
+    bucle(); return;
+  }
+  // 2) Si el móvil no lo tiene: el lector de la página, mirando la imagen entera
+  if (!window.Html5Qrcode) { cerrar(); toast('Escáner no disponible: escribe el número'); return; }
+  vid.hidden = true; $('#reader').hidden = false; msg('Pon el código tumbado (en horizontal) y que llene la pantalla a lo ancho');
   const F = window.Html5QrcodeSupportedFormats || {};
   const formatos = ['CODE_128', 'CODE_39', 'CODE_93', 'ITF', 'EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODABAR'].map(k => F[k]).filter(x => x !== undefined);
   lector = new Html5Qrcode('reader', { formatsToSupport: formatos.length ? formatos : undefined, experimentalFeatures: { useBarCodeDetectorIfSupported: true }, verbose: false });
-  let hecho = false, ult = '', veces = 0, luz = false;
-  const cerrar = async () => { hecho = true; try { await lector.stop(); } catch (e) {} try { lector.clear(); } catch (e) {} m.hidden = true; $('#scanLuz').hidden = true; };
-  $('#scanCancel').onclick = cerrar;
   try {
     await lector.start({ facingMode: 'environment' },
-      { fps: 15, qrbox: (w, h) => ({ width: Math.floor(w * 0.94), height: Math.floor(Math.min(h * 0.5, Math.max(120, w * 0.45))) }),
-        videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] } },
-      txt => { if (hecho) return; const code = ((String(txt).match(/\d{6,}/) || [String(txt)])[0]).trim();
-        // Solo vale cuando lee el MISMO número dos veces seguidas: así no se cuela una lectura mala (un dígito cambiado)
-        if (code === ult) veces++; else { ult = code; veces = 1; }
-        if (veces < 2) { $('#scanMsg').textContent = 'Leyendo… no te muevas'; return; }
-        if (navigator.vibrate) navigator.vibrate(80); cerrar(); onCode(code); });
-    // linterna, si el móvil la tiene
+      { fps: 15, videoConstraints: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] } }, lee);
     try { const cap = lector.getRunningTrackCapabilities ? lector.getRunningTrackCapabilities() : {};
-      if (cap && cap.torch) { const b = $('#scanLuz'); b.hidden = false; b.textContent = '🔦 Encender linterna';
-        b.onclick = async () => { luz = !luz; try { await lector.applyVideoConstraints({ advanced: [{ torch: luz }] }); b.textContent = luz ? '🔦 Apagar linterna' : '🔦 Encender linterna'; } catch (e) { b.hidden = true; } }; } } catch (e) {}
+      if (cap && cap.torch) { luzB.hidden = false; luzB.textContent = '🔦 Linterna';
+        luzB.onclick = async () => { luz = !luz; try { await lector.applyVideoConstraints({ advanced: [{ torch: luz }] }); luzB.classList.toggle('on', luz); } catch (e) { luzB.hidden = true; } }; } } catch (e) {}
   } catch (e) { cerrar(); toast('No se pudo abrir la cámara. Da permiso a la cámara o escribe el número.'); }
 }
 

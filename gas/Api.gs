@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 19;
+const API_VERSION = 20;
 
 function doPost(e) {
   try {
@@ -39,6 +39,13 @@ function doPost(e) {
     if (req.firma && /^(guardarRecepcion|anularRecepcion|guardarAgua|guardarRecepCalidad)$/.test(req.accion)) {
       quien = tabla_(HOJA_US_()).filas.filter(function (r) { return String(r.PIN).trim() === String(req.firma).trim() && String(r.ACTIVO).toUpperCase() !== 'NO' && (esRecepcion_(r) || esOficina_(r)); })[0];
       if (!quien) throw new Error('PIN de firma incorrecto: no es de nadie de recepción.');
+    }
+    // Oficina pasando el papel de otra persona de recepción (p. ej. un día atrasado): queda a nombre de esa persona
+    const ACC_POR = /^(guardarParte|guardarRecepcion|anularRecepcion|guardarAgua|guardarRecepCalidad|borrarRecepCalidad|guardarVenta|borrarVenta|guardarObsDia|guardarMezcla)$/;
+    if (quien === cond && req.por && String(req.por) !== String(cond.NOMBRE) && esOficina_(cond) && ACC_POR.test(req.accion)) {
+      const p = tabla_(HOJA_US_()).filas.filter(function (r) { return String(r.NOMBRE).trim() === String(req.por).trim() && String(r.ACTIVO).toUpperCase() !== 'NO' && (esRecepcion_(r) || esCalidad_(r)); })[0];
+      if (!p) throw new Error(String(req.por) + ' no es de recepción.');
+      quien = Object.assign({}, p, { _porOficina: String(cond.NOMBRE) });
     }
     const res = fn(req, quien);
     if (quien !== cond && res && res.ok) res.firmado = String(quien.NOMBRE);
@@ -937,7 +944,8 @@ function recepViajes(req, c) {
   });
   const mezclas = {}; tabla_('MEZCLAS').filas.forEach(function (r) { if (r.FECHA === fechas[0]) mezclas[r.VIAJE_ID + '|' + r.COMPARTIMENTO] = String(r.MEZCLA); });
   const pd = tabla_('PARTE_DIA').filas.filter(function (r) { return r.FECHA === fechas[0]; })[0] || {};
-  return { ok: true, fecha: fechas[0], hoy: !otroDia, externos: externos, camionesExt: camionesExt_(), viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
+  const recepUs = esOficina_(c) ? tabla_(HOJA_US_()).filas.filter(function (r) { return String(r.ACTIVO).toUpperCase() !== 'NO' && esRecepcion_(r) && !esOficina_(r); }).map(function (r) { return String(r.NOMBRE); }) : [];
+  return { ok: true, recepUs: recepUs, fecha: fechas[0], hoy: !otroDia, externos: externos, camionesExt: camionesExt_(), viajes: salida, depositos: depositos_(), hasta: ahora_('HH:mm'), calidad: calidad, compsCal: compsCal, camiones: camionesAct,
     mezclas: mezclas, firmados: firmadosDia_(fechas[0]), parte: { obs: String(pd.OBSERVACIONES || ''), verificado: String(pd.VERIFICADO_POR || ''), horaVerif: String(pd.HORA_VERIFICACION || ''), cerradoPor: String(pd.CONTADORES_POR || ''), horaCierre: String(pd.CONTADORES_HORA || ''), envio: String(pd.CONTADORES_ENVIO || ''), envioPor: String(pd.CONTADORES_ENVIO_POR || ''), sello: String(pd.CONTADORES_SELLO || ''), restos: restos_(pd.RESTOS) },
     ventas: tabla_('VENTAS_LECHE').filas.filter(function (r) { return r.FECHA === fechas[0]; }).map(function (r) { return { id: r.ID, dep: String(r.DEPOSITO), esp: String(r.ESPECIE), l: numES_(r.LITROS), cliente: String(r.CLIENTE), hora: String(r.HORA), usuario: String(r.USUARIO) }; }),
     aguaDef: { arranque: Number(cfg.AGUA_ARRANQUE) || 70, final: Number(cfg.AGUA_FINAL) || 70 },
@@ -1084,7 +1092,7 @@ function guardarParte(req, c) {
     }
     hoja_('PARTE_DIA', CAB_PARTE); columnas_('PARTE_DIA', ['CONTADORES_POR', 'CONTADORES_HORA', 'CONTADORES_ENVIO'], 'HORA_VERIFICACION'); columnas_('PARTE_DIA', ['CONTADORES_ENVIO_POR', 'CONTADORES_SELLO'], 'CONTADORES_ENVIO');
     const hora = ahora_('dd/MM/yyyy HH:mm');
-    const sello = 'S' + Date.now(), env = { CONTADORES_ENVIO: hora, CONTADORES_ENVIO_POR: String(c.NOMBRE), CONTADORES_SELLO: sello };
+    const sello = 'S' + Date.now(), env = { CONTADORES_ENVIO: hora, CONTADORES_ENVIO_POR: String(c.NOMBRE) + (c._porOficina ? ' (lo pasó ' + c._porOficina + ')' : ''), CONTADORES_SELLO: sello };
     // Restos del día anterior en los depósitos (solo para Contadores: no van al fichero del programa ni a la recepción)
     if (Array.isArray(req.restos)) { columnas_('PARTE_DIA', ['RESTOS'], 'CONTADORES_SELLO');
       env.RESTOS = req.restos.filter(function (z) { return String(z.dep || '').trim() && Math.round(Number(z.l) || 0) > 0; })
@@ -1141,7 +1149,7 @@ function guardarRecepCalidad(req, c) {
  *  sin hacer (por ejemplo, un camión del sábado que no se descargó en la app). Nunca un día futuro ni de hace más de 15 días. */
 function fechaAtrasada_(f, c) {
   const hoy = ahora_('dd/MM/yyyy');
-  if (!f || String(f) === hoy || !esOficina_(c)) return hoy;
+  if (!f || String(f) === hoy || !(esOficina_(c) || c._porOficina)) return hoy;
   const n = fechaNum_(f), h = fechaNum_(hoy);
   if (!n) throw new Error('Fecha no válida: ' + f);
   if (n > h) throw new Error('No se puede registrar una recepción en un día futuro.');
@@ -1323,7 +1331,7 @@ function borrarRecepCalidad(req, c) {
     const filas = tabla_('RECEPCION_CALIDAD').filas.filter(function (r) { return String(r.VIAJE_ID) === id; });
     if (!filas.length) throw new Error('Ese registro no está guardado (puede que ya se haya eliminado).');
     const fecha = String(filas[0].FECHA);
-    if (fecha !== ahora_('dd/MM/yyyy') && !esOficina_(c)) throw new Error('Un registro de otro día solo lo puede eliminar la oficina.');
+    if (fecha !== ahora_('dd/MM/yyyy') && !(esOficina_(c) || c._porOficina)) throw new Error('Un registro de otro día solo lo puede eliminar la oficina.');
     const antes = filas.map(function (r) { return 'comp ' + (r.N_COMP_CISTERNA || '?') + ' ' + r.ESPECIE + ' ' + r.LITROS + ' l'; }).join(', ');
     const sh = SS.getSheetByName('RECEPCION_CALIDAD');
     filas.map(function (r) { return r._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });

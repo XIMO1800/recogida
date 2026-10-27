@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=186">
+<link rel="manifest" href="manifest.json?v=187">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -343,6 +343,7 @@ table.dt td{text-align:left}table.dt td.n{text-align:right}table.dt td:nth-child
     <div class="bar">
       <button class="back" id="back" aria-label="Volver" hidden>‹</button>
       <div class="bar-t"><span id="hZ"></span><b id="barTitle">Recogida</b><span class="bar-s"><span id="barSub"></span><span id="barEnv" hidden></span></span></div>
+      <button class="back" id="hSalir" hidden title="Salir para que entre otra persona con su PIN" style="width:auto;padding:0 10px;font-size:13px;font-weight:700;line-height:1.1">Cambiar<br>persona</button>
       <button class="back" id="barBorrar" hidden title="Borrar lo metido en este camión (sin guardar)" style="width:auto;padding:0 12px;font-size:20px">🗑</button>
       <button class="decabtn" id="decaBtn" hidden aria-label="Mostrar DeCA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/></svg>DeCA</button>
     </div>
@@ -389,7 +390,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v186 · 25/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v187 · 27/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -549,6 +550,9 @@ function show(v, title, sub) {
   VIEWS.forEach(id => $('#' + id).hidden = id !== v);
   document.body.classList.toggle('ancho', ['vRecep', 'vRecepC', 'vAgua', 'vDep'].includes(v));
   if ($('#barBorrar')) { $('#barBorrar').hidden = true; $('#barBorrar').onclick = null; }
+  // En el móvil, recepción / calidad / oficina: botón para salir y que entre otra persona con su PIN (en el ordenador está en el menú)
+  { const hs = $('#hSalir'), d = S.datos || {}; if (hs) { hs.hidden = !(d.recepcion || d.calidad || d.oficina) || esEsc() || v === 'vPin';
+    hs.onclick = async () => { if (!confirm2(hs)) return; try { if (typeof C2 !== 'undefined' && C2.pend) await c2Auto(); } catch (e) {} salir(); }; } }
   U.ocupado = false; U.view = v; $('#barTitle').textContent = title; $('#barSub').textContent = sub || ''; $('#barEnv').hidden = true;
   $('#back').hidden = ['vPin', 'vDeca', 'vRutas', 'vOfi'].includes(v) || (v === 'vLista') || (v === 'vRecep' && !(S.datos && S.datos.oficina));
   $('#decaBtn').hidden = !(S.viaje && ['vLista', 'vFicha', 'vFin', 'vTras'].includes(v) || (v === 'vCamion' && U.camMode === 'trasvase'));

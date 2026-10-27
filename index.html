@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#862133">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Recogida">
-<link rel="manifest" href="manifest.json?v=188">
+<link rel="manifest" href="manifest.json?v=189">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Recogida de Leche · El Hidalgo</title>
@@ -390,7 +390,7 @@ const API = 'https://script.google.com/macros/s/AKfycbx7uB5N55ZiEpH2EpCQBNsK-YI0
 const LS = 'rl_estado_v1';
 /** Contadores (por destinos) queda en el código por si hiciera falta volver a él, pero no se enseña: lo sustituye Contadores 2. Poner true para recuperarlo. */
 const CONTADORES_1 = false;
-const VERSION = 'v188 · 27/10/2026';   // cambiar en cada subida (y la caché de sw.js)
+const VERSION = 'v189 · 27/10/2026';   // cambiar en cada subida (y la caché de sw.js)
 
 /* ═══════════ ESTADO ═══════════
    S se guarda en el móvil (sobrevive a cierres y a falta de cobertura). U es solo de pantalla. */
@@ -1324,6 +1324,10 @@ async function externosVista(recargar) {
       <div class="row" style="gap:14px;flex-wrap:wrap;align-items:flex-end"><div class="field"><label class="lbl">Leche que trae</label><div class="r3k">${'DOVC'.split('').map(sp => `<button class="${c.esp === sp ? 'on' : ''}" data-xce="${sp}" style="padding:4px 14px">${EXT_ESP[sp]}</button>`).join('')}</div></div>
         <div class="field"><label class="lbl">Compartimentos</label><div class="r3k">${[1, 2, 3, 4].map(n => `<button class="${+c.nComp === n ? 'on' : ''}" data-xcn="${n}" style="min-width:46px">${n}</button>`).join('')}</div></div></div>
       <div class="field"><label class="lbl">Notas</label>${entIn('xcNo', c.notas, '')}</div>
+      <div class="stack" style="gap:6px;border-top:1px solid var(--line);padding-top:10px"><b>En el programa de gestión</b><span class="small muted">Como está dado de alta allí (como un ganadero). Con esto, cada albarán sale en un fichero R que se importa solo. Sin código no se hace fichero.</span>
+        <div class="row" style="gap:10px;flex-wrap:wrap"><div class="field" style="flex:2 1 150px"><label class="lbl">Código</label>${entIn('xcCp', c.codP || '', 'Ej.: 072256')}</div>
+          <div class="field" style="flex:1 1 90px"><label class="lbl">Ruta</label>${entIn('xcRp', c.rutaP || '00', '00')}</div>
+          <div class="field" style="flex:1 1 90px"><label class="lbl">Orden</label>${entIn('xcOp', c.ordP || '', 'Ej.: 037')}</div></div></div>
       <div id="xcMsg" hidden></div>
       <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xcOk" style="flex:1">${k ? 'Guardar datos del camión' : 'Dar de alta el camión'}</button>${k ? '<button class="btn ghost" id="xcBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Quitar de la lista</button>' : ''}</div></div>`;
     let albHtml = '';
@@ -1338,7 +1342,7 @@ async function externosVista(recargar) {
         <div class="field"><label class="lbl">Observaciones</label>${entIn('xaOb', a.obs, '')}</div>
         <div id="xaMsg" hidden></div>
         <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="xaOk" style="flex:1">${a.id ? 'Guardar cambios del albarán' : 'Guardar albarán'}</button>${a.id ? '<button class="btn sec" id="xaNu" style="width:auto">+ Nuevo albarán</button><button class="btn ghost" id="xaBo" style="width:auto;color:var(--bad);border-color:var(--bad)">Borrar</button>' : ''}</div></div>
-        <div class="card stack"><h3 style="margin:0">Historial de albaranes · ${esc(k.prov)}</h3><p class="small muted" style="margin:0">Toca uno para verlo o corregirlo.</p>${h.length ? `<div class="lista">${h.map(e => `<button class="vrow${a.id === e.id ? ' on' : ''}" data-xa="${esc(e.id)}"><span><b>${esc(e.fecha)}</b>${e.viaje > 1 ? ' · ' + e.viaje + 'º viaje' : ''}<small>${e.albaran ? 'albarán ' + esc(e.albaran) + ' · ' : ''}${esc([...new Set(e.comps.map(z => EXT_ESP[z.esp]))].join(', '))}</small></span><span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene albaranes.</p>'}</div>`; }
+        <div class="card stack"><h3 style="margin:0">Historial de albaranes · ${esc(k.prov)}</h3><p class="small muted" style="margin:0">Toca uno para verlo o corregirlo.</p>${h.length ? `<div class="lista">${h.map(e => `<button class="vrow${a.id === e.id ? ' on' : ''}" data-xa="${esc(e.id)}"><span><b>${esc(e.fecha)}</b>${e.viaje > 1 ? ' · ' + e.viaje + 'º viaje' : ''}<small>${e.albaran ? 'albarán ' + esc(e.albaran) + ' · ' : ''}${esc([...new Set(e.comps.map(z => EXT_ESP[z.esp]))].join(', '))}${e.exportado ? ' · fichero ' + esc(e.exportado) : ''}</small></span><span class="num"><b>${fmt(extTot(e))} l</b></span></button>`).join('')}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene albaranes.</p>'}</div>`; }
     der = fichaCam + albHtml;
   }
   v.innerHTML = `<div class="ofi2"><div class="card lista">
@@ -1348,7 +1352,7 @@ async function externosVista(recargar) {
   $('#xcN').onclick = () => { U.extCam = 'nuevo'; U.extCamEd = null; U.extAlb = null; pinta(); };
   v.querySelectorAll('[data-xc]').forEach(b => b.onclick = () => { U.extCam = b.dataset.xc; U.extCamEd = null; U.extAlb = null; pinta(); });
   if ($('#xcF')) { const c = U.extCamEd, m = $('#xcMsg'), err = t => { m.hidden = false; m.className = 'msg bad'; m.textContent = t; };
-    const lee = () => { c.prov = $('#xcPr').value; c.mat = $('#xcMa').value; c.notas = $('#xcNo').value; };
+    const lee = () => { c.prov = $('#xcPr').value; c.mat = $('#xcMa').value; c.notas = $('#xcNo').value; c.codP = $('#xcCp').value.trim(); c.rutaP = $('#xcRp').value.trim(); c.ordP = $('#xcOp').value.trim(); };
     v.querySelectorAll('[data-xce]').forEach(b => b.onclick = () => { lee(); c.esp = b.dataset.xce; pinta(); });
     v.querySelectorAll('[data-xcn]').forEach(b => b.onclick = () => { lee(); c.nComp = +b.dataset.xcn; pinta(); });
     $('#xcOk').onclick = async () => { lee(); const b = $('#xcOk'); if (!c.prov.trim()) return err('Pon el proveedor.'); if (!c.esp) return err('Elige la leche que trae.');
@@ -1369,7 +1373,7 @@ async function externosVista(recargar) {
       ocupado(b, 'Guardando…');
       try { const r = await api('guardarExterno', { ext: { id: a.id, camion: a.camion, fecha: a.fecha, viaje: a.viaje, albaran: a.albaran, obs: a.obs, comps: [{ n: 1, esp: a.esp, l: +a.l }] } });
         O.externos = (O.externos || []).filter(z => z.id !== r.ext.id && z.id !== a.id).concat([r.ext]); U.extAlb = Object.assign({}, a, { id: r.ext.id });
-        const en = r.enlazado || {}; toast('Albarán guardado' + (en.contadores || en.calidad ? ' · enlazado con lo ya recepcionado' : '')); if (en.error) setTimeout(() => toast('No se ha podido enlazar: ' + en.error), 2500); pinta(); }
+        const en = r.enlazado || {}; toast('Albarán guardado' + (r.fichero ? ' · fichero ' + r.fichero + ' para el programa' : '') + (en.contadores || en.calidad ? ' · enlazado con lo ya recepcionado' : '')); if (en.error) setTimeout(() => toast('No se ha podido enlazar: ' + en.error), 2500); if (r.avisoFichero) setTimeout(() => toast(r.avisoFichero), en.error ? 5000 : 2500); pinta(); }
       catch (x) { libre(b); err(esRed(x) ? 'Sin conexión: no se ha guardado.' : x.message); } };
     if ($('#xaBo')) $('#xaBo').onclick = async () => { const b = $('#xaBo'); if (!confirm2(b)) return; ocupado(b, 'Borrando…');
       try { await api('borrarExterno', { id: a.id, motivo: 'borrado desde Camiones externos' }); O.externos = O.externos.filter(z => z.id !== a.id); U.extAlb = null; toast('Albarán borrado'); pinta(); }

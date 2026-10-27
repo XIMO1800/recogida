@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 20;
+const API_VERSION = 21;
 
 function doPost(e) {
   try {
@@ -358,9 +358,9 @@ function lineas_(ids) {
               r.DESTINO, r.LITROS_DESTINO, r.DESTINO_2, r.LITROS_DESTINO_2, r.DESTINO_3 || '', r.LITROS_DESTINO_3 || '', r.MUESTRA].join(';');
     });
 }
-function exportar_(ids, nombre) {
+function exportar_(ids, nombre, dadas) {
   const cfg = cfg_();
-  const lineas = lineas_(ids);
+  const lineas = dadas || lineas_(ids);
   if (!cfg.CARPETA_EXPORTACION_ID || !lineas.length) return nombre || 'NO';
   const carpetaExp = DriveApp.getFolderById(cfg.CARPETA_EXPORTACION_ID);
   const texto = lineas.join('\r\n') + '\r\n';
@@ -1142,7 +1142,8 @@ function guardarRecepCalidad(req, c) {
     });
     const f0 = sh.getLastRow() + 1;
     sh.getRange(f0, 1, filas.length, t.cab.length).setNumberFormat('@').setValues(filas.map(function (f) { return f.map(String); }));
-    return { ok: true, fecha: fecha };
+    let fichero = ''; if (/^QXE/.test(id)) { try { fichero = ficheroExt_(id.slice(1)); } catch (e) {} }   // camión externo: la temperatura va a su fichero R
+    return { ok: true, fecha: fecha, fichero: fichero };
   } finally { lock.releaseLock(); }
 }
 /** Fecha con la que se guarda una recepción o el agua: hoy, salvo que OFICINA esté registrando un día anterior que se quedó
@@ -1164,14 +1165,16 @@ function fechaAtrasada_(f, c) {
  * La oficina los da de alta en Recogidas con los litros del albarán por compartimento. Salen ese día en Contadores
  * (id X…: el fichero los junta por especie, VC/VV/VO/VD) y en Recepción (registro de calidad 'Q' + id), y el albarán hace
  * de «cartilla» para la diferencia con el contador. */
-const CAB_EXT = ['ID', 'FECHA', 'HORA', 'PROVEEDOR', 'MATRICULA', 'N_COMP', 'ALBARAN', 'COMPARTIMENTOS', 'OBSERVACIONES', 'USUARIO', 'ALTA', 'CAMION', 'VIAJE'];
-function hojaExt_() { const sh = hoja_('EXTERNOS', CAB_EXT); columnas_('EXTERNOS', ['CAMION', 'VIAJE'], 'ALTA'); return sh; }
+const CAB_EXT = ['ID', 'FECHA', 'HORA', 'PROVEEDOR', 'MATRICULA', 'N_COMP', 'ALBARAN', 'COMPARTIMENTOS', 'OBSERVACIONES', 'USUARIO', 'ALTA', 'CAMION', 'VIAJE', 'EXPORTADO'];
+function hojaExt_() { const sh = hoja_('EXTERNOS', CAB_EXT); columnas_('EXTERNOS', ['CAMION', 'VIAJE'], 'ALTA'); columnas_('EXTERNOS', ['EXPORTADO'], 'VIAJE'); return sh; }
 /* Ficha fija de cada camión externo (como un camión propio): se da de alta una vez y sale siempre en «+ Otra entrada».
  * La entrada de un día tiene un id fijo por camión y fecha (XEaammdd-CODIGO, y -2, -3… si viene otra vez ese día), así el
  * albarán (oficina) y la recepción (contadores / calidad) se enlazan solos, se meta antes uno u otro. */
-const CAB_EXTCAM = ['CODIGO', 'PROVEEDOR', 'MATRICULA', 'ESPECIE', 'N_COMP', 'ACTIVO', 'NOTAS', 'ALTA'];
+const CAB_EXTCAM = ['CODIGO', 'PROVEEDOR', 'MATRICULA', 'ESPECIE', 'N_COMP', 'ACTIVO', 'NOTAS', 'ALTA', 'COD_PROGRAMA', 'RUTA_PROGRAMA', 'ORDEN_PROGRAMA'];
 function diaExt_(fecha, cod, viaje) { const f = String(fecha); return 'XE' + f.slice(8, 10) + f.slice(3, 5) + f.slice(0, 2) + '-' + cod + (Number(viaje) > 1 ? '-' + Number(viaje) : ''); }
-function camExtObj_(r) { return { cod: String(r.CODIGO), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), esp: String(r.ESPECIE || '').toUpperCase(), nComp: Number(r.N_COMP) || 1, activo: String(r.ACTIVO || '').toUpperCase() !== 'NO', notas: String(r.NOTAS || '') }; }
+function camExtObj_(r) { return { cod: String(r.CODIGO), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), esp: String(r.ESPECIE || '').toUpperCase(), nComp: Number(r.N_COMP) || 1, activo: String(r.ACTIVO || '').toUpperCase() !== 'NO', notas: String(r.NOTAS || ''),
+  codP: String(r.COD_PROGRAMA || '').trim(), rutaP: String(r.RUTA_PROGRAMA || '').trim(), ordP: String(r.ORDEN_PROGRAMA || '').trim() }; }
+const pad3_ = function (x) { x = String(x || '').trim(); return /^\d{1,2}$/.test(x) ? ('00' + x).slice(-3) : x; };
 function camionesExt_(todos) {
   const sh = hoja_('EXTERNOS_CAMIONES', CAB_EXTCAM);
   if (sh.getLastRow() < 2 && SS.getSheetByName('EXTERNOS') && SS.getSheetByName('EXTERNOS').getLastRow() > 1) {   // primera vez: los que ya se dieron de alta con albarán
@@ -1182,7 +1185,32 @@ function camionesExt_(todos) {
         sh.getRange(sh.getLastRow() + 1, 1, 1, CAB_EXTCAM.length).setNumberFormat('@').setValues([CAB_EXTCAM.map(function (h) { return String(o[h]); })]); }
       if (!String(r.CAMION || '')) actualizar_('EXTERNOS', r._fila, { CAMION: vistos[k], VIAJE: 1 }); });
   }
+  // Código, ruta y orden con que está dado de alta en el programa de gestión (como un ganadero): para el fichero R
+  if (tabla_('EXTERNOS_CAMIONES').cab.indexOf('COD_PROGRAMA') < 0) {
+    columnas_('EXTERNOS_CAMIONES', ['COD_PROGRAMA', 'RUTA_PROGRAMA', 'ORDEN_PROGRAMA'], 'ALTA');
+    const conocidos = [[/SAN\s*BLAS/, '072256', '037'], [/CASTUERA/, '000020', '018'], [/CASOTA/, '020906', '007']];   // los que ya había
+    tabla_('EXTERNOS_CAMIONES').filas.forEach(function (r) { const c = conocidos.filter(function (k) { return k[0].test(String(r.PROVEEDOR).toUpperCase()); })[0];
+      if (c && !String(r.COD_PROGRAMA || '').trim()) { const t = tabla_('EXTERNOS_CAMIONES'), j = t.cab.indexOf('COD_PROGRAMA');
+        t.sh.getRange(r._fila, j + 1, 1, 3).setNumberFormat('@').setValues([[c[1], '00', c[2]]]); } });
+  }
   return tabla_('EXTERNOS_CAMIONES').filas.map(camExtObj_).filter(function (k) { return todos || k.activo; });
+}
+/** Fichero R del albarán de un camión externo, para el programa de gestión: una línea por leche, como un ganadero
+ *  (ruta y orden del programa, su código, litros del albarán, temperatura del registro de calidad, destino V + leche: VV, VC, VO, VD).
+ *  Se rehace con el mismo nombre si cambia el albarán o la temperatura. Sin código en la ficha no se hace. */
+function ficheroExt_(id) {
+  hojaExt_(); const r = tabla_('EXTERNOS').filas.filter(function (x) { return String(x.ID) === String(id); })[0]; if (!r) return '';
+  const e = extObj_(r), k = camionesExt_(true).filter(function (z) { return z.cod === e.camion; })[0];
+  if (!k || !k.codP) return '';
+  const cal = SS.getSheetByName('RECEPCION_CALIDAD') ? tabla_('RECEPCION_CALIDAD').filas.filter(function (x) { return String(x.VIAJE_ID) === 'Q' + id; }) : [];
+  const tempDe = function (sp) { const t = cal.filter(function (x) { return String(x.ESPECIE).toUpperCase() === sp && String(x.TEMPERATURA).trim() !== ''; })[0] || cal.filter(function (x) { return String(x.TEMPERATURA).trim() !== ''; })[0]; return t ? num1_(t.TEMPERATURA) : ''; };
+  const lineas = Object.keys(e.cart).filter(function (sp) { return Math.round(e.cart[sp]) > 0; }).map(function (sp) { const l = Math.round(e.cart[sp]);
+    return [e.fecha, pad2_(k.rutaP || '00') || '00', pad3_(k.ordP), k.codP, sp, l, tempDe(sp), 'V' + sp, l, '', '', '', '', ''].join(';'); });
+  if (!lineas.length) return '';
+  const ant = /^R\w{7}\.TXT$/i.test(String(r.EXPORTADO || '')) ? String(r.EXPORTADO) : null;
+  const nombre = exportar_([], ant, lineas);
+  if (nombre !== String(r.EXPORTADO || '')) actualizar_('EXTERNOS', r._fila, { EXPORTADO: nombre });
+  return nombre;
 }
 function guardarCamionExt(req, c) {
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -1191,10 +1219,16 @@ function guardarCamionExt(req, c) {
     if (!prov) throw new Error('Pon el proveedor.');
     const sh = hoja_('EXTERNOS_CAMIONES', CAB_EXTCAM), t = tabla_('EXTERNOS_CAMIONES'), ya = k.cod ? t.filas.filter(function (r) { return String(r.CODIGO) === String(k.cod); })[0] : null;
     let cod = ya ? String(ya.CODIGO) : ''; if (!cod) { let n = t.filas.length + 1; while (t.filas.some(function (r) { return String(r.CODIGO) === 'E' + n; })) n++; cod = 'E' + n; }
+    camionesExt_(true);   // que existan las columnas del programa
+    const codP = String(k.codP || '').trim(), ordP = String(k.ordP || '').trim(), rutaP = String(k.rutaP || '').trim() || '00';
+    if (codP && !/^\d{1,8}$/.test(codP)) throw new Error('El código del programa son solo números (p. ej. 072256).');
+    if (ordP && !/^\d{1,3}$/.test(ordP)) throw new Error('El orden son números (p. ej. 037).');
+    if (codP && !ordP) throw new Error('Pon también el orden con el que está en el programa.');
     const o = { CODIGO: cod, PROVEEDOR: prov, MATRICULA: String(k.mat || '').trim().toUpperCase(), ESPECIE: 'DOVC'.indexOf(String(k.esp || '').toUpperCase()) >= 0 ? String(k.esp || '').toUpperCase() : '',
-      N_COMP: Math.min(Math.max(Number(k.nComp) || 1, 1), 4), ACTIVO: 'SI', NOTAS: String(k.notas || '').trim(), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
+      N_COMP: Math.min(Math.max(Number(k.nComp) || 1, 1), 4), ACTIVO: 'SI', NOTAS: String(k.notas || '').trim(), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss'),
+      COD_PROGRAMA: codP, RUTA_PROGRAMA: pad2_(rutaP), ORDEN_PROGRAMA: ordP ? pad3_(ordP) : '' };
     if (ya) actualizar_('EXTERNOS_CAMIONES', ya._fila, o);
-    else sh.getRange(sh.getLastRow() + 1, 1, 1, CAB_EXTCAM.length).setNumberFormat('@').setValues([CAB_EXTCAM.map(function (h) { return String(o[h]); })]);
+    else { const t2 = tabla_('EXTERNOS_CAMIONES'); sh.getRange(sh.getLastRow() + 1, 1, 1, t2.cab.length).setNumberFormat('@').setValues([t2.cab.map(function (h) { return String(o[h] === undefined ? '' : o[h]); })]); }
     return { ok: true, cam: camExtObj_(o) };
   } finally { lock.releaseLock(); }
 }
@@ -1217,7 +1251,7 @@ function extObj_(r) {
     .filter(function (k) { return 'DOVC'.indexOf(k.esp) >= 0 && k.esp; });
   const cart = {}; comps.forEach(function (k) { cart[k.esp] = (cart[k.esp] || 0) + k.l; });
   return { id: String(r.ID), fecha: String(r.FECHA), hora: String(r.HORA || ''), prov: String(r.PROVEEDOR || ''), mat: String(r.MATRICULA || ''), nComp: Number(r.N_COMP) || comps.length,
-    albaran: String(r.ALBARAN || ''), comps: comps, cart: cart, obs: String(r.OBSERVACIONES || ''), usuario: String(r.USUARIO || ''), camion: String(r.CAMION || ''), viaje: Number(r.VIAJE) || 1 };
+    albaran: String(r.ALBARAN || ''), comps: comps, cart: cart, obs: String(r.OBSERVACIONES || ''), usuario: String(r.USUARIO || ''), camion: String(r.CAMION || ''), viaje: Number(r.VIAJE) || 1, exportado: String(r.EXPORTADO || '') };
 }
 function externosDe_(fechas) { if (!SS.getSheetByName('EXTERNOS')) return []; return tabla_('EXTERNOS').filas.filter(function (r) { return fechas.indexOf(String(r.FECHA)) >= 0; }).map(extObj_); }
 /** Como un viaje del día, para Contadores y Recepción: un compartimento por fila (VC, o VC1/VC2… si se repite especie) */
@@ -1253,11 +1287,13 @@ function guardarExterno(req, c) {
       ALBARAN: String(e.albaran || '').trim(), COMPARTIMENTOS: comps.map(function (k) { return k.n + ':' + k.esp + ':' + k.l; }).join('|'), OBSERVACIONES: String(e.obs || '').trim(),
       USUARIO: String(c.NOMBRE), ALTA: ya ? String(ya.ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss') };
     if (ya) actualizar_('EXTERNOS', ya._fila, o);
-    else { const f0 = sh.getLastRow() + 1; sh.getRange(f0, 1, 1, CAB_EXT.length).setNumberFormat('@').setValues([CAB_EXT.map(function (h) { return String(o[h]); })]); }
+    else { const f0 = sh.getLastRow() + 1, cabE = tabla_('EXTERNOS').cab; sh.getRange(f0, 1, 1, cabE.length).setNumberFormat('@').setValues([cabE.map(function (h) { return String(o[h] === undefined ? '' : o[h]); })]); }
     const ext = extObj_(o); let enl = {};
     try { enl = enlazarOtras_(ext, c); if (cartillaContadores_(id, ext.cart)) enl.contadores = enl.contadores || id; }
     catch (err) { enl = { error: String(err && err.message || err) }; }   // el alta ya está hecha: un fallo al enlazar no la deshace
-    return { ok: true, ext: ext, enlazado: enl };
+    let fichero = '', avisoF = ''; try { fichero = ficheroExt_(id); if (!fichero && cam && !cam.codP) avisoF = 'Sin fichero para el programa: falta el código del programa en los datos del camión.'; } catch (err) { avisoF = 'No se ha podido hacer el fichero: ' + (err && err.message || err); }
+    ext.exportado = fichero;
+    return { ok: true, ext: ext, enlazado: enl, fichero: fichero, avisoFichero: avisoF };
   } finally { lock.releaseLock(); }
 }
 /** El camión ya se metió en Contadores y/o Recepción como «otra entrada» antes de que llegara el albarán a la oficina:
@@ -1312,11 +1348,12 @@ function borrarExterno(req, c) {
     if (!ya) throw new Error('Ese camión externo ya no está.');
     if (buscar_('RECEPCION_CAMION', 'VIAJE_ID', id)) throw new Error('Ya está en Contadores: sácalo de la hoja de contadores (o anula su recepción) antes de borrarlo.');
     if (SS.getSheetByName('RECEPCION_CALIDAD') && tabla_('RECEPCION_CALIDAD').filas.some(function (r) { return String(r.VIAJE_ID) === 'Q' + id; })) throw new Error('Ya tiene registro de calidad: elimínalo antes en Recepción.');
+    const fich = /^R\w{7}\.TXT$/i.test(String(ya.EXPORTADO || '')) ? String(ya.EXPORTADO) : '';
     SS.getSheetByName('EXTERNOS').deleteRow(ya._fila);
     const shK = hoja_('CAMBIOS', ['FECHA_HORA', 'USUARIO', 'VIAJE_ID', 'DECA_NUM', 'FECHA_VIAJE', 'REC_ID', 'CODIGO', 'CAMPO', 'ANTES', 'DESPUES', 'MOTIVO']);
     shK.getRange(shK.getLastRow() + 1, 1, 1, 11).setNumberFormat('@').setValues([[ahora_('dd/MM/yyyy HH:mm'), String(c.NOMBRE), id, '', String(ya.FECHA), '', String(ya.PROVEEDOR || '') + ' ' + String(ya.MATRICULA || ''),
-      'CAMIÓN EXTERNO BORRADO', 'albarán ' + String(ya.ALBARAN || '') + ' · ' + String(ya.COMPARTIMENTOS || ''), 'BORRADO', String(req.motivo || '')]]);
-    return { ok: true };
+      'CAMIÓN EXTERNO BORRADO', 'albarán ' + String(ya.ALBARAN || '') + ' · ' + String(ya.COMPARTIMENTOS || '') + (fich ? ' · fichero ' + fich : ''), 'BORRADO', String(req.motivo || '')]]);
+    return { ok: true, fichero: fich };
   } finally { lock.releaseLock(); }
 }
 /** Eliminar entero un registro de CALIDAD guardado por error (p. ej. un «segundo viaje» que no existió): sus filas, su firma y

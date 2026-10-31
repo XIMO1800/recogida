@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 21;
+const API_VERSION = 22;
 
 function doPost(e) {
   try {
@@ -26,7 +26,7 @@ function doPost(e) {
     const POR_ROL = {
       OFICINA: { login: loginOficina, firmar: firmar, guardarParte: guardarParte, oficinaViajes: oficinaViajes, historicoViajes: historicoViajes, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, corregir: corregir, recepViajes: recepViajes, firmasDia: firmasDia, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad,
         anularRecepcion: anularRecepcion, rehacerFichero: rehacerFichero, guardarExterno: guardarExterno, borrarExterno: borrarExterno, guardarCamionExt: guardarCamionExt, borrarCamionExt: borrarCamionExt, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta, guardarMezcla: guardarMezcla },
-      CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
+      CALIDAD: { login: loginCalidad, firmar: firmar, recepViajes: recepViajes, firmasDia: firmasDia, historicoCalidad: historicoCalidad, historicoContadores: historicoContadores, guardarMezcla: guardarMezcla, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad, verificarDia: verificarDia, guardarParte: guardarParte, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarObsDia: guardarObsDia, guardarVenta: guardarVenta, borrarVenta: borrarVenta },
       RECEPCION: { login: loginRecepcion, firmar: firmar, guardarParte: guardarParte, recepViajes: recepViajes, firmasDia: firmasDia, historicoContadores: historicoContadores, guardarRecepcion: guardarRecepcion, guardarAgua: guardarAgua, anularRecepcion: anularRecepcion, guardarRecepCalidad: guardarRecepCalidad, borrarRecepCalidad: borrarRecepCalidad },
       CONDUCTOR: { login: login, iniciarViaje: iniciarViaje, guardar: guardar, trasvase: trasvase, cerrarViaje: cerrarViaje, historial: historial, anularViaje: anularViaje }
     };
@@ -1006,6 +1006,7 @@ function guardarRecep_(r, c, opt) {
     const conductor = otra ? v.CONDUCTOR_ID : (conds[v.CONDUCTOR_ID] || v.CONDUCTOR_ID);
     const prev = buscar_('RECEPCION_CAMION', 'VIAJE_ID', r.viajeId);
     const fecha = opt.fecha || (prev ? prev.FECHA : fechaAtrasada_(r.fecha, c)), hora = opt.hora || (prev ? prev.HORA : ahora_('HH:mm'));
+    hoyOSoloCalidad_(fecha, c);
     // Se borran las filas anteriores de este camión y se escriben de nuevo (la recepción se guarda entera)
     const tR = tabla_('RECEPCIONES');
     tR.filas.filter(function (x) { return x.VIAJE_ID === r.viajeId; }).map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; })
@@ -1129,6 +1130,7 @@ function guardarRecepCalidad(req, c) {
     const v = buscar_('VIAJES', 'VIAJE_ID', id) || {}, cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id) || {};
     const conds = {}; tabla_(HOJA_US_()).filas.forEach(function (x) { conds[x.CONDUCTOR_ID] = String(x.NOMBRE); });
     const fecha = prev.length ? String(prev[0].FECHA) : (cam.FECHA ? String(cam.FECHA) : fechaAtrasada_(r.fecha, c)), hora = prev.length ? String(prev[0].HORA) : ahora_('HH:mm');
+    hoyOSoloCalidad_(fecha, c);
     const alta = prev.length ? String(prev[0].ALTA || '') : ahora_('yyyy-MM-dd HH:mm:ss');
     prev.map(function (x) { return x._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });
     const filas = comps.map(function (x, i) {
@@ -1148,9 +1150,13 @@ function guardarRecepCalidad(req, c) {
 }
 /** Fecha con la que se guarda una recepción o el agua: hoy, salvo que OFICINA esté registrando un día anterior que se quedó
  *  sin hacer (por ejemplo, un camión del sábado que no se descargó en la app). Nunca un día futuro ni de hace más de 15 días. */
+/** Días anteriores: solo calidad y oficina (o la oficina pasando el papel de otro). Recepción (los operarios) solo trabaja en el día de hoy. */
+function otroDiaOk_(c) { return esOficina_(c) || esCalidad_(c) || !!c._porOficina; }
+function hoyOSoloCalidad_(fecha, c) { if (String(fecha) !== ahora_('dd/MM/yyyy') && !otroDiaOk_(c)) throw new Error('Los días anteriores solo los cambian calidad u oficina: tú puedes verlos, no modificarlos.'); }
 function fechaAtrasada_(f, c) {
   const hoy = ahora_('dd/MM/yyyy');
-  if (!f || String(f) === hoy || !(esOficina_(c) || c._porOficina)) return hoy;
+  if (!f || String(f) === hoy) return hoy;
+  if (!otroDiaOk_(c)) throw new Error('Los días anteriores solo los cambian calidad u oficina: tú puedes verlos, no modificarlos.');
   const n = fechaNum_(f), h = fechaNum_(hoy);
   if (!n) throw new Error('Fecha no válida: ' + f);
   if (n > h) throw new Error('No se puede registrar una recepción en un día futuro.');
@@ -1368,7 +1374,7 @@ function borrarRecepCalidad(req, c) {
     const filas = tabla_('RECEPCION_CALIDAD').filas.filter(function (r) { return String(r.VIAJE_ID) === id; });
     if (!filas.length) throw new Error('Ese registro no está guardado (puede que ya se haya eliminado).');
     const fecha = String(filas[0].FECHA);
-    if (fecha !== ahora_('dd/MM/yyyy') && !(esOficina_(c) || c._porOficina)) throw new Error('Un registro de otro día solo lo puede eliminar la oficina.');
+    if (fecha !== ahora_('dd/MM/yyyy') && !otroDiaOk_(c)) throw new Error('Un registro de otro día solo lo pueden eliminar calidad u oficina.');
     const antes = filas.map(function (r) { return 'comp ' + (r.N_COMP_CISTERNA || '?') + ' ' + r.ESPECIE + ' ' + r.LITROS + ' l'; }).join(', ');
     const sh = SS.getSheetByName('RECEPCION_CALIDAD');
     filas.map(function (r) { return r._fila; }).sort(function (a, b) { return b - a; }).forEach(function (f) { sh.deleteRow(f); });
@@ -1389,6 +1395,7 @@ function anularRecepcion(req, c) {
     if (!motivo) throw new Error('Escribe el motivo de la anulación.');
     const cam = buscar_('RECEPCION_CAMION', 'VIAJE_ID', id);
     if (!cam) throw new Error('Esa recepción no está guardada (puede que ya se haya anulado).');
+    hoyOSoloCalidad_(String(cam.FECHA), c);
     const shR = hoja_('RECEPCIONES', CAB_RECEP), shC = hoja_('RECEPCION_CAMION', CAB_RECEP_CAM);
     const filas = tabla_('RECEPCIONES').filas.filter(function (r) { return r.VIAJE_ID === id; });
     const porDep = {}; filas.forEach(function (r) { const d = String(r.DEPOSITO).replace(/^S/i, ''); porDep[d] = (porDep[d] || 0) + numES_(r.LITROS_DEPOSITO); });

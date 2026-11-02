@@ -15,7 +15,7 @@ function doGet(e) {
 }
 
 /** Versión de la API: se ve en la app junto a la de la app («v100 · API 2»). Subirla en cada cambio de este archivo. */
-const API_VERSION = 22;
+const API_VERSION = 23;
 
 function doPost(e) {
   try {
@@ -92,14 +92,14 @@ function firmar(req, c) {
 /** Las claves 'CAL|registro' / 'REC|viaje' / 'VER|fecha' que tienen firma ese día (sin la imagen) */
 function firmadosDia_(fecha) {
   const sh = SS.getSheetByName('FIRMAS'); if (!sh || sh.getLastRow() < 2) return [];
-  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues().filter(function (r) { return String(r[0]) === fecha; }).map(function (r) { return String(r[2]) + '|' + String(r[3]); });
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues().filter(function (r) { return String(fecha2_(r[0])) === fecha; }).map(function (r) { return String(r[2]) + '|' + String(r[3]); });
 }
 /** Firmas de un día para el parte impreso: { 'REC|viaje' | 'CAL|registro': imagen } */
 function firmasDia(req) {
   const sh = SS.getSheetByName('FIRMAS'); if (!sh || sh.getLastRow() < 2) return { ok: true, firmas: {} };
   const n = sh.getLastRow() - 1, f = String(req.fecha || ahora_('dd/MM/yyyy'));
   const cab = sh.getRange(2, 1, n, 4).getDisplayValues(), out = {};
-  cab.forEach(function (r, i) { if (String(r[0]) === f) out[String(r[2]) + '|' + String(r[3])] = String(sh.getRange(i + 2, 6).getValues()[0][0]); });
+  cab.forEach(function (r, i) { if (String(fecha2_(r[0])) === f) out[String(r[2]) + '|' + String(r[3])] = String(sh.getRange(i + 2, 6).getValues()[0][0]); });
   return { ok: true, firmas: out };
 }
 
@@ -1561,12 +1561,16 @@ function resolverCamion_(cam, c) {
 
 /* ───────────── Utilidades de hoja ───────────── */
 
+function fecha2_(x) { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x)); return m ? ('0' + m[1]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[3] : x; }
 function tabla_(nombre) {
   const sh = SS.getSheetByName(nombre);
   if (!sh) throw new Error('Falta la pestaña ' + nombre + '. Ejecuta crearEstructura.');
   const v = sh.getDataRange().getDisplayValues();
   const cab = v.shift().map(String);
-  const filas = v.map(function (r, i) { const o = { _fila: i + 2 }; cab.forEach(function (h, j) { o[h] = r[j]; }); return o; });
+  // Sheets guarda las fechas como fecha y las enseña sin cero delante (2/11/2026): siempre dd/MM/aaaa, como las escribe la app
+  // (si no, del 1 al 9 de cada mes no casan las fechas y el fichero del programa sale con «2/11/2026», que no importa)
+  const fx = fecha2_;
+  const filas = v.map(function (r, i) { const o = { _fila: i + 2 }; cab.forEach(function (h, j) { o[h] = fx(r[j]); }); return o; });
   return { sh: sh, cab: cab, filas: filas };
 }
 function buscar_(hoja, col, valor) {
